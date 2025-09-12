@@ -4,13 +4,8 @@
   "tree": {
     "$className": "DataModel",
     "ServerScriptService": {
-      "MyGameScript": {
-        "$path": "src/server"
-      }
-    },
-    "ReplicatedStorage": {
-      "MyModules": {
-        "$path": "src/shared"
+      "LobbyManager": {
+        "$path": "src/server/LobbyManager.server.lua"
       }
     }
   }
