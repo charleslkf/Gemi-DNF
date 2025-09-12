@@ -1,0 +1,17 @@
+{
+  "name": "Gemi-DNF",
+  "servePort": 30674,
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": {
+      "MyGameScript": {
+        "$path": "src/server"
+      }
+    },
+    "ReplicatedStorage": {
+      "MyModules": {
+        "$path": "src/shared"
+      }
+    }
+  }
+}
