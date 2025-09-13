@@ -230,7 +230,7 @@ function MiniGameManager.startMatching()
         card.Image = "" -- Initially blank
 
         card.MouseButton1Click:Connect(function()
-            if not canClick or card.Image ~= "" or card == firstCard?.button then return end
+            if not canClick or card.Image ~= "" or (firstCard and card == firstCard.button) then return end
 
             card.Image = shuffledIcons[i]
 
