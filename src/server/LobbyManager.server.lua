@@ -91,30 +91,33 @@ function LobbyManager.spawnPlayers(killers, survivors)
     end
 
     for _, killer in ipairs(killers) do
-        local char = killer.Character or killer.CharacterAdded:Wait()
-        local humanoid = char:WaitForChild("Humanoid")
-        local hrp = char:WaitForChild("HumanoidRootPart")
-
-        -- Store original values
-        local originalWalkSpeed = humanoid.WalkSpeed
-        local originalJumpPower = humanoid.JumpPower
-
-        -- Freeze the player
-        humanoid.WalkSpeed = 0
-        humanoid.JumpPower = 0
-        hrp.Anchored = true
-
+        -- Use a coroutine for each killer to handle them in parallel without yielding the main thread
         coroutine.wrap(function()
+            print("Preparing to freeze killer: " .. killer.Name)
+            local char = killer.Character or killer.CharacterAdded:Wait()
+            print("Character found for " .. killer.Name)
+            local humanoid = char:WaitForChild("Humanoid")
+            print("Humanoid found for " .. killer.Name)
+
+            -- Store original values
+            local originalWalkSpeed = humanoid.WalkSpeed
+
+            -- Freeze the player using multiple methods
+            print("Freezing " .. killer.Name)
+            humanoid.WalkSpeed = 0
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, false)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+
             wait(CONFIG.KILLER_SPAWN_DELAY)
+
             -- Check if character and humanoid still exist before unfreezing
             if char.Parent and humanoid.Parent then
+                print("Unfreezing " .. killer.Name)
                 humanoid.WalkSpeed = originalWalkSpeed
-                humanoid.JumpPower = originalJumpPower
-                -- HRP might be destroyed if player dies, so check its parent
-                if hrp.Parent then
-                    hrp.Anchored = false
-                end
-                print("Killer " .. killer.Name .. " has been unleashed!")
+                humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+                humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+            else
+                print("Cannot unfreeze " .. killer.Name .. ", character no longer exists.")
             end
         end)()
     end
