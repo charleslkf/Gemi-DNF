@@ -92,11 +92,30 @@ function LobbyManager.spawnPlayers(killers, survivors)
 
     for _, killer in ipairs(killers) do
         local char = killer.Character or killer.CharacterAdded:Wait()
+        local humanoid = char:WaitForChild("Humanoid")
         local hrp = char:WaitForChild("HumanoidRootPart")
+
+        -- Store original values
+        local originalWalkSpeed = humanoid.WalkSpeed
+        local originalJumpPower = humanoid.JumpPower
+
+        -- Freeze the player
+        humanoid.WalkSpeed = 0
+        humanoid.JumpPower = 0
         hrp.Anchored = true
+
         coroutine.wrap(function()
             wait(CONFIG.KILLER_SPAWN_DELAY)
-            if hrp.Parent then hrp.Anchored = false end
+            -- Check if character and humanoid still exist before unfreezing
+            if char.Parent and humanoid.Parent then
+                humanoid.WalkSpeed = originalWalkSpeed
+                humanoid.JumpPower = originalJumpPower
+                -- HRP might be destroyed if player dies, so check its parent
+                if hrp.Parent then
+                    hrp.Anchored = false
+                end
+                print("Killer " .. killer.Name .. " has been unleashed!")
+            end
         end)()
     end
 end
