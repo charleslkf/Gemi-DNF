@@ -251,6 +251,8 @@ function MiniGameManager.init()
         sampleMachine.Size = Vector3.new(4, 6, 2)
         sampleMachine.Position = Vector3.new(10, 3, 10)
         sampleMachine.Anchored = true
+        sampleMachine.BrickColor = BrickColor.new("New Yeller")
+        sampleMachine.Material = Enum.Material.Neon
     end
 
     interactionPrompt.Parent = playerGui -- Parent it once

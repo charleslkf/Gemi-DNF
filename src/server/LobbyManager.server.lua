@@ -79,24 +79,30 @@ end
 
 function LobbyManager.spawnPlayers(killers, survivors)
     local spawnPoints = spawnsFolder:GetChildren()
-    if #spawnPoints == 0 then warn("No spawn points found!"); return end
-
     local allPlayers = {}
     for _, p in ipairs(killers) do table.insert(allPlayers, p) end
     for _, p in ipairs(survivors) do table.insert(allPlayers, p) end
 
     for i, player in ipairs(allPlayers) do
-        local spawnCFrame = spawnPoints[i % #spawnPoints + 1].CFrame + Vector3.new(0, 3, 0)
+        local spawnCFrame
 
+        -- Determine spawn location based on mode
+        if CONFIG.TESTING_MODE and #allPlayers < CONFIG.MIN_PLAYERS then
+            print("TESTING SPAWN: Spawning " .. player.Name .. " next to machine.")
+            local machinePos = Vector3.new(10, 3, 10)
+            spawnCFrame = CFrame.new(machinePos + Vector3.new(0, 2, 8))
+        else
+            if #spawnPoints == 0 then warn("No spawn points found!"); return end
+            spawnCFrame = spawnPoints[i % #spawnPoints + 1].CFrame + Vector3.new(0, 3, 0)
+        end
+
+        -- Connect to CharacterAdded to handle teleport and freeze
         local connection
         connection = player.CharacterAdded:Connect(function(character)
             connection:Disconnect()
 
-            -- Use a coroutine to handle teleport and freeze without yielding the main spawn loop
             coroutine.wrap(function()
-                -- Wait a frame to ensure all default character scripts have run, to avoid race conditions
                 task.wait()
-
                 character:SetPrimaryPartCFrame(spawnCFrame)
 
                 if table.find(killers, player) then
