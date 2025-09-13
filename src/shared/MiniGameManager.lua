@@ -57,7 +57,15 @@ local function createBaseGui(title)
     titleLabel.TextColor3 = Color3.new(1, 1, 1)
     titleLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 
-    return screenGui, frame
+    local timerLabel = Instance.new("TextLabel", frame)
+    timerLabel.Size = UDim2.new(0, 100, 0, 30)
+    timerLabel.Position = UDim2.new(1, -110, 1, -40)
+    timerLabel.Font = Enum.Font.SourceSansBold
+    timerLabel.TextSize = 20
+    timerLabel.TextColor3 = Color3.new(1, 1, 1)
+    timerLabel.BackgroundTransparency = 1
+
+    return screenGui, frame, timerLabel
 end
 
 local function startInterruptionCheck()
@@ -120,25 +128,55 @@ end
 
 function MiniGameManager.startButtonMashing()
     print("Starting Button Mashing game.")
-    local screenGui, frame = createBaseGui("Mash the Button!")
+    local screenGui, frame, timerLabel = createBaseGui("Mash the Button!")
     local success = false
     local isInterrupted, stopInterruptCheck = startInterruptionCheck()
 
     local mashButton = Instance.new("TextButton", frame)
-    mashButton.Size = UDim2.new(0, 150, 0, 50); mashButton.Position = UDim2.new(0.5, 0, 0.6, 0); mashButton.AnchorPoint = Vector2.new(0.5, 0.5)
-    mashButton.Text = "CLICK!"; mashButton.Font = Enum.Font.SourceSansBold; mashButton.TextSize = 28
+    mashButton.Size = UDim2.new(0, 150, 0, 50)
+    mashButton.Position = UDim2.new(0.5, 0, 0.6, 0)
+    mashButton.AnchorPoint = Vector2.new(0.5, 0.5)
+    mashButton.Text = "CLICK!"
+    mashButton.Font = Enum.Font.SourceSansBold
+    mashButton.TextSize = 28
 
-    local goal = 25; local current = 0; local duration = 5
-    mashButton.MouseButton1Click:Connect(function() current = current + 1 end)
+    local counterLabel = Instance.new("TextLabel", frame)
+    counterLabel.Size = UDim2.new(0, 150, 0, 30)
+    counterLabel.Position = UDim2.new(0.5, -75, 0.3, 0)
+    counterLabel.Font = Enum.Font.SourceSansBold
+    counterLabel.TextSize = 24
+    counterLabel.TextColor3 = Color3.new(1, 1, 1)
+    counterLabel.BackgroundTransparency = 1
+
+    local goal = 25
+    local current = 0
+    local duration = 5
+    counterLabel.Text = string.format("%d / %d", current, goal)
+
+    mashButton.MouseButton1Click:Connect(function()
+        current = current + 1
+        counterLabel.Text = string.format("%d / %d", current, goal)
+    end)
 
     local startTime = tick()
     while tick() - startTime < duration do
-        if isInterrupted() then success = false; break end
-        if current >= goal then success = true; break end
+        if isInterrupted() then
+            success = false
+            break
+        end
+        if current >= goal then
+            success = true
+            break
+        end
+
+        local timeLeft = duration - (tick() - startTime)
+        timerLabel.Text = string.format("%.1fs", timeLeft)
+
         RunService.Heartbeat:Wait()
     end
 
-    stopInterruptCheck(); screenGui:Destroy()
+    stopInterruptCheck()
+    screenGui:Destroy()
     return success
 end
 
