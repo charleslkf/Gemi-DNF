@@ -1,9 +1,9 @@
 --[[
     LobbyManager.server.lua
-    by Jules (v4 - Refactored, No GUI)
+    by Jules (v5 - Definitive Fix)
 
     This script manages the game lobby, player assignments, and round starts.
-    This version removes the out-of-scope GUI and focuses on core logic.
+    This version includes the definitive, most robust fix for the killer freeze bug.
 ]]
 
 -- Services
@@ -86,39 +86,44 @@ function LobbyManager.spawnPlayers(killers, survivors)
     for _, p in ipairs(survivors) do table.insert(allPlayers, p) end
 
     for i, player in ipairs(allPlayers) do
-        local spawn = spawnPoints[i % #spawnPoints + 1]
-        player.RespawnLocation = spawn
+        local spawnCFrame = spawnPoints[i % #spawnPoints + 1].CFrame + Vector3.new(0, 3, 0)
 
-        if table.find(killers, player) then
-            -- This is a killer. Setup the freeze event BEFORE loading the character.
-            local connection
-            connection = player.CharacterAdded:Connect(function(character)
-                -- Disconnect immediately so this only runs once for this specific spawn.
-                connection:Disconnect()
+        local connection
+        connection = player.CharacterAdded:Connect(function(character)
+            connection:Disconnect()
 
-                print("Character added for killer: " .. player.Name .. ". Applying freeze.")
-                local humanoid = character:WaitForChild("Humanoid")
+            -- Use a coroutine to handle teleport and freeze without yielding the main spawn loop
+            coroutine.wrap(function()
+                -- Wait a frame to ensure all default character scripts have run, to avoid race conditions
+                task.wait()
 
-                -- Freeze the player using multiple methods
-                local originalWalkSpeed = humanoid.WalkSpeed
-                humanoid.WalkSpeed = 0
-                humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, false)
-                humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+                character:SetPrimaryPartCFrame(spawnCFrame)
 
-                -- Unfreeze after delay in a new thread
-                coroutine.wrap(function()
-                    wait(CONFIG.KILLER_SPAWN_DELAY)
-                    if humanoid.Parent then
-                        print("Unfreezing " .. player.Name)
-                        humanoid.WalkSpeed = originalWalkSpeed
-                        humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, true)
-                        humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-                    end
-                end)()
-            end)
-        end
+                if table.find(killers, player) then
+                    print("Character added for killer: " .. player.Name .. ". Applying aggressive freeze.")
+                    local humanoid = character:WaitForChild("Humanoid")
+                    local hrp = character:WaitForChild("HumanoidRootPart")
 
-        -- Now, load the character. The event for killers is now waiting to fire.
+                    local originalWalkSpeed = humanoid.WalkSpeed
+                    local originalJumpPower = humanoid.JumpPower
+
+                    hrp.Anchored = true
+                    humanoid.WalkSpeed = 0
+                    humanoid.JumpPower = 0
+
+                    -- Unfreeze after delay
+                    task.delay(CONFIG.KILLER_SPAWN_DELAY, function()
+                        if humanoid.Parent then
+                            print("Unfreezing " .. player.Name)
+                            hrp.Anchored = false
+                            humanoid.WalkSpeed = originalWalkSpeed
+                            humanoid.JumpPower = originalJumpPower
+                        end
+                    end)
+                end
+            end)()
+        end)
+
         player:LoadCharacter()
     end
 end
@@ -139,62 +144,28 @@ function LobbyManager.runGameLoop()
                 wait(1)
             end
 
-            -- TEAM ASSIGNMENT
             local playersInRound = Players:GetPlayers()
             local numPlayers = #playersInRound
             local killers, survivors = {}, {}
 
             if CONFIG.TESTING_MODE and numPlayers < CONFIG.MIN_PLAYERS then
-                print("Status: Testing mode with " .. numPlayers .. " player(s). Assigning as Killer.")
                 killers = { playersInRound[1] }
             else
-                -- Standard team assignment
                 local shuffledPlayers = shuffle(playersInRound)
-                local numInitialKillers = 1 -- Default
-
-                if numPlayers >= 5 and numPlayers <= 8 then
-                    numInitialKillers = 1
-                elseif numPlayers >= 9 and numPlayers <= 12 then
-                    numInitialKillers = 1 -- For the gamble
-                elseif numPlayers == 13 then
-                    numInitialKillers = 3
-                end
-
-                -- 1. Assign initial killers
-                for i = 1, numInitialKillers do
-                    table.insert(killers, shuffledPlayers[i])
-                end
-
-                -- 2. Assign initial survivors
-                for i = numInitialKillers + 1, numPlayers do
-                    table.insert(survivors, shuffledPlayers[i])
-                end
-
-                -- 3. Handle The Gamble Condition
+                local numInitialKillers = 1; if numPlayers >= 9 and numPlayers <= 12 then numInitialKillers = 1 elseif numPlayers == 13 then numInitialKillers = 3 end
+                for i = 1, numInitialKillers do table.insert(killers, shuffledPlayers[i]) end
+                for i = numInitialKillers + 1, numPlayers do table.insert(survivors, shuffledPlayers[i]) end
                 if numPlayers >= 9 and numPlayers <= 12 then
-                    local initialKiller = killers[1]
-                    local secondKiller = LobbyManager.handleGambleCondition(initialKiller, survivors)
-
+                    local secondKiller = LobbyManager.handleGambleCondition(killers[1], survivors)
                     if secondKiller then
-                        -- Add to killers list
                         table.insert(killers, secondKiller)
-                        -- REMOVE from survivors list
-                        for i, survivor in ipairs(survivors) do
-                            if survivor == secondKiller then
-                                table.remove(survivors, i)
-                                break
-                            end
-                        end
+                        for i, v in ipairs(survivors) do if v == secondKiller then table.remove(survivors, i); break end end
                     end
                 end
             end
 
-            -- 4. Set Player.Team property for everyone
-            for _, player in ipairs(killers) do
-                player.Team = killersTeam
-            end
-            for _, player in ipairs(survivors) do
-                player.Team = survivorsTeam
+            for _, player in ipairs(playersInRound) do
+                if table.find(killers, player) then player.Team = killersTeam else player.Team = survivorsTeam end
             end
             print(string.format("Status: Teams assigned. %d Killer(s), %d Survivor(s).", #killers, #survivors))
 
@@ -204,7 +175,9 @@ function LobbyManager.runGameLoop()
 
             print("Status: Round over! Returning to lobby...")
             for _, player in ipairs(Players:GetPlayers()) do
-                if player then player.Team = nil; player.RespawnLocation = lobbySpawn; player:LoadCharacter() end
+                if player and player.Parent == Players then
+                    player.Team = nil; player.RespawnLocation = lobbySpawn; player:LoadCharacter()
+                end
             end
             wait(5)
         end)
