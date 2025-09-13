@@ -1,6 +1,6 @@
 --[[
     MiniGameManager.lua
-    by Jules (v7 - Final UI Fixes)
+    by Jules (v8 - Final UI/UX Fixes)
 
     A modular, client-side system for handling complex, interruptible mini-games.
 ]]
@@ -21,8 +21,6 @@ local CONFIG = {
     INTERACTION_DISTANCE = 12,
     MACHINE_FOLDER_NAME = "MiniGameMachines",
     INTERRUPT_MOVE_DISTANCE = 10,
-    KILLER_PROXIMITY_RANGE = 40,
-    PROXIMITY_SOUND_ID = "rbxassetid://1842289390", -- Invalid ID
 }
 
 -- The Module
@@ -37,13 +35,12 @@ machinesFolder.Name = CONFIG.MACHINE_FOLDER_NAME
 -- HELPER FUNCTIONS ---
 
 local function createBaseGui(title)
-    print("Creating base GUI for:", title)
     local screenGui = Instance.new("ScreenGui", playerGui)
     screenGui.Name = "MiniGameGui"
     screenGui.ResetOnSpawn = false
 
     local frame = Instance.new("Frame", screenGui)
-    frame.Size = UDim2.new(0, 500, 0, 400) -- FIX: Increased height
+    frame.Size = UDim2.new(0, 500, 0, 400)
     frame.AnchorPoint = Vector2.new(0.5, 0.5)
     frame.Position = UDim2.new(0.5, 0, 0.5, 0)
     frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
@@ -69,45 +66,31 @@ local function createBaseGui(title)
 end
 
 local function startInterruptionCheck()
-    print("Starting interruption check.")
     local startCharacter = player.Character
-    if not startCharacter or not startCharacter.PrimaryPart then
-        print("Interruption check failed: No character or PrimaryPart.")
-        return function() return true end, function() end
-    end
-
+    if not startCharacter or not startCharacter.PrimaryPart then return function() return true end, function() end end
     local startPos = startCharacter.PrimaryPart.Position
     local wasInterrupted = false
-
     local conn = RunService.Heartbeat:Connect(function()
         local currentCharacter = player.Character
         if wasInterrupted then return end
-
         if currentCharacter and currentCharacter.PrimaryPart and currentCharacter == startCharacter then
-            local dist = (currentCharacter.PrimaryPart.Position - startPos).Magnitude
-            if dist > CONFIG.INTERRUPT_MOVE_DISTANCE then
-                print("Interrupted by movement. Distance:", dist)
+            if (currentCharacter.PrimaryPart.Position - startPos).Magnitude > CONFIG.INTERRUPT_MOVE_DISTANCE then
                 wasInterrupted = true
             end
         else
-            print("Interrupted by character change (respawn/death).")
             wasInterrupted = true
         end
     end)
-
     local function isInterrupted() return wasInterrupted end
-    local function stop() print("Stopping interruption check."); conn:Disconnect() end
-
+    local function stop() conn:Disconnect() end
     return isInterrupted, stop
 end
 
 local function createInteractionPrompt()
-    print("Creating interaction prompt.")
     local promptGui = Instance.new("BillboardGui")
     promptGui.Name = "InteractionPrompt"
-    promptGui.Size = UDim2.new(5, 0, 2, 0) -- FIX: Stud-based size
+    promptGui.Size = UDim2.new(5, 0, 2, 0)
     promptGui.AlwaysOnTop = true
-
     local textLabel = Instance.new("TextLabel", promptGui)
     textLabel.Size = UDim2.new(1, 0, 1, 0)
     textLabel.Text = "[E] to Interact"
@@ -115,7 +98,6 @@ local function createInteractionPrompt()
     textLabel.TextSize = 30
     textLabel.TextColor3 = Color3.new(1, 1, 1)
     textLabel.BackgroundTransparency = 1
-
     return promptGui
 end
 
@@ -124,69 +106,14 @@ local function shuffle(tbl)
     return tbl
 end
 
--- MINI-GAME IMPLEMENTATIONS ---
-
-function MiniGameManager.startButtonMashing()
-    print("Starting Button Mashing game.")
-    local screenGui, frame, timerLabel = createBaseGui("Mash the Button!")
-    local success = false
-    local isInterrupted, stopInterruptCheck = startInterruptionCheck()
-
-    local mashButton = Instance.new("TextButton", frame)
-    mashButton.Size = UDim2.new(0, 150, 0, 50)
-    mashButton.Position = UDim2.new(0.5, 0, 0.6, 0)
-    mashButton.AnchorPoint = Vector2.new(0.5, 0.5)
-    mashButton.Text = "CLICK!"
-    mashButton.Font = Enum.Font.SourceSansBold
-    mashButton.TextSize = 28
-
-    local counterLabel = Instance.new("TextLabel", frame)
-    counterLabel.Size = UDim2.new(0, 150, 0, 30)
-    counterLabel.Position = UDim2.new(0.5, -75, 0.3, 0)
-    counterLabel.Font = Enum.Font.SourceSansBold
-    counterLabel.TextSize = 24
-    counterLabel.TextColor3 = Color3.new(1, 1, 1)
-    counterLabel.BackgroundTransparency = 1
-
-    local goal = 25
-    local current = 0
-    local duration = 5
-    counterLabel.Text = string.format("%d / %d", current, goal)
-
-    mashButton.MouseButton1Click:Connect(function()
-        current = current + 1
-        counterLabel.Text = string.format("%d / %d", current, goal)
-    end)
-
-    local startTime = tick()
-    while tick() - startTime < duration do
-        if isInterrupted() then
-            success = false
-            break
-        end
-        if current >= goal then
-            success = true
-            break
-        end
-
-        local timeLeft = duration - (tick() - startTime)
-        timerLabel.Text = string.format("%.1fs", timeLeft)
-
-        RunService.Heartbeat:Wait()
-    end
-
-    stopInterruptCheck()
-    screenGui:Destroy()
-    showEndResult(success)
-    return success
-end
-
 local function showEndResult(isSuccess)
     local resultGui = Instance.new("ScreenGui", playerGui)
     resultGui.Name = "ResultGui"
+    resultGui.IgnoreGuiInset = true
+    resultGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
     local resultLabel = Instance.new("TextLabel", resultGui)
-    resultLabel.Size = UDim2.new(1, 0, 0.3, 0)
-    resultLabel.Position = UDim2.new(0, 0, 0.35, 0)
+    resultLabel.Size = UDim2.new(1, 0, 1, 0)
     resultLabel.Font = Enum.Font.SourceSansBold
     resultLabel.TextSize = 100
     resultLabel.BackgroundTransparency = 1
@@ -203,111 +130,52 @@ local function showEndResult(isSuccess)
     resultGui:Destroy()
 end
 
+-- MINI-GAME IMPLEMENTATIONS ---
+
+function MiniGameManager.startButtonMashing()
+    local screenGui, frame, timerLabel = createBaseGui("Mash the Button!")
+    local success = false; local isInterrupted, stopInterruptCheck = startInterruptionCheck()
+    local mashButton = Instance.new("TextButton", frame); mashButton.Size = UDim2.new(0, 150, 0, 50); mashButton.Position = UDim2.new(0.5, 0, 0.6, 0); mashButton.AnchorPoint = Vector2.new(0.5, 0.5); mashButton.Text = "CLICK!"; mashButton.Font = Enum.Font.SourceSansBold; mashButton.TextSize = 28
+    local counterLabel = Instance.new("TextLabel", frame); counterLabel.Size = UDim2.new(0, 150, 0, 30); counterLabel.Position = UDim2.new(0.5, -75, 0.3, 0); counterLabel.Font = Enum.Font.SourceSansBold; counterLabel.TextSize = 24; counterLabel.TextColor3 = Color3.new(1,1,1); counterLabel.BackgroundTransparency = 1
+    local goal = 25; local current = 0; local duration = 5; counterLabel.Text = string.format("%d / %d", current, goal)
+    mashButton.MouseButton1Click:Connect(function() current = current + 1; counterLabel.Text = string.format("%d / %d", current, goal) end)
+    local startTime = tick(); while tick() - startTime < duration do if isInterrupted() then success = false; break end; if current >= goal then success = true; break end; local timeLeft = duration - (tick() - startTime); timerLabel.Text = string.format("%.1fs", timeLeft); RunService.Heartbeat:Wait() end
+    stopInterruptCheck(); screenGui:Destroy(); showEndResult(success); return success
+end
+
 function MiniGameManager.startQTE()
-    print("Starting QTE game.")
     local screenGui, frame, timerLabel = createBaseGui("Memory Check")
-    local success = false
-    local isInterrupted, stopInterruptCheck = startInterruptionCheck()
-
-    local roundsToWin = 3
-    local currentRound = 1
-
-    local roundCounter = Instance.new("TextLabel", frame)
-    roundCounter.Size = UDim2.new(0, 200, 0, 30)
-    roundCounter.Position = UDim2.new(0, 10, 1, -40)
-    roundCounter.Font = Enum.Font.SourceSansBold
-    roundCounter.TextSize = 20
-    roundCounter.TextColor3 = Color3.new(1, 1, 1)
-    roundCounter.BackgroundTransparency = 1
-    roundCounter.Text = string.format("Round: %d / %d", currentRound -1, roundsToWin)
-
-    local buttons = {}
-    for r = 1, 3 do
-        for c = 1, 3 do
-            local btn = Instance.new("TextButton", frame)
-            btn.Size = UDim2.new(0, 100, 0, 80)
-            btn.Position = UDim2.new(0.5, -165 + (c - 1) * 110, 0.5, -130 + (r - 1) * 90)
-            btn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-            table.insert(buttons, btn)
-        end
-    end
-
-    local playerInputSequence = {}
-    for i, button in ipairs(buttons) do
-        button.MouseButton1Click:Connect(function()
-            table.insert(playerInputSequence, i)
-            button.BackgroundColor3 = Color3.new(1, 1, 1)
-            task.wait(0.1)
-            button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-        end)
-    end
-
+    local success = false; local isInterrupted, stopInterruptCheck = startInterruptionCheck()
+    local roundsToWin = 3; local currentRound = 1
+    local roundCounter = Instance.new("TextLabel", frame); roundCounter.Size = UDim2.new(0, 200, 0, 30); roundCounter.Position = UDim2.new(0, 10, 1, -40); roundCounter.Font = Enum.Font.SourceSansBold; roundCounter.TextSize = 20; roundCounter.TextColor3 = Color3.new(1,1,1); roundCounter.BackgroundTransparency = 1; roundCounter.Text = string.format("Round: %d / %d", currentRound-1, roundsToWin)
+    local buttons = {}; for r=1,3 do for c=1,3 do local btn=Instance.new("TextButton",frame); btn.Size=UDim2.new(0,100,0,80); btn.Position=UDim2.new(0.5,-165+(c-1)*110,0.5,-130+(r-1)*90); btn.BackgroundColor3=Color3.fromRGB(80,80,80); table.insert(buttons,btn) end end
+    local playerInputSequence = {}; for i, button in ipairs(buttons) do button.MouseButton1Click:Connect(function() table.insert(playerInputSequence,i); button.BackgroundColor3=Color3.new(1,1,1); task.wait(0.1); button.BackgroundColor3=Color3.fromRGB(80,80,80) end) end
     coroutine.wrap(function()
         while currentRound <= roundsToWin and not success and not isInterrupted() do
             roundCounter.Text = string.format("Round: %d / %d", currentRound - 1, roundsToWin)
-            local sequence = {}
-            for i = 1, currentRound + 1 do table.insert(sequence, math.random(#buttons)) end
-
-            task.wait(1)
-            for _, buttonIndex in ipairs(sequence) do
-                if isInterrupted() then break end
-                buttons[buttonIndex].BackgroundColor3 = Color3.fromRGB(200, 200, 100)
-                task.wait(0.4)
-                buttons[buttonIndex].BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-                task.wait(0.1)
-            end
-
-            if isInterrupted() then break end
-            playerInputSequence = {}
-            local inputStartTime = tick()
-            while #playerInputSequence < #sequence do
-                if isInterrupted() then break end
-                if tick() - inputStartTime > 5 then break end
-                RunService.Heartbeat:Wait()
-            end
-
-            if isInterrupted() then break end
-            local correct = true
-            if #playerInputSequence ~= #sequence then correct = false end
-            for i, buttonIndex in ipairs(sequence) do
-                if playerInputSequence[i] ~= buttonIndex then correct = false; break end
-            end
-
-            if correct then
-                currentRound = currentRound + 1
-                if currentRound > roundsToWin then success = true end
-            else
-                frame.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-                task.wait(0.3)
-                break
-            end
+            local sequence = {}; for i=1,currentRound+1 do table.insert(sequence,math.random(#buttons)) end; task.wait(1)
+            for _,buttonIndex in ipairs(sequence) do if isInterrupted() then break end; buttons[buttonIndex].BackgroundColor3=Color3.fromRGB(200,200,100); task.wait(0.4); buttons[buttonIndex].BackgroundColor3=Color3.fromRGB(80,80,80); task.wait(0.1) end
+            if isInterrupted() then break end; playerInputSequence = {}; local inputStartTime=tick()
+            while #playerInputSequence<#sequence do if isInterrupted() then break end; if tick()-inputStartTime>5 then break end; RunService.Heartbeat:Wait() end
+            if isInterrupted() then break end; local correct = true; if #playerInputSequence~=#sequence then correct=false end
+            for i,buttonIndex in ipairs(sequence) do if playerInputSequence[i]~=buttonIndex then correct=false; break end end
+            if correct then currentRound=currentRound+1; if currentRound>roundsToWin then success=true end else frame.BackgroundColor3=Color3.fromRGB(150,0,0); task.wait(0.3); break end
         end
-    end)()
-
-    while not success and currentRound <= roundsToWin and not isInterrupted() do
-        RunService.Heartbeat:Wait()
-    end
-
-    stopInterruptCheck()
-    screenGui:Destroy()
-    showEndResult(success)
-    return success
+    end)(); while not success and currentRound <= roundsToWin and not isInterrupted() do RunService.Heartbeat:Wait() end
+    stopInterruptCheck(); screenGui:Destroy(); showEndResult(success); return success
 end
 
 function MiniGameManager.startMatching()
-    print("Starting Matching game.")
     local screenGui, frame = createBaseGui("Matching Game")
-    local success = false
-    local isInterrupted, stopInterruptCheck = startInterruptionCheck()
+    local success = false; local isInterrupted, stopInterruptCheck = startInterruptionCheck()
     local ICONS = {"rbxassetid://2844027442","rbxassetid://2844027442","rbxassetid://2844027289","rbxassetid://2844027289","rbxassetid://2844027142","rbxassetid://2844027142","rbxassetid://2844026998","rbxassetid://2844026998","rbxassetid://2844026848","rbxassetid://2844026848","rbxassetid://2844026698","rbxassetid://2844026698"}
-    local shuffledIcons=shuffle(ICONS)
-    local firstCard,secondCard = nil,nil; local pairsFound=0; local canClick=true
-
+    local shuffledIcons=shuffle(ICONS); local firstCard,secondCard=nil,nil; local pairsFound=0; local canClick=true
+    local gridFrame = Instance.new("Frame", frame); gridFrame.Size = UDim2.new(1, -20, 1, -50); gridFrame.Position = UDim2.new(0.5, 0, 0.5, 0); gridFrame.AnchorPoint = Vector2.new(0.5, 0.5); gridFrame.BackgroundTransparency = 1
+    local gridLayout = Instance.new("UIGridLayout", gridFrame); gridLayout.CellSize = UDim2.new(0, 80, 0, 80); gridLayout.CellPadding = UDim2.new(0, 10, 0, 10); gridLayout.StartCorner = Enum.StartCorner.TopLeft
     for i=1,12 do
-        local card=Instance.new("ImageButton",frame); card.Size=UDim2.new(0,80,0,80); card.Position=UDim2.new(0.5,-180+((i-1)%4)*90,0.5,-90+math.floor((i-1)/3)*90); card.BackgroundColor3=Color3.fromRGB(100,100,100); card.Image=""
+        local card=Instance.new("ImageButton",gridFrame); card.BackgroundColor3=Color3.fromRGB(100,100,100); card.Image=""
         card.MouseButton1Click:Connect(function()
-            if not canClick or card.Image~="" or (firstCard and card==firstCard.button) then return end
-            card.Image=shuffledIcons[i]
+            if not canClick or card.Image~="" or (firstCard and card==firstCard.button) then return end; card.Image=shuffledIcons[i]
             if not firstCard then firstCard={button=card,id=shuffledIcons[i]}
             else canClick=false; secondCard={button=card,id=shuffledIcons[i]}; task.wait(0.7)
                 if firstCard.id==secondCard.id then firstCard.button.Visible=false; secondCard.button.Visible=false; pairsFound=pairsFound+1; if pairsFound==6 then success=true end
@@ -316,12 +184,8 @@ function MiniGameManager.startMatching()
             end
         end)
     end
-
     local duration=30; local startTime=tick(); while not success and not isInterrupted() and tick()-startTime<duration do RunService.Heartbeat:Wait() end
-    stopInterruptCheck()
-    screenGui:Destroy()
-    showEndResult(success)
-    return success
+    stopInterruptCheck(); screenGui:Destroy(); showEndResult(success); return success
 end
 
 -- ACTIVATION & MAIN LOGIC ---
@@ -329,48 +193,30 @@ end
 function MiniGameManager.init()
     print("MiniGameManager: Initializing system for player.")
 
-    if not machinesFolder:FindFirstChild("MiniGameMachine") then
-        local machine=Instance.new("Part",machinesFolder); machine.Name="MiniGameMachine"; machine.Size=Vector3.new(4,6,2); machine.Position=Vector3.new(10,3,10); machine.Anchored=true; machine.BrickColor=BrickColor.new("New Yeller"); machine.Material=Enum.Material.Neon
+    -- For testing, create sample machines
+    if #machinesFolder:GetChildren() == 0 then
+        for i = 1, 3 do
+            local machine=Instance.new("Part",machinesFolder); machine.Name="MiniGameMachine"..i; machine.Size=Vector3.new(4,6,2); machine.Position=Vector3.new(10 + (i-1)*10, 3, 10); machine.Anchored=true; machine.BrickColor=BrickColor.new("New Yeller"); machine.Material=Enum.Material.Neon
+        end
     end
 
     RunService.RenderStepped:Connect(function()
         if isGameActive then return end
-        local character=player.Character
-        if not character or not character.PrimaryPart then return end
-
-        local characterPos = character.PrimaryPart.Position
-        local closestMachineFound = nil
-
+        local character=player.Character; if not character or not character.PrimaryPart then return end
+        local characterPos=character.PrimaryPart.Position; local closestMachineFound=nil
+        for _,machine in ipairs(machinesFolder:GetChildren()) do if (characterPos-machine.Position).Magnitude<CONFIG.INTERACTION_DISTANCE then closestMachineFound=machine; break end end
+        nearbyMachine=closestMachineFound
         for _,machine in ipairs(machinesFolder:GetChildren()) do
-            if (characterPos - machine.Position).Magnitude < CONFIG.INTERACTION_DISTANCE then
-                closestMachineFound = machine
-                break
-            end
-        end
-
-        nearbyMachine = closestMachineFound
-
-        for _, machine in ipairs(machinesFolder:GetChildren()) do
-            local prompt = machine:FindFirstChild("InteractionPrompt")
-            if machine == nearbyMachine then
-                if not prompt then
-                    createInteractionPrompt().Parent = machine
-                end
-            else
-                if prompt then
-                    prompt:Destroy()
-                end
-            end
+            local prompt=machine:FindFirstChild("InteractionPrompt")
+            if machine==nearbyMachine then if not prompt then createInteractionPrompt().Parent = machine end
+            else if prompt then prompt:Destroy() end end
         end
     end)
 
     UserInputService.InputBegan:Connect(function(input,gameProcessed)
         if not gameProcessed and not isGameActive and input.KeyCode==Enum.KeyCode.E and nearbyMachine then
-            isGameActive=true
-            local games={MiniGameManager.startButtonMashing,MiniGameManager.startQTE,MiniGameManager.startMatching}
-            local random_game=games[math.random(#games)]
-            local success=random_game()
-            if success then print("Mini-game success!") else print("Mini-game failed or was interrupted!") end
+            isGameActive=true; local games={MiniGameManager.startButtonMashing,MiniGameManager.startQTE,MiniGameManager.startMatching}; local random_game=games[math.random(#games)]
+            local success=random_game(); showEndResult(success)
             isGameActive=false
         end
     end)
