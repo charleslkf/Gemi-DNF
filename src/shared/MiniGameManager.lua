@@ -1,9 +1,8 @@
 --[[
     MiniGameManager.lua
-    by Jules (v6 - Definitive Rewrite)
+    by Jules (v7 - Final UI Fixes)
 
     A modular, client-side system for handling complex, interruptible mini-games.
-    This version is a full rewrite to ensure correctness and add extensive debugging.
 ]]
 
 -- Services
@@ -98,10 +97,8 @@ local function createInteractionPrompt()
     print("Creating interaction prompt.")
     local promptGui = Instance.new("BillboardGui")
     promptGui.Name = "InteractionPrompt"
-    promptGui.Adornee = nil
     promptGui.Size = UDim2.new(5, 0, 2, 0) -- FIX: Stud-based size
     promptGui.AlwaysOnTop = true
-    promptGui.Enabled = false -- Start disabled
 
     local textLabel = Instance.new("TextLabel", promptGui)
     textLabel.Size = UDim2.new(1, 0, 1, 0)
@@ -206,32 +203,39 @@ end
 
 function MiniGameManager.init()
     print("MiniGameManager: Initializing system for player.")
-    local interactionPrompt = createInteractionPrompt()
-    interactionPrompt.Parent = playerGui
 
     if not machinesFolder:FindFirstChild("MiniGameMachine") then
         local machine=Instance.new("Part",machinesFolder); machine.Name="MiniGameMachine"; machine.Size=Vector3.new(4,6,2); machine.Position=Vector3.new(10,3,10); machine.Anchored=true; machine.BrickColor=BrickColor.new("New Yeller"); machine.Material=Enum.Material.Neon
     end
 
     RunService.RenderStepped:Connect(function()
-        if isGameActive then interactionPrompt.Enabled=false; return end
-        local character=player.Character; if not character or not character.PrimaryPart then interactionPrompt.Enabled=false; return end
+        if isGameActive then return end
+        local character=player.Character
+        if not character or not character.PrimaryPart then return end
 
+        local characterPos = character.PrimaryPart.Position
         local closestMachineFound = nil
+
         for _,machine in ipairs(machinesFolder:GetChildren()) do
-            if (character.PrimaryPart.Position-machine.Position).Magnitude < CONFIG.INTERACTION_DISTANCE then
+            if (characterPos - machine.Position).Magnitude < CONFIG.INTERACTION_DISTANCE then
                 closestMachineFound = machine
                 break
             end
         end
 
         nearbyMachine = closestMachineFound
-        if nearbyMachine then
-            interactionPrompt.Adornee = nearbyMachine
-            interactionPrompt.Enabled = true
-        else
-            interactionPrompt.Adornee = nil
-            interactionPrompt.Enabled = false
+
+        for _, machine in ipairs(machinesFolder:GetChildren()) do
+            local prompt = machine:FindFirstChild("InteractionPrompt")
+            if machine == nearbyMachine then
+                if not prompt then
+                    createInteractionPrompt().Parent = machine
+                end
+            else
+                if prompt then
+                    prompt:Destroy()
+                end
+            end
         end
     end)
 
