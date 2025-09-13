@@ -80,6 +80,7 @@ end
 function LobbyManager.spawnPlayers(killers, survivors)
     local spawnPoints = spawnsFolder:GetChildren()
     if #spawnPoints == 0 then warn("No spawn points found!"); return end
+
     local allPlayers = {}
     for _, p in ipairs(killers) do table.insert(allPlayers, p) end
     for _, p in ipairs(survivors) do table.insert(allPlayers, p) end
@@ -87,39 +88,38 @@ function LobbyManager.spawnPlayers(killers, survivors)
     for i, player in ipairs(allPlayers) do
         local spawn = spawnPoints[i % #spawnPoints + 1]
         player.RespawnLocation = spawn
+
+        if table.find(killers, player) then
+            -- This is a killer. Setup the freeze event BEFORE loading the character.
+            local connection
+            connection = player.CharacterAdded:Connect(function(character)
+                -- Disconnect immediately so this only runs once for this specific spawn.
+                connection:Disconnect()
+
+                print("Character added for killer: " .. player.Name .. ". Applying freeze.")
+                local humanoid = character:WaitForChild("Humanoid")
+
+                -- Freeze the player using multiple methods
+                local originalWalkSpeed = humanoid.WalkSpeed
+                humanoid.WalkSpeed = 0
+                humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, false)
+                humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+
+                -- Unfreeze after delay in a new thread
+                coroutine.wrap(function()
+                    wait(CONFIG.KILLER_SPAWN_DELAY)
+                    if humanoid.Parent then
+                        print("Unfreezing " .. player.Name)
+                        humanoid.WalkSpeed = originalWalkSpeed
+                        humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+                        humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+                    end
+                end)()
+            end)
+        end
+
+        -- Now, load the character. The event for killers is now waiting to fire.
         player:LoadCharacter()
-    end
-
-    for _, killer in ipairs(killers) do
-        -- Use a coroutine for each killer to handle them in parallel without yielding the main thread
-        coroutine.wrap(function()
-            print("Preparing to freeze killer: " .. killer.Name)
-            local char = killer.Character or killer.CharacterAdded:Wait()
-            print("Character found for " .. killer.Name)
-            local humanoid = char:WaitForChild("Humanoid")
-            print("Humanoid found for " .. killer.Name)
-
-            -- Store original values
-            local originalWalkSpeed = humanoid.WalkSpeed
-
-            -- Freeze the player using multiple methods
-            print("Freezing " .. killer.Name)
-            humanoid.WalkSpeed = 0
-            humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, false)
-            humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
-
-            wait(CONFIG.KILLER_SPAWN_DELAY)
-
-            -- Check if character and humanoid still exist before unfreezing
-            if char.Parent and humanoid.Parent then
-                print("Unfreezing " .. killer.Name)
-                humanoid.WalkSpeed = originalWalkSpeed
-                humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, true)
-                humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-            else
-                print("Cannot unfreeze " .. killer.Name .. ", character no longer exists.")
-            end
-        end)()
     end
 end
 
