@@ -177,6 +177,7 @@ function MiniGameManager.startButtonMashing()
 
     stopInterruptCheck()
     screenGui:Destroy()
+    showEndResult(success)
     return success
 end
 
@@ -317,7 +318,9 @@ function MiniGameManager.startMatching()
     end
 
     local duration=30; local startTime=tick(); while not success and not isInterrupted() and tick()-startTime<duration do RunService.Heartbeat:Wait() end
-    stopInterruptCheck(); screenGui:Destroy()
+    stopInterruptCheck()
+    screenGui:Destroy()
+    showEndResult(success)
     return success
 end
 
