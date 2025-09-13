@@ -34,7 +34,7 @@ local nearbyMachine = nil
 local isGameActive = false
 local machinesFolder = Workspace:FindFirstChild(CONFIG.MACHINE_FOLDER_NAME) or Instance.new("Folder", Workspace)
 machinesFolder.Name = CONFIG.MACHINE_FOLDER_NAME
-local proximitySound
+-- local proximitySound -- Sound disabled until a valid ID is provided
 
 -- HELPER FUNCTIONS ---
 
@@ -293,8 +293,8 @@ end
 function MiniGameManager.init()
     print("MiniGameManager Initialized.")
 
-    -- Setup audio
-    proximitySound = Instance.new("Sound", playerGui); proximitySound.SoundId = CONFIG.PROXIMITY_SOUND_ID; proximitySound.Looped = true
+    -- Setup audio (Temporarily disabled due to invalid Sound ID)
+    -- proximitySound = Instance.new("Sound", playerGui); proximitySound.SoundId = CONFIG.PROXIMITY_SOUND_ID; proximitySound.Looped = true
 
     -- For testing, create a sample machine
     if not machinesFolder:FindFirstChild("MiniGameMachine") then
@@ -318,10 +318,13 @@ function MiniGameManager.init()
             end
         end
 
-        if closestKillerDist < CONFIG.KILLER_PROXIMITY_RANGE then
-            if not proximitySound.IsPlaying then proximitySound:Play() end
-        else
-            if proximitySound.IsPlaying then proximitySound:Stop() end
+        -- Guard against nil values before comparing
+        if type(closestKillerDist) == "number" and type(CONFIG.KILLER_PROXIMITY_RANGE) == "number" then
+            if closestKillerDist < CONFIG.KILLER_PROXIMITY_RANGE then
+                -- if proximitySound and not proximitySound.IsPlaying then proximitySound:Play() end
+            else
+                -- if proximitySound and proximitySound.IsPlaying then proximitySound:Stop() end
+            end
         end
     end)
 
@@ -330,7 +333,7 @@ function MiniGameManager.init()
             local character = player.Character
             if not character or not character.PrimaryPart then return end
 
-            local closestDist = INTERACTION_DISTANCE
+            local closestDist = CONFIG.INTERACTION_DISTANCE
             for _, machine in ipairs(machinesFolder:GetChildren()) do
                 local dist = (character.PrimaryPart.Position - machine.Position).Magnitude
                 if dist < closestDist then
