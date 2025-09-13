@@ -180,32 +180,116 @@ function MiniGameManager.startButtonMashing()
     return success
 end
 
+local function showEndResult(isSuccess)
+    local resultGui = Instance.new("ScreenGui", playerGui)
+    resultGui.Name = "ResultGui"
+    local resultLabel = Instance.new("TextLabel", resultGui)
+    resultLabel.Size = UDim2.new(1, 0, 0.3, 0)
+    resultLabel.Position = UDim2.new(0, 0, 0.35, 0)
+    resultLabel.Font = Enum.Font.SourceSansBold
+    resultLabel.TextSize = 100
+    resultLabel.BackgroundTransparency = 1
+
+    if isSuccess then
+        resultLabel.Text = "SUCCESS"
+        resultLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    else
+        resultLabel.Text = "FAILURE"
+        resultLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+    end
+
+    task.wait(1.5)
+    resultGui:Destroy()
+end
+
 function MiniGameManager.startQTE()
     print("Starting QTE game.")
-    local screenGui, frame = createBaseGui("QTE: Simon Says")
+    local screenGui, frame, timerLabel = createBaseGui("Memory Check")
     local success = false
     local isInterrupted, stopInterruptCheck = startInterruptionCheck()
-    local roundsToWin = 3; local currentRound = 1
-    local buttons = {}; for r=1,3 do for c=1,3 do local btn=Instance.new("TextButton",frame); btn.Size=UDim2.new(0,100,0,80); btn.Position=UDim2.new(0.5,-150+(c-1)*110,0.5,-130+(r-1)*90); btn.BackgroundColor3=Color3.fromRGB(80,80,80); table.insert(buttons,btn) end end
-    local playerInputSequence = {}; for i, button in ipairs(buttons) do button.MouseButton1Click:Connect(function() table.insert(playerInputSequence,i); button.BackgroundColor3=Color3.new(1,1,1); task.wait(0.1); button.BackgroundColor3=Color3.fromRGB(80,80,80) end) end
+
+    local roundsToWin = 3
+    local currentRound = 1
+
+    local roundCounter = Instance.new("TextLabel", frame)
+    roundCounter.Size = UDim2.new(0, 200, 0, 30)
+    roundCounter.Position = UDim2.new(0, 10, 1, -40)
+    roundCounter.Font = Enum.Font.SourceSansBold
+    roundCounter.TextSize = 20
+    roundCounter.TextColor3 = Color3.new(1, 1, 1)
+    roundCounter.BackgroundTransparency = 1
+    roundCounter.Text = string.format("Round: %d / %d", currentRound -1, roundsToWin)
+
+    local buttons = {}
+    for r = 1, 3 do
+        for c = 1, 3 do
+            local btn = Instance.new("TextButton", frame)
+            btn.Size = UDim2.new(0, 100, 0, 80)
+            btn.Position = UDim2.new(0.5, -165 + (c - 1) * 110, 0.5, -130 + (r - 1) * 90)
+            btn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+            table.insert(buttons, btn)
+        end
+    end
+
+    local playerInputSequence = {}
+    for i, button in ipairs(buttons) do
+        button.MouseButton1Click:Connect(function()
+            table.insert(playerInputSequence, i)
+            button.BackgroundColor3 = Color3.new(1, 1, 1)
+            task.wait(0.1)
+            button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        end)
+    end
 
     coroutine.wrap(function()
         while currentRound <= roundsToWin and not success and not isInterrupted() do
-            local sequence = {}; for i=1,currentRound+1 do table.insert(sequence,math.random(#buttons)) end
+            roundCounter.Text = string.format("Round: %d / %d", currentRound - 1, roundsToWin)
+            local sequence = {}
+            for i = 1, currentRound + 1 do table.insert(sequence, math.random(#buttons)) end
+
             task.wait(1)
-            for _,buttonIndex in ipairs(sequence) do if isInterrupted() then break end; buttons[buttonIndex].BackgroundColor3=Color3.fromRGB(200,200,100); task.wait(0.4); buttons[buttonIndex].BackgroundColor3=Color3.fromRGB(80,80,80); task.wait(0.1) end
+            for _, buttonIndex in ipairs(sequence) do
+                if isInterrupted() then break end
+                buttons[buttonIndex].BackgroundColor3 = Color3.fromRGB(200, 200, 100)
+                task.wait(0.4)
+                buttons[buttonIndex].BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+                task.wait(0.1)
+            end
+
             if isInterrupted() then break end
-            playerInputSequence = {}; local inputStartTime=tick()
-            while #playerInputSequence < #sequence do if isInterrupted() then break end; if tick()-inputStartTime > 5 then break end; RunService.Heartbeat:Wait() end
+            playerInputSequence = {}
+            local inputStartTime = tick()
+            while #playerInputSequence < #sequence do
+                if isInterrupted() then break end
+                if tick() - inputStartTime > 5 then break end
+                RunService.Heartbeat:Wait()
+            end
+
             if isInterrupted() then break end
-            local correct = true; if #playerInputSequence ~= #sequence then correct = false end
-            for i,buttonIndex in ipairs(sequence) do if playerInputSequence[i]~=buttonIndex then correct=false; break end end
-            if correct then currentRound = currentRound + 1; if currentRound > roundsToWin then success = true end else break end
+            local correct = true
+            if #playerInputSequence ~= #sequence then correct = false end
+            for i, buttonIndex in ipairs(sequence) do
+                if playerInputSequence[i] ~= buttonIndex then correct = false; break end
+            end
+
+            if correct then
+                currentRound = currentRound + 1
+                if currentRound > roundsToWin then success = true end
+            else
+                frame.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+                task.wait(0.3)
+                break
+            end
         end
     end)()
 
-    while not success and currentRound <= roundsToWin and not isInterrupted() do RunService.Heartbeat:Wait() end
-    stopInterruptCheck(); screenGui:Destroy()
+    while not success and currentRound <= roundsToWin and not isInterrupted() do
+        RunService.Heartbeat:Wait()
+    end
+
+    stopInterruptCheck()
+    screenGui:Destroy()
+    showEndResult(success)
     return success
 end
 
