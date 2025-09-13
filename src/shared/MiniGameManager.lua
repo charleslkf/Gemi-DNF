@@ -244,8 +244,8 @@ local interactionPrompt = createInteractionPrompt()
 function MiniGameManager.init()
     print("MiniGameManager Initialized.")
 
-    -- For testing, create a sample machine
-    if #machinesFolder:GetChildren() == 0 then
+    -- For testing, create a sample machine if one doesn't exist
+    if not machinesFolder:FindFirstChild("MiniGameMachine") then
         local sampleMachine = Instance.new("Part", machinesFolder)
         sampleMachine.Name = "MiniGameMachine"
         sampleMachine.Size = Vector3.new(4, 6, 2)
