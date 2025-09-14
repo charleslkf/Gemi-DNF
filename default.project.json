@@ -6,6 +6,9 @@
     "ServerScriptService": {
       "LobbyManager": {
         "$path": "src/server/LobbyManager.server.lua"
+      },
+      "MapBuilder": {
+        "$path": "src/server/MapBuilder.server.lua"
       }
     },
     "ReplicatedStorage": {
