@@ -106,7 +106,7 @@ if RunService:IsClient() then
             text.Name = "HealthText"
             text.Size = UDim2.new(1, 0, 1, 0)
             text.BackgroundTransparency = 1
-            text.TextColor3 = Color3.new(1, 1, 1)
+            text.TextColor3 = Color3.fromRGB(0, 0, 0)
             text.Font = Enum.Font.SourceSansBold
             text.Text = ""
         end

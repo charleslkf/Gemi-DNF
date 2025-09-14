@@ -38,6 +38,7 @@ local lobbySpawn = Workspace:FindFirstChild("LobbySpawn") or Instance.new("Spawn
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local resetRoundEvent = remotes:WaitForChild("ResetRoundRequest")
 local startRoundEvent = remotes:WaitForChild("StartRoundRequest")
+local testDamageEvent = remotes:WaitForChild("TestDamageRequest")
 
 -- Game State
 local gameState = "Waiting"
@@ -169,6 +170,15 @@ startRoundEvent.OnServerEvent:Connect(function(player)
     if gameState == "Waiting" then
         gameState = "Intermission"
         enterIntermission()
+    end
+end)
+
+testDamageEvent.OnServerEvent:Connect(function(player)
+    if gameState == "Playing" then
+        print(string.format("Status: Applying 10 test damage to %s.", player.Name))
+        HealthManager.applyDamage(player, 10)
+    else
+        print(string.format("Status: Ignoring test damage request from %s (not in Playing state).", player.Name))
     end
 end)
 
