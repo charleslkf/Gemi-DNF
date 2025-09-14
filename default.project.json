@@ -8,7 +8,7 @@
         "$path": "src/server/LobbyManager.server.lua"
       },
       "MapBuilder": {
-        "$path": "src/server/MapBuilder.server.lua"
+        "$path": "src/server/MapBuilder.lua"
       }
     },
     "ReplicatedStorage": {
