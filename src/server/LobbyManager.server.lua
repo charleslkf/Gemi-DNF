@@ -15,6 +15,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 -- Modules
 local MapManager = require(ServerScriptService:WaitForChild("MapManager"))
+local HealthManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("HealthManager"))
 
 -- Configuration
 local CONFIG = {
@@ -109,8 +110,14 @@ function enterPlaying()
     for _, p in ipairs(survivors) do p.Team = survivorsTeam end
     print(string.format("Status: Teams assigned. %d Killer(s), %d Survivor(s).", #killers, #survivors))
 
-    for _, player in ipairs(killers) do spawnPlayerCharacter(player, true) end
-    for _, player in ipairs(survivors) do spawnPlayerCharacter(player, false) end
+    for _, player in ipairs(killers) do
+        spawnPlayerCharacter(player, true)
+        HealthManager.initializeHealth(player)
+    end
+    for _, player in ipairs(survivors) do
+        spawnPlayerCharacter(player, false)
+        HealthManager.initializeHealth(player)
+    end
 end
 
 function enterPostRound()
