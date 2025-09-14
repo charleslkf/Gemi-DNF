@@ -179,101 +179,84 @@ function MiniGameManager.startQTE()
 end
 
 function MiniGameManager.startMatching()
+    print("DEBUG: startMatching called.")
     local screenGui, frame, timerLabel = createBaseGui("Matching Game")
     local success = false; local wasInterrupted = false
     local isInterrupted, stopInterruptCheck = startInterruptionCheck()
 
-    -- Grid and Card Configuration
-    local GRID_COLUMNS = 4
-    local GRID_ROWS = 3
-    local CARD_SIZE = Vector2.new(80, 80)
-    local PADDING = Vector2.new(10, 10)
-    local TOTAL_CARDS = GRID_COLUMNS * GRID_ROWS
+    local GRID_COLUMNS = 4; local GRID_ROWS = 3; local CARD_SIZE = Vector2.new(80, 80); local PADDING = Vector2.new(10, 10); local TOTAL_CARDS = GRID_COLUMNS * GRID_ROWS
+    local gridFrameWidth = (GRID_COLUMNS * CARD_SIZE.X) + ((GRID_COLUMNS + 1) * PADDING.X); local gridFrameHeight = (GRID_ROWS * CARD_SIZE.Y) + ((GRID_ROWS + 1) * PADDING.Y)
+    local gridFrame = Instance.new("Frame", frame); gridFrame.BackgroundTransparency = 1; gridFrame.Size = UDim2.new(0, gridFrameWidth, 0, gridFrameHeight); gridFrame.AnchorPoint = Vector2.new(0.5, 0.5); gridFrame.Position = UDim2.new(0.5, 0, 0.5, 10)
+    local gridLayout = Instance.new("UIGridLayout", gridFrame); gridLayout.CellSize = UDim2.new(0, CARD_SIZE.X, 0, CARD_SIZE.Y); gridLayout.CellPadding = UDim2.new(0, PADDING.X, 0, PADDING.Y); gridLayout.StartCorner = Enum.StartCorner.TopLeft; gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center; gridLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 
-    -- Calculate the total size of the grid frame
-    local gridFrameWidth = (GRID_COLUMNS * CARD_SIZE.X) + ((GRID_COLUMNS + 1) * PADDING.X)
-    local gridFrameHeight = (GRID_ROWS * CARD_SIZE.Y) + ((GRID_ROWS + 1) * PADDING.Y)
-
-    -- Create and center the grid frame
-    local gridFrame = Instance.new("Frame", frame)
-    gridFrame.BackgroundTransparency = 1
-    gridFrame.Size = UDim2.new(0, gridFrameWidth, 0, gridFrameHeight)
-    gridFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-    gridFrame.Position = UDim2.new(0.5, 0, 0.5, 10) -- Centered with slight offset for title
-
-    local gridLayout = Instance.new("UIGridLayout", gridFrame)
-    gridLayout.CellSize = UDim2.new(0, CARD_SIZE.X, 0, CARD_SIZE.Y)
-    gridLayout.CellPadding = UDim2.new(0, PADDING.X, 0, PADDING.Y)
-    gridLayout.StartCorner = Enum.StartCorner.TopLeft
-    gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    gridLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-
-    -- Game State
     local ICONS = {"rbxassetid://2844027442","rbxassetid://2844027289","rbxassetid://2844027142","rbxassetid://2844026998","rbxassetid://2844026848","rbxassetid://2844026698"}
     local gameIcons = shuffle(rep(ICONS, 2))
-    local cardStates = {} -- Use a table for robust state management
-    local firstCard, secondCard = nil, nil
-    local pairsFound = 0
-    local canClick = true
+    local cardStates = {}; local firstCard, secondCard = nil, nil; local pairsFound = 0; local canClick = true
+    print("DEBUG: Initial state: canClick=" .. tostring(canClick) .. ", firstCard=" .. tostring(firstCard))
 
     for i = 1, TOTAL_CARDS do
         local cardBtn = Instance.new("ImageButton", gridFrame)
+        cardBtn.Name = "Card" .. i
         cardBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
         cardBtn.Image = ""
-
         cardStates[cardBtn] = { isFlipped = false, isMatched = false, iconId = gameIcons[i] }
 
         cardBtn.MouseButton1Click:Connect(function()
+            print("\nDEBUG: Clicked " .. cardBtn.Name .. ". Current state: canClick=" .. tostring(canClick) .. ", firstCard=" .. tostring(firstCard) .. ", isFlipped=" .. tostring(cardStates[cardBtn].isFlipped))
             if not canClick or cardStates[cardBtn].isFlipped or cardStates[cardBtn].isMatched then
+                print("DEBUG: Click ignored.")
                 return
             end
 
+            print("DEBUG: Processing click.")
             canClick = false
             cardStates[cardBtn].isFlipped = true
             cardBtn.Image = cardStates[cardBtn].iconId
+            print("DEBUG: Card flipped. canClick=" .. tostring(canClick) .. ", isFlipped=" .. tostring(cardStates[cardBtn].isFlipped))
 
             if not firstCard then
                 firstCard = cardBtn
                 canClick = true
+                print("DEBUG: Stored as firstCard. canClick=" .. tostring(canClick) .. ", firstCard=" .. tostring(firstCard))
             else
                 secondCard = cardBtn
+                print("DEBUG: Stored as secondCard. secondCard=" .. tostring(secondCard) .. ". Waiting 0.7s...")
                 task.wait(0.7)
 
+                print("DEBUG: Comparing cards: " .. tostring(firstCard) .. " (" .. cardStates[firstCard].iconId .. ") and " .. tostring(secondCard) .. " (" .. cardStates[secondCard].iconId .. ")")
                 if cardStates[firstCard].iconId == cardStates[secondCard].iconId then
-                    -- Match
+                    print("DEBUG: Match found!")
                     cardStates[firstCard].isMatched = true
                     cardStates[secondCard].isMatched = true
                     firstCard.Visible = false
                     secondCard.Visible = false
                     pairsFound = pairsFound + 1
+                    print("DEBUG: Pairs found: " .. tostring(pairsFound))
                     if pairsFound == #ICONS then
                         success = true
+                        print("DEBUG: All pairs found! Success!")
                     end
                 else
-                    -- No match, flip back
+                    print("DEBUG: No match. Flipping back.")
                     cardStates[firstCard].isFlipped = false
                     cardStates[secondCard].isFlipped = false
                     firstCard.Image = ""
                     secondCard.Image = ""
-                    frame.BackgroundColor3 = Color3.fromRGB(150,0,0)
-                    task.wait(0.1)
-                    frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
                 end
 
+                print("DEBUG: Resetting turn.")
                 firstCard, secondCard = nil, nil
                 canClick = true
+                print("DEBUG: Turn reset. canClick=" .. tostring(canClick) .. ", firstCard=" .. tostring(firstCard))
             end
         end)
     end
 
-    -- Main game loop
-    local duration = 45
-    local startTime = tick()
-    while not success and not isInterrupted() and tick() - startTime < duration do
-        RunService.Heartbeat:Wait()
-    end
+    local duration = 45; local startTime = tick()
+    while not success and not isInterrupted() and tick() - startTime < duration do RunService.Heartbeat:Wait() end
 
     if isInterrupted() then wasInterrupted = true; success = false; end
+    print("DEBUG: Game loop ended. Success=" .. tostring(success) .. ", Interrupted="..tostring(wasInterrupted))
     stopInterruptCheck()
     screenGui:Destroy()
     showEndResult(success, wasInterrupted)
