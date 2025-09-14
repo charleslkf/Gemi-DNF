@@ -14,7 +14,7 @@ local Workspace = game:GetService("Workspace")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 -- Modules
-local MapBuilder = require(ServerScriptService:WaitForChild("MapBuilder"))
+local MapManager = require(ServerScriptService:WaitForChild("MapManager"))
 
 -- Configuration
 local CONFIG = {
@@ -91,7 +91,7 @@ end
 -- State Handlers
 local function handleWaitingState()
     print("Status: Waiting for players...")
-    MapBuilder.cleanup()
+    MapManager.cleanup()
     resetAllPlayers()
     manualStartRequested = false
     local minPlayersRequired = CONFIG.TESTING_MODE and 1 or CONFIG.MIN_PLAYERS
@@ -123,7 +123,7 @@ end
 
 local function handlePlayingState()
     print("Status: Starting Round...")
-    MapBuilder.generate()
+    MapManager.generate()
 
     local playersInRound = Players:GetPlayers()
     local numPlayers = #playersInRound
