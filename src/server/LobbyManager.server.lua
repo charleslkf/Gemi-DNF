@@ -1,9 +1,9 @@
 --[[
     LobbyManager.server.lua
-    by Jules (v7 - State Machine with Spawning)
+    by Jules (v8 - Non-Blocking State Machine)
 
-    This script manages the game lobby and round lifecycle using a state machine.
-    It supports soft resets and manual round starts for testing.
+    This script manages the game lobby and round lifecycle using a non-blocking state machine.
+    The main loop acts as a heartbeat, processing states and timers.
 ]]
 
 -- Services
@@ -18,12 +18,10 @@ local MapManager = require(ServerScriptService:WaitForChild("MapManager"))
 
 -- Configuration
 local CONFIG = {
-    TESTING_MODE = true,
-    MIN_PLAYERS = 5,
-    MAX_PLAYERS = 13,
+    MIN_PLAYERS_TO_START_AUTO = 2, -- New: For automatic progression, not used by manual start
     INTERMISSION_DURATION = 15,
     ROUND_DURATION = 120,
-    GAMBLE_TIMER = 10,
+    POST_ROUND_DURATION = 5,
     KILLER_SPAWN_DELAY = 5,
     LOBBY_SPAWN_POSITION = Vector3.new(0, 50, 0),
 }
@@ -39,17 +37,15 @@ local lobbySpawn = Workspace:FindFirstChild("LobbySpawn") or Instance.new("Spawn
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local resetRoundEvent = remotes:WaitForChild("ResetRoundRequest")
 local startRoundEvent = remotes:WaitForChild("StartRoundRequest")
-local gameRemotes = ReplicatedStorage:FindFirstChild("GemiRemotes") or Instance.new("Folder", ReplicatedStorage); gameRemotes.Name = "GemiRemotes"
-local gamblePromptEvent = gameRemotes:FindFirstChild("GamblePrompt") or Instance.new("RemoteEvent", gameRemotes); gamblePromptEvent.Name = "GamblePrompt"
-local gambleDecisionEvent = gameRemotes:FindFirstChild("GambleDecision") or Instance.new("RemoteEvent", gameRemotes); gambleDecisionEvent.Name = "GambleDecision"
 
 -- Game State
 local gameState = "Waiting"
-local manualStartRequested = false
+local stateTimer = 0
+
+-- Forward declarations for state functions
+local enterWaiting, enterIntermission, enterPlaying, enterPostRound
 
 -- Helper Functions
-local function shuffle(tbl) for i = #tbl, 2, -1 do local j = math.random(i); tbl[i], tbl[j] = tbl[j], tbl[i] end; return tbl end
-
 local function resetPlayer(player)
     if not player or not player.Parent then return end
     player.Team = nil
@@ -57,19 +53,11 @@ local function resetPlayer(player)
     player:LoadCharacter()
 end
 
-local function resetAllPlayers()
-    for _, player in ipairs(Players:GetPlayers()) do
-        resetPlayer(player)
-    end
-end
-
 local function spawnPlayerCharacter(player, isKiller)
-    local conn
-    conn = player.CharacterAdded:Connect(function(character)
+    local conn = player.CharacterAdded:Connect(function(character)
         conn:Disconnect()
         task.defer(function()
             if not character or not character.Parent then return end
-            -- TODO: Get spawn points from MapBuilder instead of randomizing here.
             local spawnPos = Vector3.new(math.random(-50, 50), 5, math.random(-50, 50))
             character:SetPrimaryPartCFrame(CFrame.new(spawnPos))
             if isKiller then
@@ -88,58 +76,30 @@ local function spawnPlayerCharacter(player, isKiller)
     player:LoadCharacter()
 end
 
--- State Handlers
-local function handleWaitingState()
-    print("Status: In Lobby. Waiting for manual start...")
+-- State Entry Functions (Non-Blocking)
+function enterWaiting()
+    print("Status: Entering Waiting State.")
     MapManager.cleanup()
-    resetAllPlayers()
-    manualStartRequested = false
-
-    -- This loop will now only break if a reset happens or manual start is requested.
-    while not manualStartRequested do
-        -- We can print a waiting message periodically.
-        print("Status: Server idle in lobby.")
-        task.wait(5)
-        if gameState ~= "Waiting" then return end -- Exit if another reset is called while waiting
+    for _, player in ipairs(Players:GetPlayers()) do
+        resetPlayer(player)
     end
-
-    -- If we get here, it means manualStartRequested was set to true.
-    gameState = "Intermission"
 end
 
-local function handleIntermissionState()
-    print("Status: Intermission...")
-    local minPlayersRequired = CONFIG.TESTING_MODE and 1 or CONFIG.MIN_PLAYERS
-    for i = CONFIG.INTERMISSION_DURATION, 1, -1 do
-        if #Players:GetPlayers() < minPlayersRequired then
-            print("Status: Not enough players, returning to waiting.")
-            gameState = "Waiting"
-            return
-        end
-        if gameState ~= "Intermission" then return end -- Exit if reset is called
-        print(string.format("Status: Round starting in %d...", i))
-        task.wait(1)
-    end
-    gameState = "Playing"
+function enterIntermission()
+    print(string.format("Status: Intermission starting! Round begins in %d seconds.", CONFIG.INTERMISSION_DURATION))
+    stateTimer = CONFIG.INTERMISSION_DURATION
 end
 
-local function handlePlayingState()
-    print("Status: Starting Round...")
+function enterPlaying()
+    print("Status: Starting Round!")
+    stateTimer = CONFIG.ROUND_DURATION
     MapManager.generate()
 
     local playersInRound = Players:GetPlayers()
-    local numPlayers = #playersInRound
     local killers, survivors = {}, {}
-
-    if CONFIG.TESTING_MODE and numPlayers < CONFIG.MIN_PLAYERS then
-        killers = { playersInRound[1] }
-        for i = 2, numPlayers do table.insert(survivors, playersInRound[i]) end
-    else
-        -- Full game logic
-        print("Error: Full game logic not implemented in this refactor yet.")
-        killers, survivors = {playersInRound[1]}, {}
-        for i=2, #playersInRound do table.insert(survivors, playersInRound[i]) end
-    end
+    -- Simplified team logic for now
+    killers = { playersInRound[1] }
+    for i = 2, #playersInRound do table.insert(survivors, playersInRound[i]) end
 
     for _, p in ipairs(killers) do p.Team = killersTeam end
     for _, p in ipairs(survivors) do p.Team = survivorsTeam end
@@ -147,48 +107,59 @@ local function handlePlayingState()
 
     for _, player in ipairs(killers) do spawnPlayerCharacter(player, true) end
     for _, player in ipairs(survivors) do spawnPlayerCharacter(player, false) end
-
-    print("Status: Round in progress!")
-    for i = CONFIG.ROUND_DURATION, 1, -1 do
-        if gameState ~= "Playing" then print("Status: Round interrupted."); return end
-        task.wait(1)
-    end
-    gameState = "PostRound"
 end
 
-local function handlePostRoundState()
-    print("Status: Round over! Returning to lobby...")
-    task.wait(5)
-    gameState = "Waiting"
+function enterPostRound()
+    print("Status: Round Over!")
+    stateTimer = CONFIG.POST_ROUND_DURATION
 end
 
--- Main Game Loop
+
+-- Main Game Loop (Heartbeat)
 task.spawn(function()
+    enterWaiting() -- Initial setup
     while true do
-        if gameState == "Waiting" then
-            handleWaitingState()
-        elseif gameState == "Intermission" then
-            handleIntermissionState()
+        task.wait(1)
+
+        if gameState == "Intermission" then
+            stateTimer = stateTimer - 1
+            print(string.format("Intermission: %d", stateTimer))
+            if stateTimer <= 0 then
+                gameState = "Playing"
+                enterPlaying()
+            end
         elseif gameState == "Playing" then
-            handlePlayingState()
+            stateTimer = stateTimer - 1
+            -- Can add mid-round text here if needed
+            if stateTimer <= 0 then
+                gameState = "PostRound"
+                enterPostRound()
+            end
         elseif gameState == "PostRound" then
-            handlePostRoundState()
+            stateTimer = stateTimer - 1
+            if stateTimer <= 0 then
+                gameState = "Waiting"
+                enterWaiting()
+            end
         end
-        task.wait(0.1)
     end
 end)
 
 -- Event Listeners
 resetRoundEvent.OnServerEvent:Connect(function(player)
     print(string.format("Status: Soft reset requested by %s.", player.Name))
-    gameState = "Waiting"
+    if gameState ~= "Waiting" then
+        gameState = "Waiting"
+        enterWaiting()
+    end
 end)
 
 startRoundEvent.OnServerEvent:Connect(function(player)
     print(string.format("Status: Manual start requested by %s.", player.Name))
     if gameState == "Waiting" then
-        manualStartRequested = true
+        gameState = "Intermission"
+        enterIntermission()
     end
 end)
 
-print("LobbyManager (v7) is running.")
+print("LobbyManager (v8) is running.")
