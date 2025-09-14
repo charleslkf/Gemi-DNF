@@ -5,7 +5,7 @@ This document contains a set of rules and guidelines to follow during the develo
 ## 1. Rojo Configuration (default.project.json)
 - **Filename:** The project file must be named `default.project.json`.
 - **Ignoring Instances:** To prevent Rojo from deleting instances in the Studio (like Terrain), use `"$ignoreUnknownInstances": true` on the relevant node (e.g., Workspace). Do not use the `$ignore` property.
-- **Map Generation:** All map elements (Baseplate, walls, interactables, etc.) must be created programmatically by the `ServerScriptService/MapBuilder.server.lua` script. This includes mini-game machines, which should be created with a `GameType` attribute (e.g., "Matching", "QTE") to define which mini-game they host for the round.
+- **Map Generation:** All map elements (Baseplate, walls, interactables, etc.) must be created programmatically by the `MapManager.lua` module. This includes mini-game machines, which should be created with a `GameType` attribute (e.g., "ButtonMash", "QTE") to define which mini-game they host for the round.
 
 ## 2. Versioning
 - **version.md:** A `version.md` file exists in the root directory.
@@ -41,5 +41,4 @@ This is a client-side `ModuleScript` located in `src/shared`.
 
 ### Specific Game Mechanics (Click-Oriented)
 - **`startQTE` (Memory Check):** A sequence-clicking game. Must include a round counter.
-- **`startMatching`:** A grid-based memory game. The UI must be properly centered.
 - **`startButtonMashing`:** A simple click-mashing game. Must include a timer and a click counter.

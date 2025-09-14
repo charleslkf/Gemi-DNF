@@ -178,86 +178,11 @@ function MiniGameManager.startQTE()
     stopInterruptCheck(); screenGui:Destroy(); showEndResult(success, wasInterrupted); return success
 end
 
-function MiniGameManager.startMatching()
-    local screenGui, frame, timerLabel = createBaseGui("Matching Game")
-    local success = false; local wasInterrupted = false
-    local isInterrupted, stopInterruptCheck = startInterruptionCheck()
-
-    -- Grid and Card Configuration
-    local GRID_COLUMNS = 4; local GRID_ROWS = 3; local CARD_SIZE = Vector2.new(80, 80); local PADDING = Vector2.new(10, 10); local TOTAL_CARDS = GRID_COLUMNS * GRID_ROWS
-    local gridFrameWidth = (GRID_COLUMNS * CARD_SIZE.X) + ((GRID_COLUMNS + 1) * PADDING.X); local gridFrameHeight = (GRID_ROWS * CARD_SIZE.Y) + ((GRID_ROWS + 1) * PADDING.Y)
-    local gridFrame = Instance.new("Frame", frame); gridFrame.BackgroundTransparency = 1; gridFrame.Size = UDim2.new(0, gridFrameWidth, 0, gridFrameHeight); gridFrame.AnchorPoint = Vector2.new(0.5, 0.5); gridFrame.Position = UDim2.new(0.5, 0, 0.5, 10)
-    local gridLayout = Instance.new("UIGridLayout", gridFrame); gridLayout.CellSize = UDim2.new(0, CARD_SIZE.X, 0, CARD_SIZE.Y); gridLayout.CellPadding = UDim2.new(0, PADDING.X, 0, PADDING.Y); gridLayout.StartCorner = Enum.StartCorner.TopLeft; gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center; gridLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-
-    -- Game State
-    local ICONS = {"rbxassetid://2844027442","rbxassetid://2844027289","rbxassetid://2844027142","rbxassetid://2844026998","rbxassetid://2844026848","rbxassetid://2844026698"}
-    local gameIcons = shuffle(rep(ICONS, 2))
-    local cardStates = {}; local firstCard, secondCard = nil, nil; local pairsFound = 0; local canClick = true
-
-    for i = 1, TOTAL_CARDS do
-        local cardBtn = Instance.new("ImageButton", gridFrame)
-        cardBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-        cardBtn.Image = gameIcons[i] -- Set image once
-        cardBtn.ImageTransparency = 1 -- Hide it
-
-        cardStates[cardBtn] = { isFlipped = false, isMatched = false }
-
-        cardBtn.MouseButton1Click:Connect(function()
-            if not canClick or cardStates[cardBtn].isFlipped or cardStates[cardBtn].isMatched then
-                return
-            end
-
-            canClick = false
-            cardStates[cardBtn].isFlipped = true
-            cardBtn.ImageTransparency = 0 -- Show card
-
-            if not firstCard then
-                firstCard = cardBtn
-                canClick = true
-            else
-                secondCard = cardBtn
-                task.wait(0.7)
-
-                if firstCard.Image == secondCard.Image then
-                    -- Match
-                    cardStates[firstCard].isMatched = true
-                    cardStates[secondCard].isMatched = true
-                    firstCard.Visible = false
-                    secondCard.Visible = false
-                    pairsFound = pairsFound + 1
-                    if pairsFound == #ICONS then
-                        success = true
-                    end
-                else
-                    -- No match, flip back by making them transparent again
-                    cardStates[firstCard].isFlipped = false
-                    cardStates[secondCard].isFlipped = false
-                    firstCard.ImageTransparency = 1
-                    secondCard.ImageTransparency = 1
-                end
-
-                firstCard, secondCard = nil, nil
-                canClick = true
-            end
-        end)
-    end
-
-    local duration = 45; local startTime = tick()
-    while not success and not isInterrupted() and tick() - startTime < duration do RunService.Heartbeat:Wait() end
-
-    if isInterrupted() then wasInterrupted = true; success = false; end
-    stopInterruptCheck()
-    screenGui:Destroy()
-    showEndResult(success, wasInterrupted)
-    return success
-end
-
 -- ACTIVATION & MAIN LOGIC ---
 
 local gameFunctions = {
     ButtonMash = MiniGameManager.startButtonMashing,
-    MemoryCheck = MiniGameManager.startQTE,
-    Matching = MiniGameManager.startMatching
+    MemoryCheck = MiniGameManager.startQTE
 }
 
 function MiniGameManager.init()

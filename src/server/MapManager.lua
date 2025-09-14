@@ -12,13 +12,13 @@ local MAP_CONFIG = {
         Max = Vector3.new(50, 1, 50)
     },
     MachineSize = Vector3.new(4, 6, 2),
-    GameTypes = {"ButtonMash", "MemoryCheck", "Matching"}, -- The available mini-game types
+    GameTypes = {"ButtonMash", "MemoryCheck"}, -- The available mini-game types
     MACHINE_FOLDER_NAME = "MiniGameMachines"
 }
 
-local MapBuilder = {}
+local MapManager = {}
 
-function MapBuilder.generate()
+function MapManager.generate()
     -- Create a container for the machines in the Workspace
     local machineContainer = Instance.new("Folder")
     machineContainer.Name = MAP_CONFIG.MACHINE_FOLDER_NAME
@@ -46,15 +46,15 @@ function MapBuilder.generate()
 
         machine.Parent = machineContainer
     end
-    print("MapBuilder: Generated", MAP_CONFIG.NumberOfMachines, "machines.")
+    print("MapManager: Generated", MAP_CONFIG.NumberOfMachines, "machines.")
 end
 
-function MapBuilder.cleanup()
+function MapManager.cleanup()
     local machineContainer = Workspace:FindFirstChild(MAP_CONFIG.MACHINE_FOLDER_NAME)
     if machineContainer then
         machineContainer:Destroy()
-        print("MapBuilder: Cleaned up machines.")
+        print("MapManager: Cleaned up machines.")
     end
 end
 
-return MapBuilder
+return MapManager
