@@ -29,8 +29,6 @@ local MiniGameManager = {}
 -- State variables
 local isGameActive = false
 local nearbyMachine = nil
--- Wait for the server to create the machines folder
-local machinesFolder = Workspace:WaitForChild(CONFIG.MACHINE_FOLDER_NAME)
 
 -- HELPER FUNCTIONS ---
 
@@ -296,30 +294,39 @@ function MiniGameManager.init()
     -- Proximity check loop (RenderStepped)
     RunService.RenderStepped:Connect(function()
         if isGameActive then return end
+
+        local machinesFolder = Workspace:FindFirstChild(CONFIG.MACHINE_FOLDER_NAME)
         local character = player.Character
-        if not character or not character.PrimaryPart then return end
+
+        if not machinesFolder or not character or not character.PrimaryPart then
+            if nearbyMachine and nearbyMachine.Parent then
+                 local prompt = nearbyMachine:FindFirstChild("InteractionPrompt")
+                 if prompt then prompt:Destroy() end
+            end
+            nearbyMachine = nil
+            return
+        end
 
         local characterPos = character.PrimaryPart.Position
-        local closestMachineFound = nil
+        local closestMachineFound
 
-        -- Find the closest, non-completed machine
         for _, machine in ipairs(machinesFolder:GetChildren()) do
+            if not machine:IsA("BasePart") then continue end
             if (characterPos - machine.Position).Magnitude < CONFIG.INTERACTION_DISTANCE and not machine:GetAttribute("IsCompleted") then
                 closestMachineFound = machine
-                break -- Found the closest one, no need to check others
+                break
             end
         end
 
-        nearbyMachine = closestMachineFound
-
-        -- Update interaction prompts
-        for _, machine in ipairs(machinesFolder:GetChildren()) do
-            local prompt = machine:FindFirstChild("InteractionPrompt")
-            if machine == nearbyMachine and not prompt then
-                createInteractionPrompt().Parent = machine
-            elseif machine ~= nearbyMachine and prompt then
-                prompt:Destroy()
+        if closestMachineFound ~= nearbyMachine then
+            if nearbyMachine and nearbyMachine.Parent then
+                local oldPrompt = nearbyMachine:FindFirstChild("InteractionPrompt")
+                if oldPrompt then oldPrompt:Destroy() end
             end
+            if closestMachineFound then
+                createInteractionPrompt().Parent = closestMachineFound
+            end
+            nearbyMachine = closestMachineFound
         end
     end)
 

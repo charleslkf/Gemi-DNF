@@ -90,19 +90,21 @@ end
 
 -- State Handlers
 local function handleWaitingState()
-    print("Status: Waiting for players...")
+    print("Status: In Lobby. Waiting for manual start...")
     MapManager.cleanup()
     resetAllPlayers()
     manualStartRequested = false
-    local minPlayersRequired = CONFIG.TESTING_MODE and 1 or CONFIG.MIN_PLAYERS
-    while #Players:GetPlayers() < minPlayersRequired and not manualStartRequested do
-        print(string.format("Status: Waiting for players... (%d/%d)", #Players:GetPlayers(), minPlayersRequired))
-        task.wait(2)
-        if gameState ~= "Waiting" then return end -- Exit if reset is called
+
+    -- This loop will now only break if a reset happens or manual start is requested.
+    while not manualStartRequested do
+        -- We can print a waiting message periodically.
+        print("Status: Server idle in lobby.")
+        task.wait(5)
+        if gameState ~= "Waiting" then return end -- Exit if another reset is called while waiting
     end
-    if #Players:GetPlayers() >= minPlayersRequired or manualStartRequested then
-        gameState = "Intermission"
-    end
+
+    -- If we get here, it means manualStartRequested was set to true.
+    gameState = "Intermission"
 end
 
 local function handleIntermissionState()
