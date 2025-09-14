@@ -106,6 +106,17 @@ local function shuffle(tbl)
     return tbl
 end
 
+-- Helper to repeat elements in a table N times
+local function rep(tbl, n)
+    local newTbl = {}
+    for _ = 1, n do
+        for _, v in ipairs(tbl) do
+            table.insert(newTbl, v)
+        end
+    end
+    return newTbl
+end
+
 local function showEndResult(isSuccess, wasInterrupted)
     if not isSuccess and not wasInterrupted then return end -- Don't show for normal attempt failures
 
@@ -170,70 +181,94 @@ function MiniGameManager.startQTE()
 end
 
 function MiniGameManager.startMatching()
-    local screenGui, frame = createBaseGui("Matching Game")
-    local success = false; local wasInterrupted = false; local isInterrupted, stopInterruptCheck = startInterruptionCheck()
+    local screenGui, frame, timerLabel = createBaseGui("Matching Game")
+    local success = false; local wasInterrupted = false
+    local isInterrupted, stopInterruptCheck = startInterruptionCheck()
 
-    -- Icon IDs for the matching game
-    local ICONS = {"rbxassetid://2844027442","rbxassetid://2844027442","rbxassetid://2844027289","rbxassetid://2844027289","rbxassetid://2844027142","rbxassetid://2844027142","rbxassetid://2844026998","rbxassetid://2844026998","rbxassetid://2844026848","rbxassetid://2844026848","rbxassetid://2844026698","rbxassetid://2844026698"}
-    local shuffledIcons = shuffle(ICONS)
+    -- Grid and Card Configuration
+    local GRID_COLUMNS = 4
+    local GRID_ROWS = 3
+    local CARD_SIZE = Vector2.new(80, 80)
+    local PADDING = Vector2.new(10, 10)
+    local TOTAL_CARDS = GRID_COLUMNS * GRID_ROWS
 
+    -- Calculate the total size of the grid frame
+    local gridFrameWidth = (GRID_COLUMNS * CARD_SIZE.X) + ((GRID_COLUMNS + 1) * PADDING.X)
+    local gridFrameHeight = (GRID_ROWS * CARD_SIZE.Y) + ((GRID_ROWS + 1) * PADDING.Y)
+
+    -- Create and center the grid frame
+    local gridFrame = Instance.new("Frame", frame)
+    gridFrame.BackgroundTransparency = 1
+    gridFrame.Size = UDim2.new(0, gridFrameWidth, 0, gridFrameHeight)
+    gridFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    gridFrame.Position = UDim2.new(0.5, 0, 0.5, 10) -- Centered with slight offset for title
+
+    local gridLayout = Instance.new("UIGridLayout", gridFrame)
+    gridLayout.CellSize = UDim2.new(0, CARD_SIZE.X, 0, CARD_SIZE.Y)
+    gridLayout.CellPadding = UDim2.new(0, PADDING.X, 0, PADDING.Y)
+    gridLayout.StartCorner = Enum.StartCorner.TopLeft
+    gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    gridLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+
+    -- Game State
+    local ICONS = {"rbxassetid://2844027442","rbxassetid://2844027289","rbxassetid://2844027142","rbxassetid://2844026998","rbxassetid://2844026848","rbxassetid://2844026698"}
+    local gameIcons = shuffle(table.unpack(rep(ICONS, 2)))
+    local cardStates = {} -- Use a table for robust state management
     local firstCard, secondCard = nil, nil
     local pairsFound = 0
     local canClick = true
 
-    -- Centered grid frame for the cards
-    local gridFrame = Instance.new("Frame", frame)
-    gridFrame.BackgroundTransparency = 1
-    gridFrame.AnchorPoint = Vector2.new(0.5, 0)
-    gridFrame.Position = UDim2.new(0.5, 0, 0, 40) -- Position below the title
-    gridFrame.Size = UDim2.new(1, -20, 1, -60) -- Fill remaining space
+    for i = 1, TOTAL_CARDS do
+        local cardBtn = Instance.new("ImageButton", gridFrame)
+        cardBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        cardBtn.Image = ""
 
-    local gridLayout = Instance.new("UIGridLayout", gridFrame)
-    gridLayout.CellSize = UDim2.new(0, 80, 0, 80)
-    gridLayout.CellPadding = UDim2.new(0, 10, 0, 10)
-    gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    gridLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+        -- Store card state in the table, keyed by the button instance
+        cardStates[cardBtn] = {
+            isFlipped = false,
+            isMatched = false,
+            iconId = gameIcons[i]
+        }
 
-    for i = 1, #shuffledIcons do
-        local card = Instance.new("ImageButton", gridFrame)
-        card.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-        card.Image = ""
-        card:SetAttribute("IsFlipped", false)
-        card:SetAttribute("IconId", shuffledIcons[i])
+        cardBtn.MouseButton1Click:Connect(function()
+            local currentState = cardStates[cardBtn]
+            if not canClick or currentState.isFlipped or currentState.isMatched then
+                return
+            end
 
-        card.MouseButton1Click:Connect(function()
-            if not canClick or card:GetAttribute("IsFlipped") then return end
-
-            canClick = false -- Prevent spam clicking
-            card.Image = card:GetAttribute("IconId")
-            card:SetAttribute("IsFlipped", true)
+            canClick = false
+            currentState.isFlipped = true
+            cardBtn.Image = currentState.iconId
 
             if not firstCard then
-                firstCard = card
-                canClick = true -- Allow next click
+                firstCard = cardBtn
+                canClick = true
             else
-                secondCard = card
-                task.wait(0.7) -- Let player see the second card
+                secondCard = cardBtn
+                task.wait(0.7)
 
-                if firstCard:GetAttribute("IconId") == secondCard:GetAttribute("IconId") then
-                    -- Match found
+                local firstState = cardStates[firstCard]
+                local secondState = cardStates[secondCard]
+
+                if firstState.iconId == secondState.iconId then
+                    -- Match
+                    firstState.isMatched = true
+                    secondState.isMatched = true
                     firstCard.Visible = false
                     secondCard.Visible = false
                     pairsFound = pairsFound + 1
-                    if pairsFound == #ICONS / 2 then
+                    if pairsFound == #ICONS then
                         success = true
                     end
                 else
-                    -- No match
+                    -- No match, flip back
+                    firstState.isFlipped = false
+                    secondState.isFlipped = false
                     firstCard.Image = ""
                     secondCard.Image = ""
-                    firstCard:SetAttribute("IsFlipped", false)
-                    secondCard:SetAttribute("IsFlipped", false)
-
-                    -- Flash red for feedback
-                    frame.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+                    frame.BackgroundColor3 = Color3.fromRGB(150,0,0)
                     task.wait(0.1)
-                    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+                    frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
                 end
 
                 firstCard, secondCard = nil, nil
