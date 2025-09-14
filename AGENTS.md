@@ -29,10 +29,17 @@ This document contains a set of rules and guidelines to follow during the develo
 ## 7. Feature: Mini-Game System (`MiniGameManager.lua`)
 This is a client-side `ModuleScript` located in `src/shared`.
 
-- **Activation:** The module should handle player proximity checks and listen for the 'E' key to activate a machine. The public API should be a single `init()` function that starts this process.
-- **Interruption:** All mini-games must be interrupted immediately if the player's character moves a significant distance from its starting position, or if they are attacked by a Killer. This requires client-side position monitoring during the mini-game.
-- **Audio Cue:** The system must play a "menacing audio cue" when a Killer is within a configurable range of the player while they are at a machine. This requires the client to have knowledge of killer locations.
-- **Game Mechanics (Click-Oriented):**
-    - `startQTE`: A sequence-clicking game where the player must click a series of buttons in the correct order.
-    - `startMatching`: A grid-based memory game where the player clicks pairs of matching icons.
-    - `startButtonMashing`: A simple game where the player must rapidly click a single button on the UI.
+### Core Activation
+- The module should handle player proximity checks and listen for the 'E' key to activate a machine. The public API should be a single `init()` function that starts this process.
+- The '[E] to Interact' prompt text should be blue.
+
+### General Game Flow & Rules
+- **Success:** When a mini-game is completed successfully, the machine should display a permanent visual effect (e.g., green light) and become disabled, preventing further interaction. A large, green "SUCCESS" message should be displayed to the player.
+- **Attempt Failure:** Failing a single attempt within a mini-game (e.g., clicking the wrong sequence in QTE) should **not** end the game. It should reset the current attempt, allowing the player to try again immediately without losing overall progress (like rounds completed).
+- **Interruption (Game Failure):** The mini-game must be interrupted and considered a total failure if the player moves too far away. The large, red "FAILURE" message should *only* be shown in this interruption scenario.
+- **Audio Cue:** The system must play a "menacing audio cue" when a Killer is within a configurable range of the player while they are at a machine.
+
+### Specific Game Mechanics (Click-Oriented)
+- **`startQTE` (Memory Check):** A sequence-clicking game where the player must click a series of buttons in the correct order. Must include a round counter (e.g., "1/3").
+- **`startMatching`:** A grid-based memory game where the player clicks pairs of matching icons. The UI must be properly centered.
+- **`startButtonMashing`:** A simple game where the player must rapidly click a single button on the UI. Must include a timer and a click counter.
