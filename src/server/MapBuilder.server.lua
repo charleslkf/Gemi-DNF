@@ -1,8 +1,8 @@
--- MapBuilder.server.lua
--- This script is responsible for procedurally generating the map elements at the start of each round.
--- Currently, its main job is to create the "MiniGameMachine" parts with persistent GameTypes.
+-- MapBuilder
+-- This ModuleScript is responsible for procedurally generating and cleaning up map elements.
+-- Its main job is to create and destroy the "MiniGameMachine" parts.
 
-local ServerScriptService = game:GetService("ServerScriptService")
+local Workspace = game:GetService("Workspace")
 
 -- Configuration
 local MAP_CONFIG = {
@@ -12,16 +12,17 @@ local MAP_CONFIG = {
         Max = Vector3.new(50, 1, 50)
     },
     MachineSize = Vector3.new(4, 6, 2),
-    GameTypes = {"ButtonMash", "MemoryCheck", "Matching"} -- The available mini-game types
+    GameTypes = {"ButtonMash", "MemoryCheck", "Matching"}, -- The available mini-game types
+    MACHINE_FOLDER_NAME = "MiniGameMachines"
 }
 
 local MapBuilder = {}
 
-function MapBuilder.generateMachines()
+function MapBuilder.generate()
     -- Create a container for the machines in the Workspace
     local machineContainer = Instance.new("Folder")
-    machineContainer.Name = "MiniGameMachines"
-    machineContainer.Parent = workspace
+    machineContainer.Name = MAP_CONFIG.MACHINE_FOLDER_NAME
+    machineContainer.Parent = Workspace
 
     local gameTypes = MAP_CONFIG.GameTypes
     local numGameTypes = #gameTypes
@@ -44,12 +45,16 @@ function MapBuilder.generateMachines()
         machine:SetAttribute("GameType", gameType)
 
         machine.Parent = machineContainer
-        print("Created MiniGameMachine of type:", gameType, "at", machine.Position)
     end
+    print("MapBuilder: Generated", MAP_CONFIG.NumberOfMachines, "machines.")
 end
 
--- TODO: This should be triggered by a round start event from LobbyManager.
--- For now, it runs once on server startup for testing purposes.
-MapBuilder.generateMachines()
+function MapBuilder.cleanup()
+    local machineContainer = Workspace:FindFirstChild(MAP_CONFIG.MACHINE_FOLDER_NAME)
+    if machineContainer then
+        machineContainer:Destroy()
+        print("MapBuilder: Cleaned up machines.")
+    end
+end
 
 return MapBuilder
