@@ -1,8 +1,9 @@
 --[[
     MiniGameManager.lua
-    by Jules (v9 - Final Game Flow)
+    by Jules (v10 - Server-Driven Refactor)
 
     A modular, client-side system for handling complex, interruptible mini-games.
+    Reads GameType attribute from machines to determine which game to play.
 ]]
 
 -- Services
@@ -28,8 +29,8 @@ local MiniGameManager = {}
 -- State variables
 local isGameActive = false
 local nearbyMachine = nil
-local machinesFolder = Workspace:FindFirstChild(CONFIG.MACHINE_FOLDER_NAME) or Instance.new("Folder", Workspace)
-machinesFolder.Name = CONFIG.MACHINE_FOLDER_NAME
+-- Wait for the server to create the machines folder
+local machinesFolder = Workspace:WaitForChild(CONFIG.MACHINE_FOLDER_NAME)
 
 -- HELPER FUNCTIONS ---
 
@@ -95,7 +96,7 @@ local function createInteractionPrompt()
     textLabel.Text = "[E] to Interact"
     textLabel.Font = Enum.Font.SourceSansBold
     textLabel.TextSize = 30
-    textLabel.TextColor3 = Color3.fromRGB(100, 150, 255) -- FIX: Blue color
+    textLabel.TextColor3 = Color3.fromRGB(100, 150, 255)
     textLabel.BackgroundTransparency = 1
     return promptGui
 end
@@ -171,63 +172,158 @@ end
 function MiniGameManager.startMatching()
     local screenGui, frame = createBaseGui("Matching Game")
     local success = false; local wasInterrupted = false; local isInterrupted, stopInterruptCheck = startInterruptionCheck()
+
+    -- Icon IDs for the matching game
     local ICONS = {"rbxassetid://2844027442","rbxassetid://2844027442","rbxassetid://2844027289","rbxassetid://2844027289","rbxassetid://2844027142","rbxassetid://2844027142","rbxassetid://2844026998","rbxassetid://2844026998","rbxassetid://2844026848","rbxassetid://2844026848","rbxassetid://2844026698","rbxassetid://2844026698"}
-    local shuffledIcons=shuffle(ICONS); local firstCard,secondCard=nil,nil; local pairsFound=0; local canClick=true
-    local gridFrame = Instance.new("Frame", frame); gridFrame.Size = UDim2.new(1, -20, 1, -50); gridFrame.Position = UDim2.new(0.5, 0, 0.5, 0); gridFrame.AnchorPoint = Vector2.new(0.5, 0.5); gridFrame.BackgroundTransparency = 1
-    local gridLayout = Instance.new("UIGridLayout", gridFrame); gridLayout.CellSize = UDim2.new(0, 80, 0, 80); gridLayout.CellPadding = UDim2.new(0, 10, 0, 10); gridLayout.HorizontalAlignment=Enum.HorizontalAlignment.Center; gridLayout.VerticalAlignment=Enum.VerticalAlignment.Center
-    for i=1,12 do
-        local card=Instance.new("ImageButton",gridFrame); card.BackgroundColor3=Color3.fromRGB(100,100,100); card.Image=""
+    local shuffledIcons = shuffle(ICONS)
+
+    local firstCard, secondCard = nil, nil
+    local pairsFound = 0
+    local canClick = true
+
+    -- Centered grid frame for the cards
+    local gridFrame = Instance.new("Frame", frame)
+    gridFrame.BackgroundTransparency = 1
+    gridFrame.AnchorPoint = Vector2.new(0.5, 0)
+    gridFrame.Position = UDim2.new(0.5, 0, 0, 40) -- Position below the title
+    gridFrame.Size = UDim2.new(1, -20, 1, -60) -- Fill remaining space
+
+    local gridLayout = Instance.new("UIGridLayout", gridFrame)
+    gridLayout.CellSize = UDim2.new(0, 80, 0, 80)
+    gridLayout.CellPadding = UDim2.new(0, 10, 0, 10)
+    gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    gridLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+
+    for i = 1, #shuffledIcons do
+        local card = Instance.new("ImageButton", gridFrame)
+        card.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        card.Image = ""
+        card:SetAttribute("IsFlipped", false)
+        card:SetAttribute("IconId", shuffledIcons[i])
+
         card.MouseButton1Click:Connect(function()
-            if not canClick or card.Image~="" or (firstCard and card==firstCard.button) then return end; card.Image=shuffledIcons[i]
-            if not firstCard then firstCard={button=card,id=shuffledIcons[i]}
-            else canClick=false; secondCard={button=card,id=shuffledIcons[i]}; task.wait(0.7)
-                if firstCard.id==secondCard.id then firstCard.button.Visible=false; secondCard.button.Visible=false; pairsFound=pairsFound+1; if pairsFound==6 then success=true end
-                else firstCard.button.Image=""; secondCard.button.Image=""; frame.BackgroundColor3=Color3.fromRGB(150,0,0); task.wait(0.1); frame.BackgroundColor3=Color3.fromRGB(30,30,30) end
-                firstCard,secondCard=nil,nil; canClick=true
+            if not canClick or card:GetAttribute("IsFlipped") then return end
+
+            canClick = false -- Prevent spam clicking
+            card.Image = card:GetAttribute("IconId")
+            card:SetAttribute("IsFlipped", true)
+
+            if not firstCard then
+                firstCard = card
+                canClick = true -- Allow next click
+            else
+                secondCard = card
+                task.wait(0.7) -- Let player see the second card
+
+                if firstCard:GetAttribute("IconId") == secondCard:GetAttribute("IconId") then
+                    -- Match found
+                    firstCard.Visible = false
+                    secondCard.Visible = false
+                    pairsFound = pairsFound + 1
+                    if pairsFound == #ICONS / 2 then
+                        success = true
+                    end
+                else
+                    -- No match
+                    firstCard.Image = ""
+                    secondCard.Image = ""
+                    firstCard:SetAttribute("IsFlipped", false)
+                    secondCard:SetAttribute("IsFlipped", false)
+
+                    -- Flash red for feedback
+                    frame.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+                    task.wait(0.1)
+                    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+                end
+
+                firstCard, secondCard = nil, nil
+                canClick = true
             end
         end)
     end
-    local duration=45; local startTime=tick(); while not success and not isInterrupted() and tick()-startTime<duration do RunService.Heartbeat:Wait() end
+
+    -- Main game loop
+    local duration = 45
+    local startTime = tick()
+    while not success and not isInterrupted() and tick() - startTime < duration do
+        RunService.Heartbeat:Wait()
+    end
+
     if isInterrupted() then wasInterrupted = true; success = false; end
-    stopInterruptCheck(); screenGui:Destroy(); showEndResult(success, wasInterrupted); return success
+    stopInterruptCheck()
+    screenGui:Destroy()
+    showEndResult(success, wasInterrupted)
+    return success
 end
 
 -- ACTIVATION & MAIN LOGIC ---
 
+local gameFunctions = {
+    ButtonMash = MiniGameManager.startButtonMashing,
+    MemoryCheck = MiniGameManager.startQTE,
+    Matching = MiniGameManager.startMatching
+}
+
 function MiniGameManager.init()
     print("MiniGameManager: Initializing system for player.")
 
-    if #machinesFolder:GetChildren() == 0 then
-        for i = 1, 3 do
-            local machine=Instance.new("Part",machinesFolder); machine.Name="MiniGameMachine"..i; machine.Size=Vector3.new(4,6,2); machine.Position=Vector3.new(10 + (i-1)*10, 3, 10); machine.Anchored=true; machine.BrickColor=BrickColor.new("New Yeller"); machine.Material=Enum.Material.Neon
-        end
-    end
-
+    -- Proximity check loop (RenderStepped)
     RunService.RenderStepped:Connect(function()
         if isGameActive then return end
-        local character=player.Character; if not character or not character.PrimaryPart then return end
-        local characterPos=character.PrimaryPart.Position; local closestMachineFound=nil
-        for _,machine in ipairs(machinesFolder:GetChildren()) do if (characterPos-machine.Position).Magnitude<CONFIG.INTERACTION_DISTANCE and not machine:GetAttribute("IsCompleted") then closestMachineFound=machine; break end end
-        nearbyMachine=closestMachineFound
-        for _,machine in ipairs(machinesFolder:GetChildren()) do
-            local prompt=machine:FindFirstChild("InteractionPrompt")
-            if machine==nearbyMachine then if not prompt then createInteractionPrompt().Parent = machine end
-            else if prompt then prompt:Destroy() end end
+        local character = player.Character
+        if not character or not character.PrimaryPart then return end
+
+        local characterPos = character.PrimaryPart.Position
+        local closestMachineFound = nil
+
+        -- Find the closest, non-completed machine
+        for _, machine in ipairs(machinesFolder:GetChildren()) do
+            if (characterPos - machine.Position).Magnitude < CONFIG.INTERACTION_DISTANCE and not machine:GetAttribute("IsCompleted") then
+                closestMachineFound = machine
+                break -- Found the closest one, no need to check others
+            end
+        end
+
+        nearbyMachine = closestMachineFound
+
+        -- Update interaction prompts
+        for _, machine in ipairs(machinesFolder:GetChildren()) do
+            local prompt = machine:FindFirstChild("InteractionPrompt")
+            if machine == nearbyMachine and not prompt then
+                createInteractionPrompt().Parent = machine
+            elseif machine ~= nearbyMachine and prompt then
+                prompt:Destroy()
+            end
         end
     end)
 
-    UserInputService.InputBegan:Connect(function(input,gameProcessed)
-        if not gameProcessed and not isGameActive and input.KeyCode==Enum.KeyCode.E and nearbyMachine then
-            isGameActive=true
-            local games={MiniGameManager.startButtonMashing,MiniGameManager.startQTE,MiniGameManager.startMatching}
-            local random_game=games[math.random(#games)]
-            local success=random_game()
-            if success then
-                nearbyMachine:SetAttribute("IsCompleted", true)
-                nearbyMachine.Color = Color3.fromRGB(0, 255, 0)
-            end
-            isGameActive=false
+    -- Input handling
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed or isGameActive or input.KeyCode ~= Enum.KeyCode.E or not nearbyMachine then
+            return
         end
+
+        local gameType = nearbyMachine:GetAttribute("GameType")
+        local gameToPlay = gameFunctions[gameType]
+
+        if not gameToPlay then
+            warn("MiniGameManager: Machine has invalid GameType:", gameType)
+            return
+        end
+
+        isGameActive = true
+
+        local success = gameToPlay()
+
+        if success then
+            -- On success, mark machine as completed and change color
+            nearbyMachine:SetAttribute("IsCompleted", true)
+            nearbyMachine.Color = Color3.fromRGB(0, 255, 0)
+            -- The interaction prompt will be removed on the next RenderStepped cycle
+        end
+
+        -- Allow another game to be started
+        isGameActive = false
     end)
 end
 
