@@ -14,6 +14,9 @@
     "ReplicatedStorage": {
       "MyModules": {
         "$path": "src/shared"
+      },
+      "Remotes": {
+        "$path": "src/remotes"
       }
     },
     "StarterPlayer": {

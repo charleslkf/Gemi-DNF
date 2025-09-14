@@ -223,22 +223,16 @@ function MiniGameManager.startMatching()
         cardBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
         cardBtn.Image = ""
 
-        -- Store card state in the table, keyed by the button instance
-        cardStates[cardBtn] = {
-            isFlipped = false,
-            isMatched = false,
-            iconId = gameIcons[i]
-        }
+        cardStates[cardBtn] = { isFlipped = false, isMatched = false, iconId = gameIcons[i] }
 
         cardBtn.MouseButton1Click:Connect(function()
-            local currentState = cardStates[cardBtn]
-            if not canClick or currentState.isFlipped or currentState.isMatched then
+            if not canClick or cardStates[cardBtn].isFlipped or cardStates[cardBtn].isMatched then
                 return
             end
 
             canClick = false
-            currentState.isFlipped = true
-            cardBtn.Image = currentState.iconId
+            cardStates[cardBtn].isFlipped = true
+            cardBtn.Image = cardStates[cardBtn].iconId
 
             if not firstCard then
                 firstCard = cardBtn
@@ -247,13 +241,10 @@ function MiniGameManager.startMatching()
                 secondCard = cardBtn
                 task.wait(0.7)
 
-                local firstState = cardStates[firstCard]
-                local secondState = cardStates[secondCard]
-
-                if firstState.iconId == secondState.iconId then
+                if cardStates[firstCard].iconId == cardStates[secondCard].iconId then
                     -- Match
-                    firstState.isMatched = true
-                    secondState.isMatched = true
+                    cardStates[firstCard].isMatched = true
+                    cardStates[secondCard].isMatched = true
                     firstCard.Visible = false
                     secondCard.Visible = false
                     pairsFound = pairsFound + 1
@@ -262,8 +253,8 @@ function MiniGameManager.startMatching()
                     end
                 else
                     -- No match, flip back
-                    firstState.isFlipped = false
-                    secondState.isFlipped = false
+                    cardStates[firstCard].isFlipped = false
+                    cardStates[secondCard].isFlipped = false
                     firstCard.Image = ""
                     secondCard.Image = ""
                     frame.BackgroundColor3 = Color3.fromRGB(150,0,0)
