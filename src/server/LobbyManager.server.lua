@@ -147,11 +147,10 @@ end)
 
 -- Event Listeners
 resetRoundEvent.OnServerEvent:Connect(function(player)
-    print(string.format("Status: Soft reset requested by %s.", player.Name))
-    if gameState ~= "Waiting" then
-        gameState = "Waiting"
-        enterWaiting()
-    end
+    print(string.format("Status: Soft reset requested by %s. Forcing return to Waiting state.", player.Name))
+    -- No matter the current state, a reset should always bring us back to a clean waiting state.
+    gameState = "Waiting"
+    enterWaiting()
 end)
 
 startRoundEvent.OnServerEvent:Connect(function(player)
