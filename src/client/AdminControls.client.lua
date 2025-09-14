@@ -20,6 +20,7 @@ local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local resetRoundEvent = remotes:WaitForChild("ResetRoundRequest")
 local startRoundEvent = remotes:WaitForChild("StartRoundRequest")
 local testDamageEvent = remotes:WaitForChild("TestDamageRequest")
+local testCageEvent = remotes:WaitForChild("TestCageRequest")
 
 -- Create UI
 local screenGui = Instance.new("ScreenGui", playerGui)
@@ -61,6 +62,18 @@ damageButton.TextColor3 = Color3.fromRGB(0, 0, 0)
 damageButton.Font = Enum.Font.SourceSansBold
 damageButton.Visible = false -- Hidden by default
 
+-- Cage Button
+local cageButton = Instance.new("TextButton", screenGui)
+cageButton.Name = "CageButton"
+cageButton.Text = "Test Cage Me"
+cageButton.TextSize = 18
+cageButton.Size = UDim2.new(0, 150, 0, 40)
+cageButton.Position = UDim2.new(0.5, -75, 0, 160)
+cageButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+cageButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+cageButton.Font = Enum.Font.SourceSansBold
+cageButton.Visible = false -- Hidden by default
+
 -- Event Connections
 resetButton.MouseButton1Click:Connect(function()
     print("Client: Firing ResetRoundRequest.")
@@ -77,6 +90,11 @@ damageButton.MouseButton1Click:Connect(function()
     testDamageEvent:FireServer()
 end)
 
+cageButton.MouseButton1Click:Connect(function()
+    print("Client: Firing TestCageRequest.")
+    testCageEvent:FireServer()
+end)
+
 -- Logic to show/hide buttons based on state (proxied by player altitude)
 RunService.RenderStepped:Connect(function()
     local character = player.Character
@@ -86,13 +104,16 @@ RunService.RenderStepped:Connect(function()
         if isInLobby then
             startButton.Visible = true
             damageButton.Visible = false
+            cageButton.Visible = false
         else
             startButton.Visible = false
             damageButton.Visible = true
+            cageButton.Visible = true
         end
     else
         startButton.Visible = false
         damageButton.Visible = false
+        cageButton.Visible = false
     end
 end)
 

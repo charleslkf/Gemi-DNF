@@ -41,6 +41,14 @@ if RunService:IsServer() then
         healthChangedEvent:FireClient(player, maxHealth, maxHealth)
     end
 
+    -- Returns the current health of a player.
+    function HealthManager.getHealth(player)
+        if healthData[player] then
+            return healthData[player].current
+        end
+        return nil
+    end
+
     -- Applies damage to a player and checks for elimination.
     function HealthManager.applyDamage(player, amount)
         if not healthData[player] then

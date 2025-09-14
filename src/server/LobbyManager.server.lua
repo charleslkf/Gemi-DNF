@@ -16,6 +16,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 -- Modules
 local MapManager = require(ServerScriptService:WaitForChild("MapManager"))
 local HealthManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("HealthManager"))
+local CagingManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("CagingManager"))
 
 -- Configuration
 local CONFIG = {
@@ -39,6 +40,7 @@ local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local resetRoundEvent = remotes:WaitForChild("ResetRoundRequest")
 local startRoundEvent = remotes:WaitForChild("StartRoundRequest")
 local testDamageEvent = remotes:WaitForChild("TestDamageRequest")
+local testCageEvent = remotes:WaitForChild("TestCageRequest")
 
 -- Game State
 local gameState = "Waiting"
@@ -142,7 +144,6 @@ task.spawn(function()
             end
         elseif gameState == "Playing" then
             stateTimer = stateTimer - 1
-            -- Can add mid-round text here if needed
             if stateTimer <= 0 then
                 gameState = "PostRound"
                 enterPostRound()
@@ -160,7 +161,6 @@ end)
 -- Event Listeners
 resetRoundEvent.OnServerEvent:Connect(function(player)
     print(string.format("Status: Soft reset requested by %s. Forcing return to Waiting state.", player.Name))
-    -- No matter the current state, a reset should always bring us back to a clean waiting state.
     gameState = "Waiting"
     enterWaiting()
 end)
@@ -179,6 +179,17 @@ testDamageEvent.OnServerEvent:Connect(function(player)
         HealthManager.applyDamage(player, 10)
     else
         print(string.format("Status: Ignoring test damage request from %s (not in Playing state).", player.Name))
+    end
+end)
+
+testCageEvent.OnServerEvent:Connect(function(player)
+    if gameState == "Playing" then
+        -- To test caging, we need to lower the player's health first.
+        HealthManager.applyDamage(player, 60)
+        print(string.format("Status: Caging %s for test.", player.Name))
+        CagingManager.cagePlayer(player)
+    else
+        print(string.format("Status: Ignoring test cage request from %s (not in Playing state).", player.Name))
     end
 end)
 
