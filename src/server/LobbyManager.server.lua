@@ -54,8 +54,12 @@ local function resetPlayer(player)
 end
 
 local function spawnPlayerCharacter(player, isKiller)
-    local conn = player.CharacterAdded:Connect(function(character)
-        conn:Disconnect()
+    local conn
+    conn = player.CharacterAdded:Connect(function(character)
+        if conn then
+            conn:Disconnect()
+            conn = nil
+        end
         task.defer(function()
             if not character or not character.Parent then return end
             local spawnPos = Vector3.new(math.random(-50, 50), 5, math.random(-50, 50))
