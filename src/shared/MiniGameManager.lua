@@ -212,7 +212,7 @@ function MiniGameManager.startMatching()
 
     -- Game State
     local ICONS = {"rbxassetid://2844027442","rbxassetid://2844027289","rbxassetid://2844027142","rbxassetid://2844026998","rbxassetid://2844026848","rbxassetid://2844026698"}
-    local gameIcons = shuffle(table.unpack(rep(ICONS, 2)))
+    local gameIcons = shuffle(rep(ICONS, 2))
     local cardStates = {} -- Use a table for robust state management
     local firstCard, secondCard = nil, nil
     local pairsFound = 0
