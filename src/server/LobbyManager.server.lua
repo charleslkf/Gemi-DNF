@@ -205,7 +205,15 @@ end)
 
 testCageEvent.OnServerEvent:Connect(function(player)
     if gameState == "Playing" then
-        HealthManager.applyDamage(player, 60)
+        local currentHealth = HealthManager.getHealth(player)
+        if currentHealth and currentHealth > 50 then
+            local damageToApply = currentHealth - 40
+            HealthManager.applyDamage(player, damageToApply)
+        end
+
+        -- A small delay to ensure health update processes before caging
+        task.wait(0.1)
+        print(string.format("Status: Caging %s for test.", player.Name))
         CagingManager.cagePlayer(player)
     end
 end)
