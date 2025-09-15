@@ -41,6 +41,7 @@ local resetRoundEvent = remotes:WaitForChild("ResetRoundRequest")
 local startRoundEvent = remotes:WaitForChild("StartRoundRequest")
 local testDamageEvent = remotes:WaitForChild("TestDamageRequest")
 local testCageEvent = remotes:WaitForChild("TestCageRequest")
+local testAddItemEvent = remotes:WaitForChild("TestAddItemRequest")
 
 -- Game State
 local gameState = "Waiting"
@@ -206,6 +207,13 @@ testCageEvent.OnServerEvent:Connect(function(player)
     if gameState == "Playing" then
         HealthManager.applyDamage(player, 60)
         CagingManager.cagePlayer(player)
+    end
+end)
+
+testAddItemEvent.OnServerEvent:Connect(function(player, itemName)
+    if gameState == "Playing" then
+        print(string.format("Status: Giving item '%s' to %s.", itemName, player.Name))
+        InventoryManager.addItem(player, itemName)
     end
 end)
 
