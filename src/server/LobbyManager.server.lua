@@ -125,30 +125,30 @@ function enterPostRound()
 end
 
 function checkWinConditions()
-    -- Killer win condition: all survivors are eliminated
+    -- Count players who are still in the game and on their assigned team
     local activeSurvivors = 0
     for _, survivor in ipairs(currentSurvivors) do
-        -- A survivor is active if they are still in the game and on the survivors team
         if survivor.Parent and survivor.Team == survivorsTeam then
-            activeSurvivors += 1
+            activeSurvivors = activeSurvivors + 1
         end
     end
 
-    if activeSurvivors == 0 and #currentSurvivors > 0 then
+    local activeKillers = 0
+    for _, killer in ipairs(currentKillers) do
+        if killer.Parent and killer.Team == killersTeam then
+            activeKillers = activeKillers + 1
+        end
+    end
+
+    -- Killer win condition: no active survivors remain
+    if #currentSurvivors > 0 and activeSurvivors == 0 then
         print("Win Condition: All survivors eliminated. Killers win!")
         return true
     end
 
-    -- Survivor win condition: all killers have left
-    local activeKillers = 0
-    for _, killer in ipairs(currentKillers) do
-        if killer.Parent then
-            activeKillers += 1
-        end
-    end
-
-    if activeKillers == 0 and #currentKillers > 0 then
-        print("Win Condition: All killers left. Survivors win!")
+    -- Survivor win condition: no active killers remain
+    if #currentKillers > 0 and activeKillers == 0 then
+        print("Win Condition: All killers eliminated or left. Survivors win!")
         return true
     end
 
