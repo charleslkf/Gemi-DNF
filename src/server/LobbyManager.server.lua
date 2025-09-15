@@ -39,9 +39,6 @@ local lobbySpawn = Workspace:FindFirstChild("LobbySpawn") or Instance.new("Spawn
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local resetRoundEvent = remotes:WaitForChild("ResetRoundRequest")
 local startRoundEvent = remotes:WaitForChild("StartRoundRequest")
-local testDamageEvent = remotes:WaitForChild("TestDamageRequest")
-local testCageEvent = remotes:WaitForChild("TestCageRequest")
-local testAddItemEvent = remotes:WaitForChild("TestAddItemRequest")
 
 -- Game State
 local gameState = "Waiting"
@@ -194,34 +191,6 @@ startRoundEvent.OnServerEvent:Connect(function(player)
     print(string.format("Status: Manual start requested by %s.", player.Name))
     if gameState == "Waiting" then
         gameState = "Intermission"; enterIntermission()
-    end
-end)
-
-testDamageEvent.OnServerEvent:Connect(function(player)
-    if gameState == "Playing" then
-        HealthManager.applyDamage(player, 10)
-    end
-end)
-
-testCageEvent.OnServerEvent:Connect(function(player)
-    if gameState == "Playing" then
-        local currentHealth = HealthManager.getHealth(player)
-        if currentHealth and currentHealth > 50 then
-            local damageToApply = currentHealth - 40
-            HealthManager.applyDamage(player, damageToApply)
-        end
-
-        -- A small delay to ensure health update processes before caging
-        task.wait(0.1)
-        print(string.format("Status: Caging %s for test.", player.Name))
-        CagingManager.cagePlayer(player)
-    end
-end)
-
-testAddItemEvent.OnServerEvent:Connect(function(player, itemName)
-    if gameState == "Playing" then
-        print(string.format("Status: Giving item '%s' to %s.", itemName, player.Name))
-        InventoryManager.addItem(player, itemName)
     end
 end)
 
