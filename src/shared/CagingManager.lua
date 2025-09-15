@@ -33,7 +33,7 @@ if RunService:IsServer() then
     local playerCagedEvent = remotes:WaitForChild("PlayerCaged")
     local playerRescuedEvent = remotes:WaitForChild("PlayerRescued")
 
-    local cageData = {} -- { [Player]: { cageCount: number, timerThread: thread } }
+    local cageData = {} -- { [Player]: { cageCount: number, isTimerActive: boolean } }
 
     -- Forward declaration
     local eliminatePlayer
@@ -42,13 +42,11 @@ if RunService:IsServer() then
     function CagingManager.cagePlayer(player)
         local playerHealth = HealthManager.getHealth(player)
         if not playerHealth or playerHealth > CAGE_HEALTH_THRESHOLD then
-            -- Optional: Add a warning if trying to cage a healthy player.
             return
         end
 
-        -- Initialize data if it doesn't exist
         if not cageData[player] then
-            cageData[player] = { cageCount = 0, timerThread = nil }
+            cageData[player] = { cageCount = 0, isTimerActive = false }
         end
 
         cageData[player].cageCount += 1
@@ -56,8 +54,6 @@ if RunService:IsServer() then
         local duration = CAGE_TIMERS[count]
 
         print(string.format("Server: Caging %s (count: %d). Timer: %ds", player.Name, count, duration or 0))
-
-        -- Fire event to all clients to show the UI
         playerCagedEvent:FireAllClients(player, duration)
 
         if duration == 0 then
@@ -65,30 +61,23 @@ if RunService:IsServer() then
             return
         end
 
-        -- Start a timer that leads to elimination
-        local timerThread = task.spawn(function()
+        cageData[player].isTimerActive = true
+        task.spawn(function()
             task.wait(duration)
-            -- Check if the thread was cancelled by a rescue
-            if cageData[player] and cageData[player].timerThread == coroutine.running() then
+            if cageData[player] and cageData[player].isTimerActive then
                 eliminatePlayer(player)
             end
         end)
-
-        cageData[player].timerThread = timerThread
     end
 
     -- Rescues a player from their cage timer.
     function CagingManager.rescuePlayer(player)
-        if not cageData[player] or not cageData[player].timerThread then
+        if not cageData[player] or not cageData[player].isTimerActive then
             return
         end
 
         print(string.format("Server: %s has been rescued.", player.Name))
-
-        task.cancel(cageData[player].timerThread)
-        cageData[player].timerThread = nil
-
-        -- Fire event to all clients to hide the UI
+        cageData[player].isTimerActive = false
         playerRescuedEvent:FireAllClients(player)
     end
 
@@ -97,13 +86,9 @@ if RunService:IsServer() then
         print(string.format("Server: %s has been eliminated by the caging system.", player.Name))
 
         if cageData[player] then
-            if cageData[player].timerThread then
-                task.cancel(cageData[player].timerThread)
-            end
-            cageData[player] = nil -- Clear data on elimination
+            cageData[player] = nil -- Clear all data for the player
         end
 
-        -- Respawn player in lobby (similar to LobbyManager's resetPlayer)
         player.Team = nil
         local lobbySpawn = Workspace:FindFirstChild("LobbySpawn")
         if lobbySpawn then player.RespawnLocation = lobbySpawn end
@@ -113,9 +98,6 @@ if RunService:IsServer() then
     -- Cleanup when a player leaves the game
     Players.PlayerRemoving:Connect(function(player)
         if cageData[player] then
-            if cageData[player].timerThread then
-                task.cancel(cageData[player].timerThread)
-            end
             cageData[player] = nil
         end
     end)
@@ -125,14 +107,13 @@ end
 -- CLIENT-SIDE LOGIC
 -----------------------------------------------------------------------------
 if RunService:IsClient() then
-    local activeCageUIs = {} -- { [Player]: BillboardGui }
+    local activeCageUIs = {} -- { [Player]: { gui: BillboardGui, timerThread: thread } }
 
     -- Creates and manages a countdown UI over a caged player's head.
     function CagingManager.showCageUI(cagedPlayer, duration)
         if not cagedPlayer or not cagedPlayer.Character then return end
 
-        -- Clean up any existing UI for this player first
-        CagingManager.hideCageUI(cagedPlayer)
+        CagingManager.hideCageUI(cagedPlayer) -- Clean up any existing UI first
 
         local head = cagedPlayer.Character:FindFirstChild("Head")
         if not head then return end
@@ -151,9 +132,10 @@ if RunService:IsClient() then
         textLabel.TextScaled = true
 
         billboardGui.Parent = head
-        activeCageUIs[cagedPlayer] = billboardGui
 
-        -- Handle instant elimination case
+        local uiData = { gui = billboardGui, timerThread = nil }
+        activeCageUIs[cagedPlayer] = uiData
+
         if duration == 0 then
             textLabel.Text = "ELIMINATED"
             task.wait(1)
@@ -161,26 +143,25 @@ if RunService:IsClient() then
             return
         end
 
-        -- Countdown loop
-        local timerThread = task.spawn(function()
+        uiData.timerThread = task.spawn(function()
             for i = duration, 0, -1 do
-                if not billboardGui.Parent then break end -- Stop if UI was removed
+                if not uiData.gui or not uiData.gui.Parent then break end
                 textLabel.Text = string.format("RESCUE IN: %d", i)
                 task.wait(1)
             end
         end)
-
-        -- Store the thread so we can cancel it if rescued
-        activeCageUIs[cagedPlayer].TimerThread = timerThread
     end
 
     -- Removes the cage UI from a player.
     function CagingManager.hideCageUI(cagedPlayer)
         if activeCageUIs[cagedPlayer] then
-            if activeCageUIs[cagedPlayer].TimerThread then
-                task.cancel(activeCageUIs[cagedPlayer].TimerThread)
+            local uiData = activeCageUIs[cagedPlayer]
+            if uiData.timerThread then
+                task.cancel(uiData.timerThread)
             end
-            activeCageUIs[cagedPlayer]:Destroy()
+            if uiData.gui then
+                uiData.gui:Destroy()
+            end
             activeCageUIs[cagedPlayer] = nil
         end
     end

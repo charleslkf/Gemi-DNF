@@ -2,8 +2,7 @@
     AdminControls.client.lua
     by Jules
 
-    This script creates the client-side UI for admin/debug controls,
-    such as the soft reset, manual start, and test damage buttons.
+    This script creates the client-side UI for admin/debug controls.
 ]]
 
 -- Services
@@ -27,71 +26,52 @@ local screenGui = Instance.new("ScreenGui", playerGui)
 screenGui.Name = "AdminControlsGui"
 screenGui.ResetOnSpawn = false
 
--- Reset Button
-local resetButton = Instance.new("TextButton", screenGui)
-resetButton.Name = "ResetButton"
-resetButton.Text = "Soft Reset Round"
-resetButton.TextSize = 18
-resetButton.Size = UDim2.new(0, 150, 0, 40)
-resetButton.Position = UDim2.new(0.5, -75, 0, 10)
-resetButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-resetButton.TextColor3 = Color3.fromRGB(0, 0, 0)
-resetButton.Font = Enum.Font.SourceSansBold
+-- Main container frame for the buttons
+local buttonContainer = Instance.new("Frame", screenGui)
+buttonContainer.Size = UDim2.new(1, 0, 0, 50)
+buttonContainer.Position = UDim2.new(0, 0, 0, 10)
+buttonContainer.BackgroundTransparency = 1
 
--- Start Button
-local startButton = Instance.new("TextButton", screenGui)
-startButton.Name = "StartButton"
-startButton.Text = "Manual Start"
-startButton.TextSize = 18
-startButton.Size = UDim2.new(0, 150, 0, 40)
-startButton.Position = UDim2.new(0.5, -75, 0, 60)
-startButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-startButton.TextColor3 = Color3.fromRGB(0, 0, 0)
-startButton.Font = Enum.Font.SourceSansBold
-startButton.Visible = false -- Hidden by default
+local listLayout = Instance.new("UIListLayout", buttonContainer)
+listLayout.FillDirection = Enum.FillDirection.Horizontal
+listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+listLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+listLayout.Padding = UDim.new(0, 10)
 
--- Damage Button
-local damageButton = Instance.new("TextButton", screenGui)
-damageButton.Name = "DamageButton"
-damageButton.Text = "Test Damage (-10 HP)"
-damageButton.TextSize = 18
-damageButton.Size = UDim2.new(0, 150, 0, 40)
-damageButton.Position = UDim2.new(0.5, -75, 0, 110)
-damageButton.BackgroundColor3 = Color3.fromRGB(200, 120, 50)
-damageButton.TextColor3 = Color3.fromRGB(0, 0, 0)
-damageButton.Font = Enum.Font.SourceSansBold
-damageButton.Visible = false -- Hidden by default
+-- Helper function to create a standard button
+local function createAdminButton(name, text, color)
+    local button = Instance.new("TextButton")
+    button.Name = name
+    button.Text = text
+    button.TextSize = 18
+    button.Size = UDim2.new(0, 150, 0, 40)
+    button.BackgroundColor3 = color
+    button.TextColor3 = Color3.fromRGB(0, 0, 0)
+    button.Font = Enum.Font.SourceSansBold
+    button.Parent = buttonContainer
+    return button
+end
 
--- Cage Button
-local cageButton = Instance.new("TextButton", screenGui)
-cageButton.Name = "CageButton"
-cageButton.Text = "Test Cage Me"
-cageButton.TextSize = 18
-cageButton.Size = UDim2.new(0, 150, 0, 40)
-cageButton.Position = UDim2.new(0.5, -75, 0, 160)
-cageButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-cageButton.TextColor3 = Color3.fromRGB(0, 0, 0)
-cageButton.Font = Enum.Font.SourceSansBold
-cageButton.Visible = false -- Hidden by default
+-- Create Buttons
+local resetButton = createAdminButton("ResetButton", "Soft Reset", Color3.fromRGB(200, 50, 50))
+local startButton = createAdminButton("StartButton", "Manual Start", Color3.fromRGB(50, 200, 50))
+local damageButton = createAdminButton("DamageButton", "Test Damage", Color3.fromRGB(200, 120, 50))
+local cageButton = createAdminButton("CageButton", "Test Cage Me", Color3.fromRGB(100, 100, 100))
 
 -- Event Connections
 resetButton.MouseButton1Click:Connect(function()
-    print("Client: Firing ResetRoundRequest.")
     resetRoundEvent:FireServer()
 end)
 
 startButton.MouseButton1Click:Connect(function()
-    print("Client: Firing StartRoundRequest.")
     startRoundEvent:FireServer()
 end)
 
 damageButton.MouseButton1Click:Connect(function()
-    print("Client: Firing TestDamageRequest.")
     testDamageEvent:FireServer()
 end)
 
 cageButton.MouseButton1Click:Connect(function()
-    print("Client: Firing TestCageRequest.")
     testCageEvent:FireServer()
 end)
 
@@ -100,6 +80,9 @@ RunService.RenderStepped:Connect(function()
     local character = player.Character
     if character and character:FindFirstChild("HumanoidRootPart") then
         local isInLobby = character.HumanoidRootPart.Position.Y > 40
+
+        -- Reset button is always visible
+        resetButton.Visible = true
 
         if isInLobby then
             startButton.Visible = true
@@ -111,6 +94,8 @@ RunService.RenderStepped:Connect(function()
             cageButton.Visible = true
         end
     else
+        -- Hide all if no character
+        resetButton.Visible = false
         startButton.Visible = false
         damageButton.Visible = false
         cageButton.Visible = false
