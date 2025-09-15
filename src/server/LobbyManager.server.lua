@@ -17,6 +17,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local MapManager = require(ServerScriptService:WaitForChild("MapManager"))
 local HealthManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("HealthManager"))
 local CagingManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("CagingManager"))
+local InventoryManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("InventoryManager"))
 
 -- Configuration
 local CONFIG = {
@@ -116,6 +117,7 @@ function enterPlaying()
         local isKiller = (player.Team == killersTeam)
         spawnPlayerCharacter(player, isKiller)
         HealthManager.initializeHealth(player)
+        InventoryManager.initializeInventory(player)
     end
 end
 
