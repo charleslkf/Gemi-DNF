@@ -2,8 +2,7 @@
     AdminControls.client.lua
     by Jules
 
-    This script creates the client-side UI for admin/debug controls,
-    specifically the soft reset and manual start buttons.
+    This script creates the client-side UI for admin/debug controls.
 ]]
 
 -- Services
@@ -19,6 +18,9 @@ local playerGui = player:WaitForChild("PlayerGui")
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local resetRoundEvent = remotes:WaitForChild("ResetRoundRequest")
 local startRoundEvent = remotes:WaitForChild("StartRoundRequest")
+local testDamageEvent = remotes:WaitForChild("TestDamageRequest")
+local testCageEvent = remotes:WaitForChild("TestCageRequest")
+local testAddItemEvent = remotes:WaitForChild("TestAddItemRequest")
 
 -- Create UI
 local screenGui = Instance.new("ScreenGui", playerGui)
@@ -27,18 +29,17 @@ screenGui.ResetOnSpawn = false
 
 -- Main container frame for the buttons
 local buttonContainer = Instance.new("Frame", screenGui)
-buttonContainer.Size = UDim2.new(1, 0, 0, 50)
+buttonContainer.Size = UDim2.new(1, 0, 0, 100) -- Increased height for two rows
 buttonContainer.Position = UDim2.new(0, 0, 0, 10)
 buttonContainer.BackgroundTransparency = 1
 
 local listLayout = Instance.new("UIListLayout", buttonContainer)
-listLayout.FillDirection = Enum.FillDirection.Horizontal
+listLayout.FillDirection = Enum.FillDirection.Vertical
 listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-listLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 listLayout.Padding = UDim.new(0, 10)
 
 -- Helper function to create a standard button
-local function createAdminButton(name, text, color)
+local function createAdminButton(name, text, color, parent)
     local button = Instance.new("TextButton")
     button.Name = name
     button.Text = text
@@ -47,29 +48,70 @@ local function createAdminButton(name, text, color)
     button.BackgroundColor3 = color
     button.TextColor3 = Color3.fromRGB(0, 0, 0)
     button.Font = Enum.Font.SourceSansBold
-    button.Parent = buttonContainer
+    button.Parent = parent
     return button
 end
 
--- Create Buttons
-local resetButton = createAdminButton("ResetButton", "Soft Reset", Color3.fromRGB(200, 50, 50))
-local startButton = createAdminButton("StartButton", "Manual Start", Color3.fromRGB(50, 200, 50))
+-- Create Button Rows
+local topRow = Instance.new("Frame", buttonContainer)
+topRow.BackgroundTransparency = 1; topRow.Size = UDim2.new(1, 0, 0, 40)
+local topRowLayout = Instance.new("UIListLayout", topRow); topRowLayout.FillDirection = Enum.FillDirection.Horizontal; topRowLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center; topRowLayout.Padding = UDim.new(0, 10)
+
+local bottomRow = Instance.new("Frame", buttonContainer)
+bottomRow.BackgroundTransparency = 1; bottomRow.Size = UDim2.new(1, 0, 0, 40)
+local bottomRowLayout = Instance.new("UIListLayout", bottomRow); bottomRowLayout.FillDirection = Enum.FillDirection.Horizontal; bottomRowLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center; bottomRowLayout.Padding = UDim.new(0, 10)
+
+
+-- Create Buttons and assign to rows
+local resetButton = createAdminButton("ResetButton", "Soft Reset", Color3.fromRGB(200, 50, 50), topRow)
+local startButton = createAdminButton("StartButton", "Manual Start", Color3.fromRGB(50, 200, 50), topRow)
+local damageButton = createAdminButton("DamageButton", "Test Damage", Color3.fromRGB(200, 120, 50), topRow)
+local cageButton = createAdminButton("CageButton", "Test Cage Me", Color3.fromRGB(100, 100, 100), topRow)
+
+local addHammerButton = createAdminButton("AddHammerButton", "Add Hammer", Color3.fromRGB(150, 150, 200), bottomRow)
+local addKeyButton = createAdminButton("AddKeyButton", "Add Key", Color3.fromRGB(200, 200, 150), bottomRow)
 
 -- Event Connections
 resetButton.MouseButton1Click:Connect(function() resetRoundEvent:FireServer() end)
 startButton.MouseButton1Click:Connect(function() startRoundEvent:FireServer() end)
+damageButton.MouseButton1Click:Connect(function() testDamageEvent:FireServer() end)
+cageButton.MouseButton1Click:Connect(function() testCageEvent:FireServer() end)
+addHammerButton.MouseButton1Click:Connect(function() testAddItemEvent:FireServer("Hammer") end)
+addKeyButton.MouseButton1Click:Connect(function() testAddItemEvent:FireServer("Key") end)
 
 -- Logic to show/hide buttons based on state (proxied by player altitude)
 RunService.RenderStepped:Connect(function()
     local character = player.Character
     if character and character:FindFirstChild("HumanoidRootPart") then
         local isInLobby = character.HumanoidRootPart.Position.Y > 40
+        local isSurvivor = player.Team and player.Team.Name == "Survivors"
 
         resetButton.Visible = true
-        startButton.Visible = isInLobby
+
+        if isInLobby then
+            startButton.Visible = true
+            damageButton.Visible = false
+            cageButton.Visible = false
+            addHammerButton.Visible = false
+            addKeyButton.Visible = false
+        else
+            -- In a round
+            startButton.Visible = false
+            damageButton.Visible = true
+            cageButton.Visible = true
+
+            -- Item buttons are only visible for survivors
+            addHammerButton.Visible = isSurvivor
+            addKeyButton.Visible = isSurvivor
+        end
     else
+        -- Hide all if no character
         resetButton.Visible = false
         startButton.Visible = false
+        damageButton.Visible = false
+        cageButton.Visible = false
+        addHammerButton.Visible = false
+        addKeyButton.Visible = false
     end
 end)
 
