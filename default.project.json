@@ -9,6 +9,9 @@
       },
       "MapManager": {
         "$path": "src/server/MapManager.lua"
+      },
+      "KillerInteractionManager": {
+        "$path": "src/server/KillerInteractionManager.server.lua"
       }
     },
     "ReplicatedStorage": {
