@@ -86,7 +86,8 @@ if RunService:IsServer() then
         print(string.format("Server: %s has been eliminated by the caging system.", player.Name))
 
         if cageData[player] then
-            cageData[player] = nil -- Clear all data for the player
+            -- We only set the timer to inactive. We keep the cageCount to track for the next cage.
+            cageData[player].isTimerActive = false
         end
 
         player.Team = nil
