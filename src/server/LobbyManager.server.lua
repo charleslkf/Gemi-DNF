@@ -1,6 +1,6 @@
 --[[
     LobbyManager.server.lua
-    by Jules (v8 - Non-Blocking State Machine)
+    by Jules (v9 - Win Condition Logic)
 
     This script manages the game lobby and round lifecycle using a non-blocking state machine.
     The main loop acts as a heartbeat, processing states and timers.
@@ -20,7 +20,6 @@ local CagingManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitFo
 
 -- Configuration
 local CONFIG = {
-    MIN_PLAYERS_TO_START_AUTO = 2, -- New: For automatic progression, not used by manual start
     INTERMISSION_DURATION = 15,
     ROUND_DURATION = 120,
     POST_ROUND_DURATION = 5,
@@ -45,9 +44,11 @@ local testCageEvent = remotes:WaitForChild("TestCageRequest")
 -- Game State
 local gameState = "Waiting"
 local stateTimer = 0
+local currentKillers = {}
+local currentSurvivors = {}
 
 -- Forward declarations for state functions
-local enterWaiting, enterIntermission, enterPlaying, enterPostRound
+local enterWaiting, enterIntermission, enterPlaying, enterPostRound, checkWinConditions
 
 -- Helper Functions
 local function resetPlayer(player)
@@ -60,10 +61,7 @@ end
 local function spawnPlayerCharacter(player, isKiller)
     local conn
     conn = player.CharacterAdded:Connect(function(character)
-        if conn then
-            conn:Disconnect()
-            conn = nil
-        end
+        if conn then conn:Disconnect(); conn = nil end
         task.defer(function()
             if not character or not character.Parent then return end
             local spawnPos = Vector3.new(math.random(-50, 50), 5, math.random(-50, 50))
@@ -88,6 +86,8 @@ end
 function enterWaiting()
     print("Status: Entering Waiting State.")
     MapManager.cleanup()
+    table.clear(currentKillers)
+    table.clear(currentSurvivors)
     for _, player in ipairs(Players:GetPlayers()) do
         resetPlayer(player)
     end
@@ -104,21 +104,17 @@ function enterPlaying()
     MapManager.generate()
 
     local playersInRound = Players:GetPlayers()
-    local killers, survivors = {}, {}
     -- Simplified team logic for now
-    killers = { playersInRound[1] }
-    for i = 2, #playersInRound do table.insert(survivors, playersInRound[i]) end
+    table.insert(currentKillers, playersInRound[1])
+    for i = 2, #playersInRound do table.insert(currentSurvivors, playersInRound[i]) end
 
-    for _, p in ipairs(killers) do p.Team = killersTeam end
-    for _, p in ipairs(survivors) do p.Team = survivorsTeam end
-    print(string.format("Status: Teams assigned. %d Killer(s), %d Survivor(s).", #killers, #survivors))
+    for _, p in ipairs(currentKillers) do p.Team = killersTeam end
+    for _, p in ipairs(currentSurvivors) do p.Team = survivorsTeam end
+    print(string.format("Status: Teams assigned. %d Killer(s), %d Survivor(s).", #currentKillers, #currentSurvivors))
 
-    for _, player in ipairs(killers) do
-        spawnPlayerCharacter(player, true)
-        HealthManager.initializeHealth(player)
-    end
-    for _, player in ipairs(survivors) do
-        spawnPlayerCharacter(player, false)
+    for _, player in ipairs(playersInRound) do
+        local isKiller = (player.Team == killersTeam)
+        spawnPlayerCharacter(player, isKiller)
         HealthManager.initializeHealth(player)
     end
 end
@@ -128,6 +124,36 @@ function enterPostRound()
     stateTimer = CONFIG.POST_ROUND_DURATION
 end
 
+function checkWinConditions()
+    -- Killer win condition: all survivors are eliminated
+    local activeSurvivors = 0
+    for _, survivor in ipairs(currentSurvivors) do
+        -- A survivor is active if they are still in the game and on the survivors team
+        if survivor.Parent and survivor.Team == survivorsTeam then
+            activeSurvivors += 1
+        end
+    end
+
+    if activeSurvivors == 0 and #currentSurvivors > 0 then
+        print("Win Condition: All survivors eliminated. Killers win!")
+        return true
+    end
+
+    -- Survivor win condition: all killers have left
+    local activeKillers = 0
+    for _, killer in ipairs(currentKillers) do
+        if killer.Parent then
+            activeKillers += 1
+        end
+    end
+
+    if activeKillers == 0 and #currentKillers > 0 then
+        print("Win Condition: All killers left. Survivors win!")
+        return true
+    end
+
+    return false
+end
 
 -- Main Game Loop (Heartbeat)
 task.spawn(function()
@@ -139,20 +165,17 @@ task.spawn(function()
             stateTimer = stateTimer - 1
             print(string.format("Intermission: %d", stateTimer))
             if stateTimer <= 0 then
-                gameState = "Playing"
-                enterPlaying()
+                gameState = "Playing"; enterPlaying()
             end
         elseif gameState == "Playing" then
             stateTimer = stateTimer - 1
-            if stateTimer <= 0 then
-                gameState = "PostRound"
-                enterPostRound()
+            if checkWinConditions() or stateTimer <= 0 then
+                gameState = "PostRound"; enterPostRound()
             end
         elseif gameState == "PostRound" then
             stateTimer = stateTimer - 1
             if stateTimer <= 0 then
-                gameState = "Waiting"
-                enterWaiting()
+                gameState = "Waiting"; enterWaiting()
             end
         end
     end
@@ -161,36 +184,27 @@ end)
 -- Event Listeners
 resetRoundEvent.OnServerEvent:Connect(function(player)
     print(string.format("Status: Soft reset requested by %s. Forcing return to Waiting state.", player.Name))
-    gameState = "Waiting"
-    enterWaiting()
+    gameState = "Waiting"; enterWaiting()
 end)
 
 startRoundEvent.OnServerEvent:Connect(function(player)
     print(string.format("Status: Manual start requested by %s.", player.Name))
     if gameState == "Waiting" then
-        gameState = "Intermission"
-        enterIntermission()
+        gameState = "Intermission"; enterIntermission()
     end
 end)
 
 testDamageEvent.OnServerEvent:Connect(function(player)
     if gameState == "Playing" then
-        print(string.format("Status: Applying 10 test damage to %s.", player.Name))
         HealthManager.applyDamage(player, 10)
-    else
-        print(string.format("Status: Ignoring test damage request from %s (not in Playing state).", player.Name))
     end
 end)
 
 testCageEvent.OnServerEvent:Connect(function(player)
     if gameState == "Playing" then
-        -- To test caging, we need to lower the player's health first.
         HealthManager.applyDamage(player, 60)
-        print(string.format("Status: Caging %s for test.", player.Name))
         CagingManager.cagePlayer(player)
-    else
-        print(string.format("Status: Ignoring test cage request from %s (not in Playing state).", player.Name))
     end
 end)
 
-print("LobbyManager (v8) is running.")
+print("LobbyManager (v9) is running.")
