@@ -31,6 +31,23 @@ local function isKiller()
     return player.Team == killersTeam
 end
 
+-- Helper function to find a character model from any of its descendant parts
+local function findCharacterFromPart(part)
+    if not part then return nil end
+    local current = part
+    -- A model can be nested, so we search up to 5 levels deep.
+    for _ = 1, 5 do
+        if current and current:FindFirstChildWhichIsA("Humanoid") then
+            return current
+        end
+        if not current or not current.Parent then
+            return nil
+        end
+        current = current.Parent
+    end
+    return nil
+end
+
 -- Main Attack Logic
 local function onInputBegan(input, gameProcessed)
     -- Only proceed if input was a left-click and not handled by the game engine already
@@ -43,13 +60,12 @@ local function onInputBegan(input, gameProcessed)
         return
     end
 
-    local target = mouse.Target
-    if not target or not target.Parent then
-        return
-    end
+    local targetPart = mouse.Target
+    if not targetPart then return end
 
-    -- Find the player associated with the clicked part
-    local targetPlayer = Players:GetPlayerFromCharacter(target.Parent)
+    -- Find the character model and player from the clicked part
+    local targetCharacter = findCharacterFromPart(targetPart)
+    local targetPlayer = targetCharacter and Players:GetPlayerFromCharacter(targetCharacter)
 
     -- Abort if the target isn't a player or is the killer themself
     if not targetPlayer or targetPlayer == player then
@@ -58,12 +74,6 @@ local function onInputBegan(input, gameProcessed)
 
     -- Abort if the target player is not a survivor
     if targetPlayer.Team == killersTeam then
-        return
-    end
-
-    -- Abort if the target's character doesn't exist
-    local targetCharacter = targetPlayer.Character
-    if not targetCharacter or not targetCharacter.PrimaryPart then
         return
     end
 
