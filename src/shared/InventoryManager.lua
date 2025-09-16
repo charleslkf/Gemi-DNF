@@ -119,9 +119,19 @@ end
 if RunService:IsClient() then
     local player = Players.LocalPlayer
     local playerGui = player:WaitForChild("PlayerGui")
+    local Teams = game:GetService("Teams")
+    local killersTeam = Teams:WaitForChild("Killers")
 
     function InventoryManager.createOrUpdateInventoryUI(items)
-        print("[DEBUG] InventoryManager: createOrUpdateInventoryUI called for player. Team:", player.Team)
+        -- If the player is a killer, destroy any existing inventory UI and do nothing else.
+        if player.Team == killersTeam then
+            local existingGui = playerGui:FindFirstChild(INVENTORY_UI_NAME)
+            if existingGui then
+                existingGui:Destroy()
+            end
+            return
+        end
+
         local screenGui = playerGui:FindFirstChild(INVENTORY_UI_NAME)
         if not screenGui then
             screenGui = Instance.new("ScreenGui")
