@@ -14,6 +14,7 @@ local Teams = game:GetService("Teams")
 
 -- Player Globals
 local player = Players.LocalPlayer
+local mouse = player:GetMouse()
 
 -- Configuration
 local MAX_ATTACK_DISTANCE = 10
@@ -42,7 +43,7 @@ local function onInputBegan(input, gameProcessed)
         return
     end
 
-    local target = input.Target
+    local target = mouse.Target
     if not target or not target.Parent then
         return
     end
