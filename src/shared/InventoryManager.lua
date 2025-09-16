@@ -121,6 +121,7 @@ if RunService:IsClient() then
     local playerGui = player:WaitForChild("PlayerGui")
 
     function InventoryManager.createOrUpdateInventoryUI(items)
+        print("[DEBUG] InventoryManager: createOrUpdateInventoryUI called for player. Team:", player.Team)
         local screenGui = playerGui:FindFirstChild(INVENTORY_UI_NAME)
         if not screenGui then
             screenGui = Instance.new("ScreenGui")
