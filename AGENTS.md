@@ -30,7 +30,28 @@ This document contains a set of rules and guidelines to follow during the develo
 ## 7. Known System Limitations
 - **Branching:** Due to a system restriction, the `submit` tool cannot create new branches. All commits will be added to the existing branch (`gemi-dnf-1`). The `branch_name` parameter is ignored.
 
-## 8. Feature: Mini-Game System (`MiniGameManager.lua`)
+## 8. Feature: Killer Interaction System
+This system governs how the Killer attacks and interacts with Survivors.
+
+### Attack Mechanic (Client-Side)
+- **File:** `src/client/KillerControls.client.lua`
+- **Trigger:** The Killer player must click on a Survivor's character model.
+- **Range:** The attack has a maximum range of 10 studs.
+- **Hit Detection:** The script includes a helper function (`findCharacterFromPart`) to ensure clicks on accessories (hats, etc.) correctly register as a hit on the character.
+- **Communication:** On a valid hit, the client fires the `AttackRequest` RemoteEvent to the server.
+
+### Attack Resolution (Server-Side)
+- **File:** `src/server/KillerInteractionManager.server.lua`
+- **Logic:** The server listens for the `AttackRequest` event and performs its own validation checks (range, line of sight, etc.) to prevent exploits.
+- **Damage:** A successful hit deals **25 damage**.
+- **Cooldown:** The Killer has a **5-second** attack cooldown after a successful hit.
+- **Caging:** If a Survivor's health is at or below **50 HP** after being hit, the `CagingManager` is called to cage them.
+
+## 9. Feature: Differentiated HUD
+- **File:** `src/shared/InventoryManager.lua` (client-side portion)
+- **Logic:** To provide a different HUD experience, the `createOrUpdateInventoryUI` function checks the player's team. If the player is on the "Killers" team, the function will destroy any existing inventory UI and prevent it from being created. This ensures only Survivors see the item boxes.
+
+## 10. Feature: Mini-Game System (`MiniGameManager.lua`)
 This is a client-side `ModuleScript` located in `src/shared`.
 
 ### Core Activation
@@ -46,3 +67,7 @@ This is a client-side `ModuleScript` located in `src/shared`.
 ### Specific Game Mechanics (Click-Oriented)
 - **`startQTE` (Memory Check):** A sequence-clicking game. Must include a round counter.
 - **`startButtonMashing`:** A simple click-mashing game. Must include a timer and a click counter.
+
+## 11. Developer Notes
+- **`restore_file` Tool:** Be cautious when using this tool on files that were created during the current work session. If the file did not exist in the original repository state, `restore_file` will **delete** the file, which can lead to regressions. It is safer to use `overwrite_file_with_block` or targeted `replace_with_git_merge_diff` calls to revert changes in new files.
+- **Client-Server Replication:** Be mindful of replication delay. Properties set on the server (like `player.Team`) may not be immediately available on the client. Client-side scripts that rely on these properties at startup should be written defensively to account for this delay (e.g., by waiting for the property to be present).
