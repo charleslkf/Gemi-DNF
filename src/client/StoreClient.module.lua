@@ -1,5 +1,5 @@
 --[[
-    StoreClient.client.lua
+    StoreClient.module.lua
     by Jules
 
     This client-side script handles all player interaction with the
