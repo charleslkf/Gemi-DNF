@@ -108,6 +108,7 @@ if RunService:IsServer() then
         if cageData[player] then
             cageData[player].isTimerActive = false
             cageData[player].killerWhoCaged = nil
+            cageData[player].cageCount = 0 -- Reset the cage count
         end
 
         -- Fire the elimination event for other systems to listen to

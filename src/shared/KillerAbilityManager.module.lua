@@ -21,7 +21,7 @@ local KillerAbilityManager = {}
 -- Configuration
 local ELIMINATIONS_FOR_ULTIMATE = 3
 local ULTIMATE_DURATION = 10 -- seconds
-local ULTIMATE_SOUND_ID = "rbxassetid://184223293" -- A placeholder menacing sound
+local ULTIMATE_SOUND_ID = "rbxassetid://2649334024" -- A placeholder menacing sound
 
 -- State
 local eliminationCounts = {} -- { [Player]: number }
