@@ -30,8 +30,8 @@ local CAGE_HEALTH_THRESHOLD = 50
 -----------------------------------------------------------------------------
 if RunService:IsServer() then
     local ServerScriptService = game:GetService("ServerScriptService")
-    local HealthManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("HealthManager"))
-    -- Using a forward declaration for KillerAbilityManager to handle circular dependency if needed.
+    -- Forward declarations for lazy loading to prevent circular dependencies
+    local HealthManager
     local KillerAbilityManager
 
     local remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -45,6 +45,10 @@ if RunService:IsServer() then
 
     -- Cages a player if their health is low enough.
     function CagingManager.cagePlayer(player, killer) -- killer can be nil
+        if not HealthManager then
+            HealthManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("HealthManager"))
+        end
+
         local playerHealth = HealthManager.getHealth(player)
         if not playerHealth or playerHealth > CAGE_HEALTH_THRESHOLD then
             return

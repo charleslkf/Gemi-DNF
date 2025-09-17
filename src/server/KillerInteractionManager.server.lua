@@ -13,10 +13,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Teams = game:GetService("Teams")
 
--- Modules
-local HealthManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("HealthManager"))
-local CagingManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("CagingManager"))
-local KillerAbilityManager = require(ServerScriptService:WaitForChild("KillerAbilityManager"))
+-- Modules (forward declared for lazy loading)
+local HealthManager
+local CagingManager
+local KillerAbilityManager
 
 -- Remotes
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -35,6 +35,13 @@ local survivorsTeam = Teams:WaitForChild("Survivors")
 
 -- Main Handler for Attack Requests
 local function onAttackRequest(killerPlayer, targetPlayer)
+    -- Lazily require all modules on first execution
+    if not HealthManager then
+        HealthManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("HealthManager"))
+        CagingManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("CagingManager"))
+        KillerAbilityManager = require(ServerScriptService:WaitForChild("KillerAbilityManager"))
+    end
+
     -- 1. VALIDATION AND SECURITY CHECKS
 
     -- Verify the players exist and have characters
