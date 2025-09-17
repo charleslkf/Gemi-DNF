@@ -1,20 +1,18 @@
 --[[
-    KillerAbilityManager.server.lua
+    KillerAbilityManager.module.lua
     by Jules
 
     This script manages the Killer's ultimate ability.
-    - Tracks eliminations for each killer.
+    - Listens for elimination events to track kills.
     - Triggers the ultimate ability when conditions are met.
     - Provides functions for other systems to query the ultimate's state.
 ]]
 
 -- Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ServerScriptService = game:GetService("ServerScriptService")
 local Players = game:GetService("Players")
 
--- Modules
--- Lazily require CagingManager to avoid circular dependencies
+-- Modules (forward declared for lazy loading)
 local CagingManager
 
 -- The Module
@@ -30,10 +28,10 @@ local eliminationCounts = {} -- { [Player]: number }
 local ultimateActive = {}    -- { [Player]: boolean }
 
 --[[
-    Called by other systems (like CagingManager) when a killer eliminates a survivor.
-    Increments the killer's elimination count and triggers the ultimate if the threshold is met.
+    This function is connected to the EliminationEvent.
+    It increments the killer's elimination count and triggers the ultimate if the threshold is met.
 ]]
-function KillerAbilityManager.onElimination(killer)
+function KillerAbilityManager.onElimination(eliminatedPlayer, killer)
     if not killer or not killer:IsA("Player") then return end
 
     eliminationCounts[killer] = (eliminationCounts[killer] or 0) + 1
@@ -84,8 +82,8 @@ function KillerAbilityManager.triggerUltimate(killer)
             if not ultimateActive[killer] then return end -- In case player disconnected
             print(string.format("[AbilityManager] Ultimate for %s has ended.", killer.Name))
             ultimateActive[killer] = nil
-            trail:Destroy()
-            sound:Destroy()
+            if trail then trail:Destroy() end
+            if sound then sound:Destroy() end
         end)
     else
         -- If effects can't be applied, cancel the ultimate
@@ -113,7 +111,7 @@ function KillerAbilityManager.performUltimateKill(survivor, killer)
 
     print(string.format("[AbilityManager] %s used their ultimate to eliminate %s!", killer.Name, survivor.Name))
     -- The CagingManager's eliminatePlayer function handles the actual elimination
-    -- and will call back to onElimination to credit the kill.
+    -- and will fire the EliminationEvent, which this script listens for.
     CagingManager.eliminatePlayer(survivor, killer)
 end
 
@@ -122,5 +120,9 @@ Players.PlayerRemoving:Connect(function(player)
     eliminationCounts[player] = nil
     ultimateActive[player] = nil
 end)
+
+-- Connect to the elimination event to track kills
+local eliminationEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("EliminationEvent")
+eliminationEvent.Event:Connect(KillerAbilityManager.onElimination)
 
 return KillerAbilityManager

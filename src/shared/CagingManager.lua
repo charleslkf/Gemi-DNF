@@ -29,14 +29,13 @@ local CAGE_HEALTH_THRESHOLD = 50
 -- SERVER-SIDE LOGIC
 -----------------------------------------------------------------------------
 if RunService:IsServer() then
-    local ServerScriptService = game:GetService("ServerScriptService")
-    -- Forward declarations for lazy loading to prevent circular dependencies
+    -- Forward declaration for lazy loading
     local HealthManager
-    local KillerAbilityManager
 
     local remotes = ReplicatedStorage:WaitForChild("Remotes")
     local playerCagedEvent = remotes:WaitForChild("PlayerCaged")
     local playerRescuedEvent = remotes:WaitForChild("PlayerRescued")
+    local eliminationEvent = remotes:WaitForChild("EliminationEvent")
 
     local cageData = {} -- { [Player]: { cageCount: number, isTimerActive: boolean, killerWhoCaged: Player } }
 
@@ -104,11 +103,6 @@ if RunService:IsServer() then
 
     -- Eliminates a player, sending them back to the lobby.
     eliminatePlayer = function(player, killer) -- killer can be nil
-        -- Lazily require KillerAbilityManager to prevent circular dependencies
-        if not KillerAbilityManager then
-            KillerAbilityManager = require(ServerScriptService:WaitForChild("KillerAbilityManager"))
-        end
-
         print(string.format("Server: %s has been eliminated.", player.Name))
 
         if cageData[player] then
@@ -116,12 +110,8 @@ if RunService:IsServer() then
             cageData[player].killerWhoCaged = nil
         end
 
-        if killer then
-            print(string.format("Elimination credit goes to: %s", killer.Name))
-            KillerAbilityManager.onElimination(killer)
-        else
-            print("Elimination occurred without a direct killer credit (e.g., cage timer expired).")
-        end
+        -- Fire the elimination event for other systems to listen to
+        eliminationEvent:Fire(player, killer)
 
         player.Team = nil
         local lobbySpawn = Workspace:FindFirstChild("LobbySpawn")
