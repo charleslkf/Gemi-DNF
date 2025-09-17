@@ -16,7 +16,22 @@
     },
     "ReplicatedStorage": {
       "MyModules": {
-        "$path": "src/shared"
+        "$className": "Folder",
+        "CagingManager": {
+          "$path": "src/shared/CagingManager.lua"
+        },
+        "HealthManager": {
+          "$path": "src/shared/HealthManager.lua"
+        },
+        "InventoryManager": {
+          "$path": "src/shared/InventoryManager.lua"
+        },
+        "MiniGameManager": {
+          "$path": "src/shared/MiniGameManager.lua"
+        },
+        "KillerAbilityManager": {
+          "$path": "src/shared/KillerAbilityManager.module.lua"
+        }
       },
       "Remotes": {
         "$path": "src/remotes"
