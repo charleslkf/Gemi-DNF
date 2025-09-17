@@ -39,7 +39,7 @@ local function onAttackRequest(killerPlayer, targetPlayer)
     if not HealthManager then
         HealthManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("HealthManager"))
         CagingManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("CagingManager"))
-        KillerAbilityManager = require(ServerScriptService:WaitForChild("KillerAbilityManager"))
+        KillerAbilityManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("KillerAbilityManager"))
     end
 
     -- 1. VALIDATION AND SECURITY CHECKS

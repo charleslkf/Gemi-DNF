@@ -12,9 +12,6 @@
       },
       "KillerInteractionManager": {
         "$path": "src/server/KillerInteractionManager.server.lua"
-      },
-      "KillerAbilityManager": {
-        "$path": "src/server/KillerAbilityManager.module.lua"
       }
     },
     "ReplicatedStorage": {
