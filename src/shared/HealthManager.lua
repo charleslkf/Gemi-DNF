@@ -23,6 +23,7 @@ local HEALTH_BAR_UI_NAME = "HealthBarGui"
 -- SERVER-SIDE LOGIC
 -----------------------------------------------------------------------------
 if RunService:IsServer() then
+    local CagingManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("CagingManager"))
     local healthData = {} -- { [Player]: { current: number, max: number } }
     local remotes = ReplicatedStorage:WaitForChild("Remotes")
     local healthChangedEvent = remotes:WaitForChild("HealthChanged")
@@ -50,7 +51,7 @@ if RunService:IsServer() then
     end
 
     -- Applies damage to a player and checks for elimination.
-    function HealthManager.applyDamage(player, amount)
+    function HealthManager.applyDamage(player, amount, damageDealer) -- damageDealer can be nil
         if not healthData[player] then
             warn(string.format("Attempted to apply damage to %s, but they have no health data.", player.Name))
             return
@@ -66,9 +67,8 @@ if RunService:IsServer() then
 
         -- Check for elimination
         if data.current <= 0 then
-            print(string.format("Server: %s has been eliminated.", player.Name))
-            healthData[player] = nil -- Clear health data
-            player:LoadCharacter() -- Respawn the player
+            healthData[player] = nil -- Clear health data before elimination
+            CagingManager.eliminatePlayer(player, damageDealer)
         end
     end
 

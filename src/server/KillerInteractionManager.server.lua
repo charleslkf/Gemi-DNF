@@ -1,88 +1,104 @@
 --[[
     KillerInteractionManager.server.lua
-    by Jules
+    (New version by Jules - Remote Event based)
 
     This script manages all server-side interactions between Killers and Survivors,
     including hit detection, damage application, caging, and cooldowns.
+    It listens for client-side requests and validates them before acting.
 ]]
 
 -- Services
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 local Teams = game:GetService("Teams")
 
 -- Modules
 local HealthManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("HealthManager"))
 local CagingManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("CagingManager"))
+local KillerAbilityManager = require(ServerScriptService:WaitForChild("KillerAbilityManager"))
+
+-- Remotes
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local AttackRequest = Remotes:WaitForChild("AttackRequest")
 
 -- Constants
 local ATTACK_COOLDOWN = 5 -- seconds
-local ATTACK_DAMAGE = 30
+local ATTACK_DAMAGE = 25
 local CAGE_HEALTH_THRESHOLD = 50
+local MAX_ATTACK_DISTANCE = 12 -- A little more than the client's 10 for latency tolerance
 
 -- State
 local lastAttackTimes = {} -- { [Player]: tick() }
+local killersTeam = Teams:WaitForChild("Killers")
+local survivorsTeam = Teams:WaitForChild("Survivors")
 
--- Main Logic
-local function onCharacterTouched(killerPlayer, otherPart)
-    -- Check if the killer is on cooldown
-    local lastAttack = lastAttackTimes[killerPlayer]
-    if lastAttack and (tick() - lastAttack < ATTACK_COOLDOWN) then
+-- Main Handler for Attack Requests
+local function onAttackRequest(killerPlayer, targetPlayer)
+    -- 1. VALIDATION AND SECURITY CHECKS
+
+    -- Verify the players exist and have characters
+    if not killerPlayer or not targetPlayer or not killerPlayer.Character or not targetPlayer.Character then
         return
     end
 
-    -- Find the player associated with the part that was touched
-    local otherPlayer = Players:GetPlayerFromCharacter(otherPart.Parent)
-    if not otherPlayer or otherPlayer == killerPlayer then return end
+    -- Verify team affiliations
+    if killerPlayer.Team ~= killersTeam or targetPlayer.Team ~= survivorsTeam then
+        return
+    end
 
-    -- Check if the other player is a survivor
-    if otherPlayer.Team and otherPlayer.Team.Name == "Survivors" then
-        print(string.format("Interaction: %s hit %s.", killerPlayer.Name, otherPlayer.Name))
+    -- Verify the killer is not on cooldown
+    local lastAttack = lastAttackTimes[killerPlayer]
+    if lastAttack and (tick() - lastAttack < ATTACK_COOLDOWN) then
+        print(string.format("[InteractionManager] Attack blocked: %s is on cooldown.", killerPlayer.Name))
+        return
+    end
 
-        -- Set the cooldown *before* applying damage
-        lastAttackTimes[killerPlayer] = tick()
+    -- Verify distance again on the server to prevent exploits
+    local distance = (killerPlayer.Character.PrimaryPart.Position - targetPlayer.Character.PrimaryPart.Position).Magnitude
+    if distance > MAX_ATTACK_DISTANCE then
+        print(string.format("[InteractionManager] Attack blocked: %s is too far from %s (%.1f studs).", killerPlayer.Name, targetPlayer.Name, distance))
+        return
+    end
 
-        -- Apply damage
-        HealthManager.applyDamage(otherPlayer, ATTACK_DAMAGE)
+    -- Verify the target is not already caged
+    if CagingManager.isCaged(targetPlayer) then
+        print(string.format("[InteractionManager] Attack blocked: %s is already caged.", targetPlayer.Name))
+        return
+    end
 
-        -- Check if the survivor should be caged
-        local survivorHealth = HealthManager.getHealth(otherPlayer)
+    -- 2. APPLY GAME LOGIC
+
+    print(string.format("[InteractionManager] Attack validated: %s hit %s.", killerPlayer.Name, targetPlayer.Name))
+
+    -- Set the cooldown *before* applying damage
+    lastAttackTimes[killerPlayer] = tick()
+
+    -- Check if the killer's ultimate is active
+    if KillerAbilityManager.isUltimateActive(killerPlayer) then
+        -- Perform an instant elimination
+        KillerAbilityManager.performUltimateKill(targetPlayer, killerPlayer)
+    else
+        -- Apply normal damage, passing the killerPlayer as the damageDealer
+        HealthManager.applyDamage(targetPlayer, ATTACK_DAMAGE, killerPlayer)
+
+        -- Check if the survivor should be caged (only for normal attacks)
+        local survivorHealth = HealthManager.getHealth(targetPlayer)
         if survivorHealth and survivorHealth <= CAGE_HEALTH_THRESHOLD then
-            CagingManager.cagePlayer(otherPlayer)
+            print(string.format("[InteractionManager] Health is %d, attempting to cage %s.", survivorHealth, targetPlayer.Name))
+            CagingManager.cagePlayer(targetPlayer, killerPlayer)
         end
     end
 end
 
-local function setupCharacter(character, player)
-    -- This function sets up the .Touched event for a character model.
-    -- We connect it to every part to ensure good detection.
-    for _, part in ipairs(character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.Touched:Connect(function(otherPart)
-                -- We only care about touches initiated by the Killer's character
-                if player.Team and player.Team.Name == "Killers" then
-                    onCharacterTouched(player, otherPart)
-                end
-            end)
-        end
+-- Cleanup when a player leaves
+Players.PlayerRemoving:Connect(function(player)
+    if lastAttackTimes[player] then
+        lastAttackTimes[player] = nil
     end
-end
+end)
 
-local function onPlayerAdded(player)
-    -- When a player's character spawns, set up the touch events
-    player.CharacterAdded:Connect(function(character)
-        setupCharacter(character, player)
-    end)
-    -- Also set it up for the character that might already exist
-    if player.Character then
-        setupCharacter(player.Character, player)
-    end
-end
+-- Connect the handler to the remote event
+AttackRequest.OnServerEvent:Connect(onAttackRequest)
 
--- Connect the logic for all current and future players
-for _, player in ipairs(Players:GetPlayers()) do
-    onPlayerAdded(player)
-end
-Players.PlayerAdded:Connect(onPlayerAdded)
-
-print("KillerInteractionManager is running.")
+print("KillerInteractionManager (Remote Event version) is running.")

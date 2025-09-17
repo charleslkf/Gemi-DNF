@@ -11,6 +11,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 -- Module Table
 local CagingManager = {}
@@ -28,28 +29,36 @@ local CAGE_HEALTH_THRESHOLD = 50
 -- SERVER-SIDE LOGIC
 -----------------------------------------------------------------------------
 if RunService:IsServer() then
+    local ServerScriptService = game:GetService("ServerScriptService")
     local HealthManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("HealthManager"))
+    -- Using a forward declaration for KillerAbilityManager to handle circular dependency if needed.
+    local KillerAbilityManager
+
     local remotes = ReplicatedStorage:WaitForChild("Remotes")
     local playerCagedEvent = remotes:WaitForChild("PlayerCaged")
     local playerRescuedEvent = remotes:WaitForChild("PlayerRescued")
 
-    local cageData = {} -- { [Player]: { cageCount: number, isTimerActive: boolean } }
+    local cageData = {} -- { [Player]: { cageCount: number, isTimerActive: boolean, killerWhoCaged: Player } }
 
     -- Forward declaration
     local eliminatePlayer
 
     -- Cages a player if their health is low enough.
-    function CagingManager.cagePlayer(player)
+    function CagingManager.cagePlayer(player, killer) -- killer can be nil
         local playerHealth = HealthManager.getHealth(player)
         if not playerHealth or playerHealth > CAGE_HEALTH_THRESHOLD then
             return
         end
 
         if not cageData[player] then
-            cageData[player] = { cageCount = 0, isTimerActive = false }
+            cageData[player] = { cageCount = 0, isTimerActive = false, killerWhoCaged = nil }
         end
 
+        -- A player who is already in a cage cannot be re-caged.
+        if cageData[player].isTimerActive then return end
+
         cageData[player].cageCount += 1
+        cageData[player].killerWhoCaged = killer -- Store the killer who initiated the cage
         local count = cageData[player].cageCount
         local duration = CAGE_TIMERS[count]
 
@@ -57,7 +66,7 @@ if RunService:IsServer() then
         playerCagedEvent:FireAllClients(player, duration)
 
         if duration == 0 then
-            eliminatePlayer(player)
+            eliminatePlayer(player, killer)
             return
         end
 
@@ -65,29 +74,49 @@ if RunService:IsServer() then
         task.spawn(function()
             task.wait(duration)
             if cageData[player] and cageData[player].isTimerActive then
-                eliminatePlayer(player)
+                -- When the timer runs out, use the stored killer identity
+                local originalKiller = cageData[player].killerWhoCaged
+                eliminatePlayer(player, originalKiller)
             end
         end)
     end
 
+    -- Returns true if a player is currently in a cage timer.
+    function CagingManager.isCaged(player)
+        return cageData[player] and cageData[player].isTimerActive
+    end
+
     -- Rescues a player from their cage timer.
     function CagingManager.rescuePlayer(player)
-        if not cageData[player] or not cageData[player].isTimerActive then
+        if not CagingManager.isCaged(player) then
             return
         end
 
         print(string.format("Server: %s has been rescued.", player.Name))
         cageData[player].isTimerActive = false
+        cageData[player].killerWhoCaged = nil -- Clear the killer when rescued
         playerRescuedEvent:FireAllClients(player)
     end
 
     -- Eliminates a player, sending them back to the lobby.
-    eliminatePlayer = function(player)
-        print(string.format("Server: %s has been eliminated by the caging system.", player.Name))
+    eliminatePlayer = function(player, killer) -- killer can be nil
+        -- Lazily require KillerAbilityManager to prevent circular dependencies
+        if not KillerAbilityManager then
+            KillerAbilityManager = require(ServerScriptService:WaitForChild("KillerAbilityManager"))
+        end
+
+        print(string.format("Server: %s has been eliminated.", player.Name))
 
         if cageData[player] then
-            -- We only set the timer to inactive. We keep the cageCount to track for the next cage.
             cageData[player].isTimerActive = false
+            cageData[player].killerWhoCaged = nil
+        end
+
+        if killer then
+            print(string.format("Elimination credit goes to: %s", killer.Name))
+            KillerAbilityManager.onElimination(killer)
+        else
+            print("Elimination occurred without a direct killer credit (e.g., cage timer expired).")
         end
 
         player.Team = nil
@@ -95,6 +124,8 @@ if RunService:IsServer() then
         if lobbySpawn then player.RespawnLocation = lobbySpawn end
         player:LoadCharacter()
     end
+    -- Make eliminatePlayer accessible to other server scripts
+    CagingManager.eliminatePlayer = eliminatePlayer
 
     -- Cleanup when a player leaves the game
     Players.PlayerRemoving:Connect(function(player)
