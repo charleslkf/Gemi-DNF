@@ -12,6 +12,9 @@
       },
       "KillerInteractionManager": {
         "$path": "src/server/KillerInteractionManager.server.lua"
+      },
+      "StoreKeeperManager": {
+        "$path": "src/server/StoreKeeperManager.module.lua"
       }
     },
     "ReplicatedStorage": {

@@ -18,6 +18,7 @@ local MapManager = require(ServerScriptService:WaitForChild("MapManager"))
 local HealthManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("HealthManager"))
 local CagingManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("CagingManager"))
 local InventoryManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("InventoryManager"))
+local StoreKeeperManager = require(ServerScriptService:WaitForChild("StoreKeeperManager"))
 
 -- Configuration
 local CONFIG = {
@@ -88,6 +89,7 @@ end
 function enterWaiting()
     print("Status: Entering Waiting State.")
     MapManager.cleanup()
+    StoreKeeperManager.cleanupNPC()
     table.clear(currentKillers)
     table.clear(currentSurvivors)
     for _, player in ipairs(Players:GetPlayers()) do
@@ -104,6 +106,7 @@ function enterPlaying()
     print("Status: Starting Round!")
     stateTimer = CONFIG.ROUND_DURATION
     MapManager.generate()
+    StoreKeeperManager.spawnNPC()
 
     local playersInRound = Players:GetPlayers()
     -- Simplified team logic for now
