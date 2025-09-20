@@ -72,6 +72,9 @@ end
 local function createStoreGui()
     isUiVisible = true
 
+    local remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
+    local purchaseItemRequest = remotes:WaitForChild("PurchaseItemRequest")
+
     local screenGui = Instance.new("ScreenGui", player.PlayerGui)
     screenGui.Name = "StoreGui"
     screenGui.ResetOnSpawn = false
@@ -100,15 +103,27 @@ local function createStoreGui()
     closeButton.TextColor3 = Color3.new(1, 1, 1)
     closeButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 
-    -- Placeholder item buttons
-    local items = {"Hammer", "Med-kit", "Smoke Bomb", "Active Cola"}
-    for i, itemName in ipairs(items) do
+    -- Item Configuration
+    local items = {
+        {Name = "Hammer", Price = 3},
+        {Name = "Med-kit", Price = 6},
+        {Name = "Smoke Bomb", Price = 3},
+        {Name = "Active Cola", Price = 2}
+    }
+
+    for i, itemData in ipairs(items) do
         local itemButton = Instance.new("TextButton", mainFrame)
+        itemButton.Name = itemData.Name .. "Button"
         itemButton.Size = UDim2.new(0, 250, 0, 50)
-        itemButton.Position = UDim2.new(0.5, -125, 0, 50 + (i * 60))
-        itemButton.Text = itemName
+        itemButton.Position = UDim2.new(0.5, -125, 0, 50 + ((i - 1) * 60))
+        itemButton.Text = string.format("%s (%d Coins)", itemData.Name, itemData.Price)
         itemButton.Font = Enum.Font.SourceSansBold
         itemButton.TextSize = 20
+
+        itemButton.MouseButton1Click:Connect(function()
+            print(string.format("Player requested to buy %s", itemData.Name))
+            purchaseItemRequest:FireServer(itemData.Name)
+        end)
     end
 
     local isInterrupted, stopInterruptCheck

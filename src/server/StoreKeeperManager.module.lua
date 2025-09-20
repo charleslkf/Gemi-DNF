@@ -7,6 +7,15 @@
 ]]
 
 local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
+
+-- Modules
+local InventoryManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("InventoryManager"))
+
+-- Remotes
+local remotes = ReplicatedStorage:WaitForChild("Remotes")
+local purchaseItemRequest = remotes:WaitForChild("PurchaseItemRequest")
 
 local StoreKeeperManager = {}
 
@@ -56,8 +65,42 @@ function StoreKeeperManager.cleanupNPC()
     activeNPC = nil
 end
 
+-- Server-side price list to prevent exploits
+local ITEM_PRICES = {
+    ["Hammer"] = 3,
+    ["Med-kit"] = 6,
+    ["Smoke Bomb"] = 3,
+    ["Active Cola"] = 2
+}
+
+local function onPurchaseRequest(player, itemName)
+    local price = ITEM_PRICES[itemName]
+    if not price then
+        warn(string.format("Player '%s' requested to buy invalid item '%s'", player.Name, itemName))
+        return
+    end
+
+    local leaderstats = player:FindFirstChild("leaderstats")
+    local levelCoins = leaderstats and leaderstats:FindFirstChild("LevelCoins")
+
+    if not levelCoins then
+        warn(string.format("Could not find LevelCoins for player '%s'", player.Name))
+        return
+    end
+
+    if levelCoins.Value >= price then
+        print(string.format("Processing purchase for %s: item %s, price %d", player.Name, itemName, price))
+        levelCoins.Value = levelCoins.Value - price
+        InventoryManager.addItem(player, itemName)
+    else
+        print(string.format("Player %s has insufficient funds to buy %s", player.Name, itemName))
+        -- In the future, we could fire a remote back to the client to show a "Not enough coins" message.
+    end
+end
+
 function StoreKeeperManager.initialize()
     print("StoreKeeperManager initialized.")
+    purchaseItemRequest.OnServerEvent:Connect(onPurchaseRequest)
 end
 
 return StoreKeeperManager

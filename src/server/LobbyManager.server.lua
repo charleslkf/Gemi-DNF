@@ -228,4 +228,6 @@ testAddItemEvent.OnServerEvent:Connect(function(player, itemName)
     end
 end)
 
+StoreKeeperManager.initialize()
+
 print("LobbyManager (v9) is running.")
