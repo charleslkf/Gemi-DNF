@@ -47,6 +47,27 @@ local function createInteractionPrompt()
     return promptGui
 end
 
+local function startInterruptionCheck()
+    local startCharacter = player.Character
+    if not startCharacter or not startCharacter.PrimaryPart then return function() return true end, function() end end
+    local startPos = startCharacter.PrimaryPart.Position
+    local wasInterrupted = false
+    local conn = RunService.Heartbeat:Connect(function()
+        local currentCharacter = player.Character
+        if wasInterrupted then return end
+        if currentCharacter and currentCharacter.PrimaryPart and currentCharacter == startCharacter then
+            if (currentCharacter.PrimaryPart.Position - startPos).Magnitude > CONFIG.INTERACTION_DISTANCE then
+                wasInterrupted = true
+            end
+        else
+            wasInterrupted = true
+        end
+    end)
+    local function isInterrupted() return wasInterrupted end
+    local function stop() conn:Disconnect() conn = nil end
+    return isInterrupted, stop
+end
+
 -- Helper function to create the main store UI
 local function createStoreGui()
     isUiVisible = true
@@ -90,10 +111,29 @@ local function createStoreGui()
         itemButton.TextSize = 20
     end
 
-    -- Event handlers
-    closeButton.MouseButton1Click:Connect(function()
+    local isInterrupted, stopInterruptCheck
+    local heartbeatConnection
+
+    local function closeGui()
         isUiVisible = false
+        if heartbeatConnection then
+            heartbeatConnection:Disconnect()
+            heartbeatConnection = nil
+        end
+        stopInterruptCheck()
         screenGui:Destroy()
+    end
+
+    -- Event handlers
+    closeButton.MouseButton1Click:Connect(closeGui)
+
+    -- Start checking for interruptions
+    isInterrupted, stopInterruptCheck = startInterruptionCheck()
+
+    heartbeatConnection = RunService.Heartbeat:Connect(function()
+        if isInterrupted() then
+            closeGui()
+        end
     end)
 end
 
