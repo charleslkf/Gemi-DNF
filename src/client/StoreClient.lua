@@ -14,6 +14,11 @@ local Teams = game:GetService("Teams")
 local Workspace = game:GetService("Workspace")
 
 -- Modules
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local remotes = ReplicatedStorage:WaitForChild("Remotes")
+local getStoreData = remotes:WaitForChild("GetStoreData")
+local purchaseFailed = remotes:WaitForChild("PurchaseFailed")
+local purchaseItemRequest = remotes:WaitForChild("PurchaseItemRequest")
 
 -- Player Globals
 local player = Players.LocalPlayer
@@ -42,39 +47,25 @@ local function createInteractionPrompt()
     textLabel.Text = "[E] to Interact"
     textLabel.Font = Enum.Font.SourceSansBold
     textLabel.TextSize = 30
-    textLabel.TextColor3 = Color3.fromRGB(100, 255, 150) -- A greenish prompt color
+    textLabel.TextColor3 = Color3.fromRGB(100, 255, 150)
     textLabel.BackgroundTransparency = 1
     return promptGui
 end
 
-local function startInterruptionCheck()
-    local startCharacter = player.Character
-    if not startCharacter or not startCharacter.PrimaryPart then return function() return true end, function() end end
-    local startPos = startCharacter.PrimaryPart.Position
-    local wasInterrupted = false
-    local conn = RunService.Heartbeat:Connect(function()
-        local currentCharacter = player.Character
-        if wasInterrupted then return end
-        if currentCharacter and currentCharacter.PrimaryPart and currentCharacter == startCharacter then
-            if (currentCharacter.PrimaryPart.Position - startPos).Magnitude > CONFIG.INTERACTION_DISTANCE then
-                wasInterrupted = true
-            end
-        else
-            wasInterrupted = true
-        end
-    end)
-    local function isInterrupted() return wasInterrupted end
-    local function stop() conn:Disconnect() conn = nil end
-    return isInterrupted, stop
-end
+-- This function is now responsible for the entire UI lifecycle
+local function showStoreUI()
+    if isUiVisible then return end
 
--- Helper function to create the main store UI
-local function createStoreGui()
+    -- Get the dynamic store data from the server
+    local currentItems, playerCoins = getStoreData:InvokeServer()
+    if not currentItems then
+        warn("StoreClient: Could not get store data from server or store is not active.")
+        return
+    end
+
     isUiVisible = true
 
-    local remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
-    local purchaseItemRequest = remotes:WaitForChild("PurchaseItemRequest")
-
+    -- Create the base GUI
     local screenGui = Instance.new("ScreenGui", player.PlayerGui)
     screenGui.Name = "StoreGui"
     screenGui.ResetOnSpawn = false
@@ -94,6 +85,15 @@ local function createStoreGui()
     titleLabel.TextColor3 = Color3.new(1, 1, 1)
     titleLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 
+    local coinsLabel = Instance.new("TextLabel", mainFrame)
+    coinsLabel.Size = UDim2.new(0, 200, 0, 30)
+    coinsLabel.Position = UDim2.new(0, 10, 1, -40)
+    coinsLabel.Font = Enum.Font.SourceSansBold
+    coinsLabel.TextSize = 20
+    coinsLabel.TextColor3 = Color3.new(1,1,1)
+    coinsLabel.BackgroundTransparency = 1
+    coinsLabel.Text = string.format("Your Coins: %d", playerCoins)
+
     local closeButton = Instance.new("TextButton", mainFrame)
     closeButton.Size = UDim2.new(0, 30, 0, 30)
     closeButton.Position = UDim2.new(1, -35, 0, 5)
@@ -103,29 +103,58 @@ local function createStoreGui()
     closeButton.TextColor3 = Color3.new(1, 1, 1)
     closeButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 
-    -- Item Configuration
-    local items = {
-        {Name = "Hammer", Price = 3},
-        {Name = "Med-kit", Price = 6},
-        {Name = "Smoke Bomb", Price = 3},
-        {Name = "Active Cola", Price = 2}
+    -- --- Dynamic Item Buttons & Affordability ---
+    local itemInfo = {
+        ["Hammer"] = {Price = 3},
+        ["Med-kit"] = {Price = 6},
+        ["Smoke Bomb"] = {Price = 3},
+        ["Active Cola"] = {Price = 2}
     }
 
-    for i, itemData in ipairs(items) do
+    for i, itemName in ipairs(currentItems) do
+        local itemData = itemInfo[itemName]
+        if not itemData then continue end
+
         local itemButton = Instance.new("TextButton", mainFrame)
-        itemButton.Name = itemData.Name .. "Button"
+        itemButton.Name = itemName .. "Button"
         itemButton.Size = UDim2.new(0, 250, 0, 50)
-        itemButton.Position = UDim2.new(0.5, -125, 0, 50 + ((i - 1) * 60))
-        itemButton.Text = string.format("%s (%d Coins)", itemData.Name, itemData.Price)
+        itemButton.Position = UDim2.new(0.5, -125, 0, 50 + ((i - 1) * 70))
+        itemButton.Text = string.format("%s (%d Coins)", itemName, itemData.Price)
         itemButton.Font = Enum.Font.SourceSansBold
         itemButton.TextSize = 20
 
-        itemButton.MouseButton1Click:Connect(function()
-            print(string.format("Player requested to buy %s", itemData.Name))
-            purchaseItemRequest:FireServer(itemData.Name)
-        end)
+        if playerCoins < itemData.Price then
+            -- Gray out and disable the button if unaffordable
+            itemButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+            itemButton.TextColor3 = Color3.fromRGB(180, 180, 180)
+            itemButton.AutoButtonColor = false
+        else
+            -- Normal button behavior
+            itemButton.MouseButton1Click:Connect(function()
+                print(string.format("Player requested to buy %s", itemName))
+                purchaseItemRequest:FireServer(itemName)
+            end)
+        end
     end
 
+    -- --- Purchase Failed Feedback ---
+    local feedbackLabel = Instance.new("TextLabel", mainFrame)
+    feedbackLabel.Size = UDim2.new(1, 0, 0, 30)
+    feedbackLabel.Position = UDim2.new(0, 0, 1, -75)
+    feedbackLabel.Font = Enum.Font.SourceSansBold
+    feedbackLabel.TextSize = 22
+    feedbackLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+    feedbackLabel.BackgroundTransparency = 1
+    feedbackLabel.Visible = false
+
+    local purchaseFailedConn = purchaseFailed.OnClientEvent:Connect(function()
+        feedbackLabel.Text = "Insufficient Funds"
+        feedbackLabel.Visible = true
+        task.wait(2)
+        feedbackLabel.Visible = false
+    end)
+
+    -- Cleanup and interruption logic
     local isInterrupted, stopInterruptCheck
     local heartbeatConnection
 
@@ -135,34 +164,34 @@ local function createStoreGui()
             heartbeatConnection:Disconnect()
             heartbeatConnection = nil
         end
-        stopInterruptCheck()
+        if stopInterruptCheck then stopInterruptCheck() end
+        if purchaseFailedConn then purchaseFailedConn:Disconnect() end
         screenGui:Destroy()
     end
 
-    -- Event handlers
     closeButton.MouseButton1Click:Connect(closeGui)
 
-    -- Start checking for interruptions
-    isInterrupted, stopInterruptCheck = startInterruptionCheck()
-
-    heartbeatConnection = RunService.Heartbeat:Connect(function()
-        if isInterrupted() then
-            closeGui()
-        end
-    end)
+    local startCharacter = player.Character
+    if startCharacter and startCharacter.PrimaryPart then
+        local startPos = startCharacter.PrimaryPart.Position
+        heartbeatConnection = RunService.Heartbeat:Connect(function()
+            if not player.Character or not player.Character.PrimaryPart or (player.Character.PrimaryPart.Position - startPos).Magnitude > CONFIG.INTERACTION_DISTANCE then
+                closeGui()
+            end
+        end)
+    end
 end
 
 function StoreClient.init()
-    print("StoreClient initialized.")
+    print("StoreClient.lua loaded.")
 
-    -- Proximity check loop (RenderStepped)
+    -- Proximity check loop
     RunService.RenderStepped:Connect(function()
-        if isUiVisible then return end -- Don't check for NPCs if the UI is open
+        if isUiVisible then return end
 
         local character = player.Character
         local isSurvivor = player.Team and player.Team == Teams.Survivors
 
-        -- Only run for survivors
         if not character or not character.PrimaryPart or not isSurvivor then
             if nearbyNPC and nearbyNPC.Parent then
                  local prompt = nearbyNPC:FindFirstChild("InteractionPrompt")
@@ -182,14 +211,11 @@ function StoreClient.init()
             end
         end
 
-        -- Manage the prompt GUI
         if closestNpcFound ~= nearbyNPC then
-            -- Remove old prompt if it exists
             if nearbyNPC and nearbyNPC.Parent then
                 local oldPrompt = nearbyNPC:FindFirstChild("InteractionPrompt")
                 if oldPrompt then oldPrompt:Destroy() end
             end
-            -- Add new prompt if an NPC is found
             if closestNpcFound then
                 createInteractionPrompt().Parent = closestNpcFound
             end
@@ -203,7 +229,7 @@ function StoreClient.init()
             return
         end
 
-        createStoreGui()
+        showStoreUI()
     end)
 end
 

@@ -15,6 +15,8 @@ local InventoryManager = require(ReplicatedStorage:WaitForChild("MyModules"):Wai
 -- Remotes
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local purchaseItemRequest = remotes:WaitForChild("PurchaseItemRequest")
+local getStoreData = remotes:WaitForChild("GetStoreData")
+local purchaseFailed = remotes:WaitForChild("PurchaseFailed")
 
 local StoreKeeperManager = {}
 
@@ -33,6 +35,15 @@ local NPC_CONFIG = {
 -- State variables
 local activeNPC = nil
 local managementCoroutine = nil
+
+-- Helper function to shuffle a table in place
+local function shuffle(tbl)
+    for i = #tbl, 2, -1 do
+        local j = math.random(i)
+        tbl[i], tbl[j] = tbl[j], tbl[i]
+    end
+    return tbl
+end
 
 -- Private helper to spawn the NPC model at a random location
 local function _spawnNPCRandomly()
@@ -57,6 +68,15 @@ local function _spawnNPCRandomly()
     local z = math.random(NPC_CONFIG.SpawnArea.Min.Z, NPC_CONFIG.SpawnArea.Max.Z)
     local y = NPC_CONFIG.SpawnArea.Min.Y
     activeNPC:SetPrimaryPartCFrame(CFrame.new(x, y, z))
+
+    -- Select and store the random items for this spawn
+    local allItemNames = {}
+    for name, _ in pairs(ITEM_PRICES) do
+        table.insert(allItemNames, name)
+    end
+    shuffle(allItemNames)
+    local currentItems = {allItemNames[1], allItemNames[2]}
+    activeNPC:SetAttribute("CurrentItems", currentItems)
 
     activeNPC.Parent = Workspace
 end
@@ -133,6 +153,7 @@ local function onPurchaseRequest(player, itemName)
         InventoryManager.addItem(player, itemName)
     else
         print(string.format("Player %s has insufficient funds to buy %s", player.Name, itemName))
+        purchaseFailed:FireClient(player)
     end
 end
 
@@ -140,6 +161,20 @@ end
 function StoreKeeperManager.initialize()
     print("StoreKeeperManager initialized and listening for purchases.")
     purchaseItemRequest.OnServerEvent:Connect(onPurchaseRequest)
+
+    getStoreData.OnServerInvoke = function(player)
+        if not activeNPC then return nil, 0 end
+
+        local items = activeNPC:GetAttribute("CurrentItems")
+        local leaderstats = player:FindFirstChild("leaderstats")
+        local levelCoins = leaderstats and leaderstats:FindFirstChild("LevelCoins")
+
+        if items and levelCoins then
+            return items, levelCoins.Value
+        end
+
+        return nil, 0
+    end
 end
 
 return StoreKeeperManager
