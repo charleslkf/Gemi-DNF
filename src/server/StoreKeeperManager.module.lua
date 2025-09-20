@@ -84,7 +84,7 @@ local function _spawnNPCRandomly()
     end
     shuffle(allItemNames)
     local currentItems = {allItemNames[1], allItemNames[2]}
-    activeNPC:SetAttribute("CurrentItems", currentItems)
+    activeNPC:SetAttribute("CurrentItems", table.concat(currentItems, ","))
 
     activeNPC.Parent = Workspace
 end

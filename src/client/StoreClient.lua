@@ -52,18 +52,28 @@ local function createInteractionPrompt()
     return promptGui
 end
 
+-- Helper function to split a string by a delimiter
+local function splitString(str, sep)
+    local fields = {}
+    local pattern = string.format("([^%s]+)", sep)
+    string.gmatch(str, pattern)(function(c) fields[#fields + 1] = c end)
+    return fields
+end
+
 -- This function is now responsible for the entire UI lifecycle
 local function showStoreUI()
     if isUiVisible then return end
 
     -- Get the dynamic store data from the server
-    local currentItems, playerCoins = getStoreData:InvokeServer()
-    if not currentItems then
+    local itemsString, playerCoins = getStoreData:InvokeServer()
+    if not itemsString or itemsString == "" then
         warn("StoreClient: Could not get store data from server or store is not active.")
         return
     end
 
     isUiVisible = true
+
+    local currentItems = splitString(itemsString, ",")
 
     -- Create the base GUI
     local screenGui = Instance.new("ScreenGui", player.PlayerGui)
