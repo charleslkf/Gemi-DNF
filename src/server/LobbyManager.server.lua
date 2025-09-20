@@ -122,6 +122,15 @@ function enterPlaying()
     for _, p in ipairs(currentSurvivors) do p.Team = survivorsTeam end
     print(string.format("Status: Teams assigned. %d Killer(s), %d Survivor(s).", #currentKillers, #currentSurvivors))
 
+    -- Reset LevelCoins for all players in the round
+    for _, player in ipairs(playersInRound) do
+        local leaderstats = player:FindFirstChild("leaderstats")
+        local levelCoins = leaderstats and leaderstats:FindFirstChild("LevelCoins")
+        if levelCoins then
+            levelCoins.Value = 0
+        end
+    end
+
     for _, player in ipairs(playersInRound) do
         local isKiller = (player.Team == killersTeam)
         spawnPlayerCharacter(player, isKiller)

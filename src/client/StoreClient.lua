@@ -125,6 +125,27 @@ local function showStoreUI()
         ["Active Cola"] = {Price = 2}
     }
 
+    local itemButtons = {}
+
+    local function updateButtonStates(newPlayerCoins)
+        for itemName, button in pairs(itemButtons) do
+            local itemData = itemInfo[itemName]
+            if itemData then
+                if newPlayerCoins < itemData.Price then
+                    button.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+                    button.TextColor3 = Color3.fromRGB(180, 180, 180)
+                    button.AutoButtonColor = false
+                    button.Selectable = false
+                else
+                    button.BackgroundColor3 = Color3.fromRGB(80, 80, 80) -- Default color
+                    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    button.AutoButtonColor = true
+                    button.Selectable = true
+                end
+            end
+        end
+    end
+
     for i, itemName in ipairs(currentItems) do
         local itemData = itemInfo[itemName]
         if not itemData then continue end
@@ -137,19 +158,18 @@ local function showStoreUI()
         itemButton.Font = Enum.Font.SourceSansBold
         itemButton.TextSize = 20
 
-        if playerCoins < itemData.Price then
-            -- Gray out and disable the button if unaffordable
-            itemButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-            itemButton.TextColor3 = Color3.fromRGB(180, 180, 180)
-            itemButton.AutoButtonColor = false
-        else
-            -- Normal button behavior
-            itemButton.MouseButton1Click:Connect(function()
+        itemButtons[itemName] = itemButton
+
+        -- Only connect the click event if the button is selectable
+        itemButton.MouseButton1Click:Connect(function()
+            if itemButton.Selectable == true then
                 print(string.format("Player requested to buy %s", itemName))
                 purchaseItemRequest:FireServer(itemName)
-            end)
-        end
+            end
+        end)
     end
+
+    updateButtonStates(playerCoins)
 
     -- --- Purchase Failed Feedback ---
     local feedbackLabel = Instance.new("TextLabel", mainFrame)
@@ -171,6 +191,7 @@ local function showStoreUI()
     -- Cleanup and interruption logic
     local isInterrupted, stopInterruptCheck
     local heartbeatConnection
+    local levelCoinsChangedConn
 
     local function closeGui()
         isUiVisible = false
@@ -180,10 +201,19 @@ local function showStoreUI()
         end
         if stopInterruptCheck then stopInterruptCheck() end
         if purchaseFailedConn then purchaseFailedConn:Disconnect() end
+        if levelCoinsChangedConn then levelCoinsChangedConn:Disconnect() end
         screenGui:Destroy()
     end
 
     closeButton.MouseButton1Click:Connect(closeGui)
+
+    -- Listen for changes to the player's coins and update the UI
+    local leaderstats = player:WaitForChild("leaderstats")
+    local levelCoins = leaderstats:WaitForChild("LevelCoins")
+    levelCoinsChangedConn = levelCoins.Changed:Connect(function(newCoinValue)
+        coinsLabel.Text = string.format("Your Coins: %d", newCoinValue)
+        updateButtonStates(newCoinValue)
+    end)
 
     local startCharacter = player.Character
     if startCharacter and startCharacter.PrimaryPart then
