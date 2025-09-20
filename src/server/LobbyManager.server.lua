@@ -230,4 +230,28 @@ end)
 
 StoreKeeperManager.initialize()
 
+-- Player Stats Setup
+local function setupPlayerStats(player)
+    local leaderstats = Instance.new("Folder")
+    leaderstats.Name = "leaderstats"
+    leaderstats.Parent = player
+
+    local levelCoins = Instance.new("IntValue")
+    levelCoins.Name = "LevelCoins"
+    levelCoins.Value = 0
+    levelCoins.Parent = leaderstats
+
+    local gameCoins = Instance.new("IntValue")
+    gameCoins.Name = "GameCoins"
+    gameCoins.Value = 0
+    gameCoins.Parent = leaderstats
+
+    print(string.format("Initialized stats for %s", player.Name))
+end
+
+Players.PlayerAdded:Connect(setupPlayerStats)
+for _, player in ipairs(Players:GetPlayers()) do
+    setupPlayerStats(player)
+end
+
 print("LobbyManager (v9) is running.")
