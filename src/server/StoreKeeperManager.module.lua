@@ -32,6 +32,14 @@ local NPC_CONFIG = {
     HIDDEN_DURATION = 10
 }
 
+-- Server-side price list to prevent exploits
+local ITEM_PRICES = {
+    ["Hammer"] = 3,
+    ["Med-kit"] = 6,
+    ["Smoke Bomb"] = 3,
+    ["Active Cola"] = 2
+}
+
 -- State variables
 local activeNPC = nil
 local managementCoroutine = nil
@@ -125,13 +133,6 @@ function StoreKeeperManager.stopManaging()
 end
 
 -- Server-side price list to prevent exploits
-local ITEM_PRICES = {
-    ["Hammer"] = 3,
-    ["Med-kit"] = 6,
-    ["Smoke Bomb"] = 3,
-    ["Active Cola"] = 2
-}
-
 local function onPurchaseRequest(player, itemName)
     local price = ITEM_PRICES[itemName]
     if not price then
