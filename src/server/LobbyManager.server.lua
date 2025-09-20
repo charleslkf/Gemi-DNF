@@ -48,6 +48,7 @@ local testAddItemEvent = remotes:WaitForChild("TestAddItemRequest")
 -- Game State
 local gameState = "Waiting"
 local stateTimer = 0
+local currentLevel = 0
 local currentKillers = {}
 local currentSurvivors = {}
 
@@ -90,7 +91,7 @@ end
 function enterWaiting()
     print("Status: Entering Waiting State.")
     MapManager.cleanup()
-    StoreKeeperManager.cleanupNPC()
+    StoreKeeperManager.stopManaging()
     CoinStashManager.cleanupStashes()
     table.clear(currentKillers)
     table.clear(currentSurvivors)
@@ -105,10 +106,11 @@ function enterIntermission()
 end
 
 function enterPlaying()
-    print("Status: Starting Round!")
+    currentLevel = currentLevel + 1
+    print(string.format("Status: Starting Round! (Level %d)", currentLevel))
     stateTimer = CONFIG.ROUND_DURATION
     MapManager.generate()
-    StoreKeeperManager.spawnNPC()
+    StoreKeeperManager.startManaging(currentLevel)
     CoinStashManager.spawnStashes()
 
     local playersInRound = Players:GetPlayers()
