@@ -15,6 +15,9 @@
       },
       "StoreKeeperManager": {
         "$path": "src/server/StoreKeeperManager.module.lua"
+      },
+      "CoinStashManager": {
+        "$path": "src/server/CoinStashManager.module.lua"
       }
     },
     "ReplicatedStorage": {
