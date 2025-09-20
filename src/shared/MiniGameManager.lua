@@ -13,7 +13,9 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 
 -- Modules
-local InteractionUtil = require(script.Parent:WaitForChild("InteractionUtil"))
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local MyModules = ReplicatedStorage:WaitForChild("MyModules")
+local InteractionUtil = require(MyModules:WaitForChild("InteractionUtil"))
 
 -- Player Globals
 local player = Players.LocalPlayer
