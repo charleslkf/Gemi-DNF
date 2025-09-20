@@ -55,8 +55,12 @@ end
 -- Helper function to split a string by a delimiter
 local function splitString(str, sep)
     local fields = {}
+    if str == nil then return fields end
+
     local pattern = string.format("([^%s]+)", sep)
-    string.gmatch(str, pattern)(function(c) fields[#fields + 1] = c end)
+    for field in string.gmatch(str, pattern) do
+        table.insert(fields, field)
+    end
     return fields
 end
 
