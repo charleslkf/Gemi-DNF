@@ -34,6 +34,9 @@
         },
         "KillerAbilityManager": {
           "$path": "src/shared/KillerAbilityManager.module.lua"
+        },
+        "InteractionUtil": {
+          "$path": "src/shared/InteractionUtil.lua"
         }
       },
       "Remotes": {

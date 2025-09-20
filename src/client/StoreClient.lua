@@ -1,5 +1,5 @@
 --[[
-    StoreClient.module.lua
+    StoreClient.lua
     by Jules
 
     This client-side script handles all player interaction with the
@@ -12,6 +12,11 @@ local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local Teams = game:GetService("Teams")
 local Workspace = game:GetService("Workspace")
+
+-- Modules
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local MyModules = ReplicatedStorage:WaitForChild("MyModules")
+local InteractionUtil = require(MyModules:WaitForChild("InteractionUtil"))
 
 -- Player Globals
 local player = Players.LocalPlayer
@@ -88,10 +93,29 @@ local function createStoreGui()
         itemButton.TextSize = 20
     end
 
-    -- Event handlers
-    closeButton.MouseButton1Click:Connect(function()
-        screenGui:Destroy()
+    local isInterrupted, stopInterruptCheck
+    local heartbeatConnection
+
+    local function closeGui()
         isUiVisible = false
+        if heartbeatConnection then
+            heartbeatConnection:Disconnect()
+            heartbeatConnection = nil
+        end
+        stopInterruptCheck()
+        screenGui:Destroy()
+    end
+
+    -- Event handlers
+    closeButton.MouseButton1Click:Connect(closeGui)
+
+    -- Start checking for interruptions
+    isInterrupted, stopInterruptCheck = InteractionUtil.startInterruptionCheck(player, RunService, CONFIG.INTERACTION_DISTANCE)
+
+    heartbeatConnection = RunService.Heartbeat:Connect(function()
+        if isInterrupted() then
+            closeGui()
+        end
     end)
 end
 
