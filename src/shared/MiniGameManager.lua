@@ -13,9 +13,6 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 
 -- Modules
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local MyModules = ReplicatedStorage:WaitForChild("MyModules")
-local InteractionUtil = require(MyModules:WaitForChild("InteractionUtil"))
 
 -- Player Globals
 local player = Players.LocalPlayer
@@ -66,6 +63,27 @@ local function createBaseGui(title)
     timerLabel.BackgroundTransparency = 1
 
     return screenGui, frame, timerLabel
+end
+
+local function startInterruptionCheck()
+    local startCharacter = player.Character
+    if not startCharacter or not startCharacter.PrimaryPart then return function() return true end, function() end end
+    local startPos = startCharacter.PrimaryPart.Position
+    local wasInterrupted = false
+    local conn = RunService.Heartbeat:Connect(function()
+        local currentCharacter = player.Character
+        if wasInterrupted then return end
+        if currentCharacter and currentCharacter.PrimaryPart and currentCharacter == startCharacter then
+            if (currentCharacter.PrimaryPart.Position - startPos).Magnitude > CONFIG.INTERRUPT_MOVE_DISTANCE then
+                wasInterrupted = true
+            end
+        else
+            wasInterrupted = true
+        end
+    end)
+    local function isInterrupted() return wasInterrupted end
+    local function stop() conn:Disconnect() end
+    return isInterrupted, stop
 end
 
 local function createInteractionPrompt()
@@ -129,8 +147,7 @@ end
 
 function MiniGameManager.startButtonMashing()
     local screenGui, frame, timerLabel = createBaseGui("Mash the Button!")
-    local success = false; local wasInterrupted = false
-    local isInterrupted, stopInterruptCheck = InteractionUtil.startInterruptionCheck(player, RunService, CONFIG.INTERRUPT_MOVE_DISTANCE)
+    local success = false; local wasInterrupted = false; local isInterrupted, stopInterruptCheck = startInterruptionCheck()
     local mashButton = Instance.new("TextButton", frame); mashButton.Size = UDim2.new(0, 150, 0, 50); mashButton.Position = UDim2.new(0.5, 0, 0.6, 0); mashButton.AnchorPoint = Vector2.new(0.5, 0.5); mashButton.Text = "CLICK!"; mashButton.Font = Enum.Font.SourceSansBold; mashButton.TextSize = 28
     local counterLabel = Instance.new("TextLabel", frame); counterLabel.Size = UDim2.new(0, 150, 0, 30); counterLabel.Position = UDim2.new(0.5, -75, 0.3, 0); counterLabel.Font = Enum.Font.SourceSansBold; counterLabel.TextSize = 24; counterLabel.TextColor3 = Color3.new(1,1,1); counterLabel.BackgroundTransparency = 1
     local goal = 25; local current = 0; local duration = 5; counterLabel.Text = string.format("%d / %d", current, goal)
@@ -141,8 +158,7 @@ end
 
 function MiniGameManager.startQTE()
     local screenGui, frame, timerLabel = createBaseGui("Memory Check")
-    local success = false; local wasInterrupted = false
-    local isInterrupted, stopInterruptCheck = InteractionUtil.startInterruptionCheck(player, RunService, CONFIG.INTERRUPT_MOVE_DISTANCE)
+    local success = false; local wasInterrupted = false; local isInterrupted, stopInterruptCheck = startInterruptionCheck()
     local roundsToWin = 3; local currentRound = 1
     local roundCounter = Instance.new("TextLabel", frame); roundCounter.Size = UDim2.new(0, 200, 0, 30); roundCounter.Position = UDim2.new(0, 10, 1, -40); roundCounter.Font = Enum.Font.SourceSansBold; roundCounter.TextSize = 20; roundCounter.TextColor3 = Color3.new(1,1,1); roundCounter.BackgroundTransparency = 1; roundCounter.Text = string.format("Round: %d / %d", currentRound-1, roundsToWin)
     local buttons = {}; for r=1,3 do for c=1,3 do local btn=Instance.new("TextButton",frame); btn.Size=UDim2.new(0,100,0,80); btn.Position=UDim2.new(0.5,-165+(c-1)*110,0.5,-130+(r-1)*90); btn.BackgroundColor3=Color3.fromRGB(80,80,80); table.insert(buttons,btn) end end

@@ -34,9 +34,6 @@
         },
         "KillerAbilityManager": {
           "$path": "src/shared/KillerAbilityManager.module.lua"
-        },
-        "InteractionUtil": {
-          "$path": "src/shared/InteractionUtil.lua"
         }
       },
       "Remotes": {
@@ -45,27 +42,7 @@
     },
     "StarterPlayer": {
       "StarterPlayerScripts": {
-        "MainClient": {
-          "$path": "src/client/MainClient.client.lua"
-        },
-        "StoreClient": {
-          "$path": "src/client/StoreClient.lua"
-        },
-        "AdminControls": {
-          "$path": "src/client/AdminControls.client.lua"
-        },
-        "CagingClient": {
-          "$path": "src/client/CagingClient.client.lua"
-        },
-        "HealthClient": {
-          "$path": "src/client/HealthClient.client.lua"
-        },
-        "InventoryClient": {
-          "$path": "src/client/InventoryClient.client.lua"
-        },
-        "KillerControls": {
-          "$path": "src/client/KillerControls.client.lua"
-        }
+        "$path": "src/client"
       }
     }
   }
