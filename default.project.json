@@ -46,7 +46,7 @@
           "$path": "src/client/MainClient.client.lua"
         },
         "StoreClient": {
-          "$path": "src/client/StoreClient.module.lua"
+          "$path": "src/client/StoreClient.lua"
         },
         "AdminControls": {
           "$path": "src/client/AdminControls.client.lua"
