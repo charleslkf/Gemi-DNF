@@ -7,6 +7,7 @@
 ]]
 
 local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
 
 local CoinStashManager = {}
 
@@ -55,6 +56,33 @@ local function _createChestModel()
     lidWeld.Part0 = base
     lidWeld.Part1 = lid
     lidWeld.Parent = base
+
+    -- --- Collection Logic ---
+    chestModel:SetAttribute("Collected", false)
+
+    base.Touched:Connect(function(otherPart)
+        if chestModel:GetAttribute("Collected") == true then return end
+
+        local player = Players:GetPlayerFromCharacter(otherPart.Parent)
+        if not player then return end
+
+        -- Use an attribute as a debounce to prevent multiple collections
+        chestModel:SetAttribute("Collected", true)
+
+        print(string.format("CoinStash collected by %s", player.Name))
+
+        local leaderstats = player:FindFirstChild("leaderstats")
+        local levelCoins = leaderstats and leaderstats:FindFirstChild("LevelCoins")
+
+        if levelCoins then
+            levelCoins.Value = levelCoins.Value + 10
+        end
+
+        -- An effect could be added here later, e.g., sound or particles
+
+        chestModel:Destroy()
+    end)
+    -- ----------------------
 
     return chestModel
 end
