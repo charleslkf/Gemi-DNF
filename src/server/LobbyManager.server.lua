@@ -247,6 +247,7 @@ testAddItemEvent.OnServerEvent:Connect(function(player, itemName)
 end)
 
 StoreKeeperManager.initialize()
+GameStateManager.initialize()
 
 -- Player Stats Setup
 local function setupPlayerStats(player)
