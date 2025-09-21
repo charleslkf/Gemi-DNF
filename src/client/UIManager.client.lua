@@ -20,7 +20,7 @@ screenGui.Parent = playerGui
 local topFrame = Instance.new("Frame")
 topFrame.Name = "TopFrame"
 topFrame.Size = UDim2.new(0, 400, 0, 50)
-topFrame.Position = UDim2.new(0.5, -200, 0, 10) -- Centered, 10px from top
+topFrame.Position = UDim2.new(0.5, -200, 0, 40) -- Centered, 40px from top
 topFrame.BackgroundTransparency = 1
 topFrame.Parent = screenGui
 
