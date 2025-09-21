@@ -6,7 +6,7 @@ local Workspace = game:GetService("Workspace")
 
 -- Configuration
 local MAP_CONFIG = {
-    NumberOfMachines = 9,
+    NumberOfMachines = 3,
     SpawnArea = {
         Min = Vector3.new(-50, 1, -50),
         Max = Vector3.new(50, 1, 50)

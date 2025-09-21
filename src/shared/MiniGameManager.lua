@@ -11,6 +11,11 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- Remotes
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local MachineFixed = Remotes:WaitForChild("MachineFixed")
 
 -- Modules
 
@@ -251,6 +256,8 @@ function MiniGameManager.init()
             -- On success, mark machine as completed and change color
             nearbyMachine:SetAttribute("IsCompleted", true)
             nearbyMachine.Color = Color3.fromRGB(0, 255, 0)
+            -- Notify the server that a machine was fixed
+            MachineFixed:FireServer()
             -- The interaction prompt will be removed on the next RenderStepped cycle
         end
 

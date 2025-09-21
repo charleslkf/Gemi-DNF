@@ -9,13 +9,14 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local GameStateChanged = Remotes:WaitForChild("GameStateChanged")
+local MachineFixed = Remotes:WaitForChild("MachineFixed")
 
 local GameStateManager = {}
 
 -- The central table holding the current state of the game
 local gameState = {
     Timer = 0,
-    MachinesTotal = 9, -- Default value, can be updated
+    MachinesTotal = 3, -- Default value, can be updated
     MachinesCompleted = 0,
     Kills = 0
 }
@@ -55,7 +56,9 @@ end
 
 function GameStateManager.initialize()
     print("GameStateManager initialized.")
-    -- The module is now stateful, initialization can be used for more complex setup later.
+    MachineFixed.OnServerEvent:Connect(function()
+        GameStateManager:IncrementMachinesCompleted()
+    end)
 end
 
 return GameStateManager
