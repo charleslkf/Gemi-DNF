@@ -20,6 +20,7 @@ local CagingManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitFo
 local InventoryManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("InventoryManager"))
 local StoreKeeperManager = require(ServerScriptService:WaitForChild("StoreKeeperManager"))
 local CoinStashManager = require(ServerScriptService:WaitForChild("CoinStashManager"))
+local GameStateManager = require(ServerScriptService:WaitForChild("GameStateManager"))
 
 -- Configuration
 local CONFIG = {
@@ -107,6 +108,7 @@ end
 
 function enterPlaying()
     currentLevel = currentLevel + 1
+    GameStateManager:SetNewRoundState(CONFIG.ROUND_DURATION)
     print(string.format("Status: Starting Round! (Level %d)", currentLevel))
     stateTimer = CONFIG.ROUND_DURATION
     MapManager.generate()
@@ -183,12 +185,14 @@ task.spawn(function()
 
         if gameState == "Intermission" then
             stateTimer = stateTimer - 1
+            GameStateManager:SetTimer(stateTimer)
             print(string.format("Intermission: %d", stateTimer))
             if stateTimer <= 0 then
                 gameState = "Playing"; enterPlaying()
             end
         elseif gameState == "Playing" then
             stateTimer = stateTimer - 1
+            GameStateManager:SetTimer(stateTimer)
             if checkWinConditions() or stateTimer <= 0 then
                 gameState = "PostRound"; enterPostRound()
             end

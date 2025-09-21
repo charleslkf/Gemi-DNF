@@ -124,4 +124,45 @@ itemLabel.LayoutOrder = 3
 itemLabel.Parent = bottomFrame
 
 
+-- Listen for game state updates from the server
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local GameStateChanged = Remotes:WaitForChild("GameStateChanged")
+
+GameStateChanged.OnClientEvent:Connect(function(newState)
+    -- Update Timer
+    local minutes = math.floor(newState.Timer / 60)
+    local seconds = newState.Timer % 60
+    timerLabel.Text = string.format("%d:%02d", minutes, seconds)
+
+    -- Update Machine Count
+    machineLabel.Text = string.format("Machines: %d/%d", newState.MachinesCompleted, newState.MachinesTotal)
+
+    -- Update Kills Count
+    killsLabel.Text = string.format("Kills: %d", newState.Kills)
+end)
+
+-- Listen for local player stat changes
+local leaderstats = player:WaitForChild("leaderstats")
+local levelCoins = leaderstats:WaitForChild("LevelCoins")
+
+levelCoins.Changed:Connect(function(newCoins)
+    coinLabel.Text = string.format("Coins: %d", newCoins)
+end)
+
+local function onCharacterAdded(character)
+    local humanoid = character:WaitForChild("Humanoid")
+    healthBar.Size = UDim2.new(humanoid.Health / humanoid.MaxHealth, 0, 1, 0)
+
+    humanoid.HealthChanged:Connect(function(newHealth)
+        healthBar.Size = UDim2.new(newHealth / humanoid.MaxHealth, 0, 1, 0)
+    end)
+end
+
+if player.Character then
+    onCharacterAdded(player.Character)
+end
+player.CharacterAdded:Connect(onCharacterAdded)
+
+
 print("UIManager.client.lua loaded and created base frames.")

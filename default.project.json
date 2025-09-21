@@ -18,6 +18,9 @@
       },
       "CoinStashManager": {
         "$path": "src/server/CoinStashManager.module.lua"
+      },
+      "GameStateManager": {
+        "$path": "src/server/GameStateManager.module.lua"
       }
     },
     "ReplicatedStorage": {
