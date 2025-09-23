@@ -50,6 +50,7 @@ function GameStateManager:IncrementMachinesCompleted()
 end
 
 function GameStateManager:IncrementKills()
+    print("GameStateManager: IncrementKills() called.")
     gameState.Kills = gameState.Kills + 1
     _broadcastState()
 end
