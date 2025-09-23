@@ -31,6 +31,7 @@ local CAGE_HEALTH_THRESHOLD = 50
 if RunService:IsServer() then
     -- Forward declaration for lazy loading
     local HealthManager
+    local GameStateManager = require(game:GetService("ServerScriptService"):WaitForChild("GameStateManager"))
 
     local remotes = ReplicatedStorage:WaitForChild("Remotes")
     local playerCagedEvent = remotes:WaitForChild("PlayerCaged")
@@ -113,6 +114,9 @@ if RunService:IsServer() then
 
         -- Fire the elimination event for other systems to listen to
         eliminationEvent:Fire(player, killer)
+
+        -- Update the kill count on the HUD
+        GameStateManager:IncrementKills()
 
         player.Team = nil
         local lobbySpawn = Workspace:FindFirstChild("LobbySpawn")
