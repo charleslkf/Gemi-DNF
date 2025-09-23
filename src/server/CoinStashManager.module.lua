@@ -66,6 +66,11 @@ local function _createChestModel()
         local player = Players:GetPlayerFromCharacter(otherPart.Parent)
         if not player then return end
 
+        -- TEAM CHECK: Only non-killers can collect coins
+        if player.Team and player.Team.Name == "Killers" then
+            return
+        end
+
         -- Use an attribute as a debounce to prevent multiple collections
         chestModel:SetAttribute("Collected", true)
 
