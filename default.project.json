@@ -60,9 +60,6 @@
         "CagingClient": {
           "$path": "src/client/CagingClient.client.lua"
         },
-        "HealthClient": {
-          "$path": "src/client/HealthClient.client.lua"
-        },
         "InventoryClient": {
           "$path": "src/client/InventoryClient.client.lua"
         },
