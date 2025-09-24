@@ -152,11 +152,16 @@ end)
 
 local function onCharacterAdded(character)
     local humanoid = character:WaitForChild("Humanoid")
-    healthBar.Size = UDim2.new(humanoid.Health / humanoid.MaxHealth, 0, 1, 0)
 
-    humanoid.HealthChanged:Connect(function(newHealth)
-        healthBar.Size = UDim2.new(newHealth / humanoid.MaxHealth, 0, 1, 0)
-    end)
+    local function updateHealthBar(currentHealth)
+        local percentage = currentHealth / humanoid.MaxHealth
+        healthBar.Size = UDim2.new(percentage, 0, 1, 0)
+        -- Animate color from green (0.33) to red (0)
+        healthBar.BackgroundColor3 = Color3.fromHSV(0.33 * percentage, 1, 1)
+    end
+
+    updateHealthBar(humanoid.Health)
+    humanoid.HealthChanged:Connect(updateHealthBar)
 end
 
 if player.Character then

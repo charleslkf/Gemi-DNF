@@ -96,47 +96,9 @@ if RunService:IsClient() then
 
     -- Creates or updates the health bar UI on the player's screen.
     function HealthManager.createOrUpdateHealthBar(current, max)
-        local screenGui = playerGui:FindFirstChild(HEALTH_BAR_UI_NAME)
-        if not screenGui then
-            -- Create the GUI if it doesn't exist
-            screenGui = Instance.new("ScreenGui")
-            screenGui.Name = HEALTH_BAR_UI_NAME
-            screenGui.ResetOnSpawn = false
-            screenGui.Parent = playerGui
-
-            local background = Instance.new("Frame", screenGui)
-            background.Name = "Background"
-            background.Size = UDim2.new(0, 200, 0, 20)
-            background.Position = UDim2.new(0.5, -100, 1, -80) -- Bottom center
-            background.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-            background.BorderSizePixel = 1
-
-            local bar = Instance.new("Frame", background)
-            bar.Name = "Bar"
-            bar.Size = UDim2.new(1, 0, 1, 0)
-            bar.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- Green
-
-            local text = Instance.new("TextLabel", background)
-            text.Name = "HealthText"
-            text.Size = UDim2.new(1, 0, 1, 0)
-            text.BackgroundTransparency = 1
-            text.TextColor3 = Color3.fromRGB(0, 0, 0)
-            text.Font = Enum.Font.SourceSansBold
-            text.Text = ""
-        end
-
-        -- Update the bar's size and color
-        local background = screenGui:WaitForChild("Background")
-        local bar = background:WaitForChild("Bar")
-        local text = background:WaitForChild("HealthText")
-
-        local percentage = (current / max)
-        bar.Size = UDim2.new(percentage, 0, 1, 0)
-
-        -- Change color from green to red based on health
-        bar.BackgroundColor3 = Color3.fromHSV(0.33 * percentage, 1, 1)
-
-        text.Text = string.format("%d / %d", current, max)
+        -- This function is intentionally left blank to prevent the creation
+        -- of the old, duplicate health bar. The new health bar is managed
+        -- by UIManager.client.lua.
     end
 end
 
