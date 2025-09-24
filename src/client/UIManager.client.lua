@@ -150,24 +150,15 @@ levelCoins.Changed:Connect(function(newCoins)
     coinLabel.Text = string.format("Coins: %d", newCoins)
 end)
 
-local function onCharacterAdded(character)
-    local humanoid = character:WaitForChild("Humanoid")
+-- Listen for health updates directly from the HealthManager
+local healthChangedEvent = Remotes:WaitForChild("HealthChanged")
+healthChangedEvent.OnClientEvent:Connect(function(currentHealth, maxHealth)
+    if maxHealth == 0 then return end -- Avoid division by zero on initialization
 
-    local function updateHealthBar(currentHealth)
-        local percentage = currentHealth / humanoid.MaxHealth
-        healthBar.Size = UDim2.new(percentage, 0, 1, 0)
-        -- Animate color from green (0.33) to red (0)
-        healthBar.BackgroundColor3 = Color3.fromHSV(0.33 * percentage, 1, 1)
-    end
-
-    updateHealthBar(humanoid.Health)
-    humanoid.HealthChanged:Connect(updateHealthBar)
-end
-
-if player.Character then
-    onCharacterAdded(player.Character)
-end
-player.CharacterAdded:Connect(onCharacterAdded)
+    local percentage = currentHealth / maxHealth
+    healthBar.Size = UDim2.new(percentage, 0, 1, 0)
+    healthBar.BackgroundColor3 = Color3.fromHSV(0.33 * percentage, 1, 1)
+end)
 
 
 print("UIManager.client.lua loaded and created base frames.")
