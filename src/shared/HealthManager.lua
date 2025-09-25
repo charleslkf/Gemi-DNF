@@ -40,8 +40,8 @@ if RunService:IsServer() then
             max = maxHealth,
         }
 
-        -- Tell the client to create/update their health bar
-        healthChangedEvent:FireClient(player, maxHealth, maxHealth)
+        -- Tell all clients to create/update the health bar for this player
+        healthChangedEvent:FireAllClients(player, maxHealth, maxHealth)
     end
 
     -- Returns the current health of a player.
@@ -68,8 +68,8 @@ if RunService:IsServer() then
 
         print(string.format("Server: Applied %d damage to %s. New health: %d", amount, player.Name, data.current))
 
-        -- Tell the client to update their health bar
-        healthChangedEvent:FireClient(player, data.current, data.max)
+        -- Tell all clients to update the health bar for this player
+        healthChangedEvent:FireAllClients(player, data.current, data.max)
 
         -- Check for elimination
         if data.current <= 0 then
@@ -94,11 +94,55 @@ if RunService:IsClient() then
     local player = Players.LocalPlayer
     local playerGui = player:WaitForChild("PlayerGui")
 
-    -- Creates or updates the health bar UI on the player's screen.
-    function HealthManager.createOrUpdateHealthBar(current, max)
-        -- This function is intentionally left blank to prevent the creation
-        -- of the old, duplicate health bar. The new health bar is managed
-        -- by UIManager.client.lua.
+    -- Creates or updates a billboard health bar above a player's character.
+    function HealthManager.createOrUpdateHealthBar(targetPlayer, current, max)
+        if not targetPlayer or not targetPlayer.Character then return end
+        local character = targetPlayer.Character
+        local head = character:FindFirstChild("Head")
+        if not head then return end
+
+        -- Find or create the BillboardGui
+        local billboardGui = head:FindFirstChild(HEALTH_BAR_UI_NAME)
+        if not billboardGui then
+            billboardGui = Instance.new("BillboardGui")
+            billboardGui.Name = HEALTH_BAR_UI_NAME
+            billboardGui.Size = UDim2.new(0, 200, 0, 50)
+            billboardGui.StudsOffset = Vector3.new(0, 2.5, 0)
+            billboardGui.AlwaysOnTop = true
+            billboardGui.Parent = head
+
+            local background = Instance.new("Frame", billboardGui)
+            background.Name = "Background"
+            background.Size = UDim2.new(1, 0, 0, 20)
+            background.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+            background.BorderSizePixel = 1
+
+            local bar = Instance.new("Frame", background)
+            bar.Name = "Bar"
+            bar.Size = UDim2.new(1, 0, 1, 0)
+            bar.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+
+            local text = Instance.new("TextLabel", background)
+            text.Name = "HealthText"
+            text.Size = UDim2.new(1, 0, 1, 0)
+            text.BackgroundTransparency = 1
+            text.TextColor3 = Color3.fromRGB(255, 255, 255)
+            text.Font = Enum.Font.SourceSansBold
+        end
+
+        -- Update the bar's size, color, and text
+        local background = billboardGui:WaitForChild("Background")
+        local bar = background:WaitForChild("Bar")
+        local text = background:WaitForChild("HealthText")
+
+        local percentage = 0
+        if max > 0 then
+            percentage = current / max
+        end
+
+        bar.Size = UDim2.new(percentage, 0, 1, 0)
+        bar.BackgroundColor3 = Color3.fromHSV(0.33 * percentage, 1, 1)
+        text.Text = string.format("%d / %d", current, max)
     end
 end
 

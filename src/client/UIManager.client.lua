@@ -85,19 +85,8 @@ bottomListLayout.Padding = UDim.new(0, 5)
 bottomListLayout.Parent = bottomFrame
 
 -- Create Health Bar
-local healthBarFrame = Instance.new("Frame")
-healthBarFrame.Name = "HealthBarFrame"
-healthBarFrame.Size = UDim2.new(0, 300, 0, 20)
-healthBarFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-healthBarFrame.BorderSizePixel = 1
-healthBarFrame.LayoutOrder = 1
-healthBarFrame.Parent = bottomFrame
-
-local healthBar = Instance.new("Frame")
-healthBar.Name = "HealthBar"
-healthBar.Size = UDim2.new(1, 0, 1, 0) -- Start at 100%
-healthBar.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-healthBar.Parent = healthBarFrame
+-- The Health Bar is now a BillboardGUI managed by HealthManager.
+-- The code for the 2D HUD health bar has been removed.
 
 -- Create Coin Count Label
 local coinLabel = Instance.new("TextLabel")
@@ -151,13 +140,13 @@ levelCoins.Changed:Connect(function(newCoins)
 end)
 
 -- Listen for health updates directly from the HealthManager
+-- Listen for health updates for all players and delegate to HealthManager
+local MyModules = ReplicatedStorage:WaitForChild("MyModules")
+local HealthManager = require(MyModules:WaitForChild("HealthManager"))
 local healthChangedEvent = Remotes:WaitForChild("HealthChanged")
-healthChangedEvent.OnClientEvent:Connect(function(currentHealth, maxHealth)
-    if maxHealth == 0 then return end -- Avoid division by zero on initialization
 
-    local percentage = currentHealth / maxHealth
-    healthBar.Size = UDim2.new(percentage, 0, 1, 0)
-    healthBar.BackgroundColor3 = Color3.fromHSV(0.33 * percentage, 1, 1)
+healthChangedEvent.OnClientEvent:Connect(function(player, currentHealth, maxHealth)
+    HealthManager.createOrUpdateHealthBar(player, currentHealth, maxHealth)
 end)
 
 
