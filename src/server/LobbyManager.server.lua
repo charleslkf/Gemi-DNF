@@ -179,9 +179,18 @@ end
 function checkWinConditions()
     -- Count players who are still in the game and on their assigned team
     local activeSurvivors = 0
-    for _, survivor in ipairs(currentSurvivors) do
-        if survivor.Parent and survivor.Team == survivorsTeam then
-            activeSurvivors = activeSurvivors + 1
+    for _, entity in ipairs(currentSurvivors) do
+        -- Check if the entity is a real player or a bot
+        if entity:IsA("Player") then
+            -- It's a real player, check their team
+            if entity.Parent and entity.Team == survivorsTeam then
+                activeSurvivors = activeSurvivors + 1
+            end
+        else
+            -- It's a bot model, just check if it's still in the workspace
+            if entity.Parent then
+                activeSurvivors = activeSurvivors + 1
+            end
         end
     end
 

@@ -86,7 +86,7 @@ if RunService:IsServer() then
         local data = healthData[entity]
         data.current = math.max(0, data.current - amount)
 
-        print(string.format("Server: Applied %d damage to %s. New health: %d", entity.Name, data.current))
+        print(string.format("Server: Applied %d damage to %s. New health: %d", amount, entity.Name, data.current))
 
         -- Tell all clients to update the health bar for this entity
         healthChangedEvent:FireAllClients(entity, data.current, data.max)
