@@ -156,15 +156,42 @@ end
 -- CLIENT-SIDE LOGIC
 -----------------------------------------------------------------------------
 if RunService:IsClient() then
-    local activeCageUIs = {} -- { [Player]: { gui: BillboardGui, timerThread: thread } }
+    local activeCageUIs = {} -- { [Entity]: { gui: BillboardGui, timerThread: thread } }
 
-    -- Creates and manages a countdown UI over a caged player's head.
-    function CagingManager.showCageUI(cagedPlayer, duration)
-        if not cagedPlayer or not cagedPlayer.Character then return end
+    ---
+    -- Removes the cage UI from an entity.
+    -- @param entity The Player or Model to hide the UI for.
+    function CagingManager.hideCageUI(entity)
+        if activeCageUIs[entity] then
+            local uiData = activeCageUIs[entity]
+            if uiData.timerThread then
+                task.cancel(uiData.timerThread)
+            end
+            if uiData.gui then
+                uiData.gui:Destroy()
+            end
+            activeCageUIs[entity] = nil
+        end
+    end
 
-        CagingManager.hideCageUI(cagedPlayer) -- Clean up any existing UI first
+    ---
+    -- Creates and manages a countdown UI over a caged entity's head.
+    -- @param entity The Player or Model to show the UI for.
+    -- @param duration The countdown duration.
+    function CagingManager.showCageUI(entity, duration)
+        -- Handle both real players (Player) and bots (Model)
+        local character
+        if entity:IsA("Player") then
+            character = entity.Character
+        else
+            character = entity -- It's a bot model
+        end
 
-        local head = cagedPlayer.Character:FindFirstChild("Head")
+        if not entity or not character then return end
+
+        CagingManager.hideCageUI(entity) -- Clean up any existing UI first
+
+        local head = character:FindFirstChild("Head")
         if not head then return end
 
         local billboardGui = Instance.new("BillboardGui")
@@ -183,12 +210,12 @@ if RunService:IsClient() then
         billboardGui.Parent = head
 
         local uiData = { gui = billboardGui, timerThread = nil }
-        activeCageUIs[cagedPlayer] = uiData
+        activeCageUIs[entity] = uiData
 
         if duration == 0 then
             textLabel.Text = "ELIMINATED"
             task.wait(1)
-            CagingManager.hideCageUI(cagedPlayer)
+            CagingManager.hideCageUI(entity)
             return
         end
 
@@ -199,20 +226,6 @@ if RunService:IsClient() then
                 task.wait(1)
             end
         end)
-    end
-
-    -- Removes the cage UI from a player.
-    function CagingManager.hideCageUI(cagedPlayer)
-        if activeCageUIs[cagedPlayer] then
-            local uiData = activeCageUIs[cagedPlayer]
-            if uiData.timerThread then
-                task.cancel(uiData.timerThread)
-            end
-            if uiData.gui then
-                uiData.gui:Destroy()
-            end
-            activeCageUIs[cagedPlayer] = nil
-        end
     end
 end
 
