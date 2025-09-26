@@ -96,10 +96,9 @@ if RunService:IsClient() then
 
     -- Creates or updates a billboard health bar above a player's character.
     function HealthManager.createOrUpdateHealthBar(targetPlayer, current, max)
-        if not targetPlayer or not targetPlayer.Character then return end
-        local character = targetPlayer.Character
-        local head = character:FindFirstChild("Head")
-        if not head then return end
+        if not targetPlayer then return end
+        local character = targetPlayer.Character or targetPlayer.CharacterAdded:Wait()
+        local head = character:WaitForChild("Head")
 
         -- Find or create the BillboardGui
         local billboardGui = head:FindFirstChild(HEALTH_BAR_UI_NAME)
