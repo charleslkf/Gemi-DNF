@@ -106,14 +106,14 @@ if RunService:IsClient() then
         if not billboardGui then
             billboardGui = Instance.new("BillboardGui")
             billboardGui.Name = HEALTH_BAR_UI_NAME
-            billboardGui.Size = UDim2.new(0, 200, 0, 50)
-            billboardGui.StudsOffset = Vector3.new(0, 2.5, 0)
+            billboardGui.Size = UDim2.new(0, 150, 0, 40) -- Shorter and thinner
+            billboardGui.StudsOffset = Vector3.new(0, 3, 0) -- Moved up to avoid overlap
             billboardGui.AlwaysOnTop = true
             billboardGui.Parent = head
 
             local background = Instance.new("Frame", billboardGui)
             background.Name = "Background"
-            background.Size = UDim2.new(1, 0, 0, 20)
+            background.Size = UDim2.new(1, 0, 0, 15) -- Thinner bar
             background.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
             background.BorderSizePixel = 1
 
@@ -126,8 +126,9 @@ if RunService:IsClient() then
             text.Name = "HealthText"
             text.Size = UDim2.new(1, 0, 1, 0)
             text.BackgroundTransparency = 1
-            text.TextColor3 = Color3.fromRGB(255, 255, 255)
+            text.TextColor3 = Color3.fromRGB(0, 0, 0) -- Black text
             text.Font = Enum.Font.SourceSansBold
+            text.TextSize = 15 -- Increased font size
         end
 
         -- Update the bar's size, color, and text
