@@ -46,3 +46,18 @@ This is a client-side `ModuleScript` located in `src/shared`.
 ### Specific Game Mechanics (Click-Oriented)
 - **`startQTE` (Memory Check):** A sequence-clicking game. Must include a round counter.
 - **`startButtonMashing`:** A simple click-mashing game. Must include a timer and a click counter.
+
+## 9. Feature: Simulated Player System
+This system is designed to facilitate testing by ensuring a minimum number of "players" are in a round.
+
+### Core Components
+- **`SimulatedPlayerManager.lua` (`src/shared`):** The core module responsible for spawning, moving, and despawning bot character models.
+- **`BotTemplate` (Asset in `ReplicatedStorage`):** A standard R6 model that is cloned to create new bots. This must be created manually in Studio.
+- **`PlayableArea` (Asset in `Workspace`):** A transparent, non-collidable Part that defines the boundaries for bot movement. This must be created manually in Studio.
+- **`LobbyManager.server.lua` (`src/server`):** The integration point. This script now handles the bot lifecycle.
+
+### Gameplay Integration
+- **Spawning:** At the start of a round, the `LobbyManager` will check the number of real players. If the count is below the `MIN_PLAYERS` config variable (e.g., 5), it will call `SimulatedPlayerManager.spawnSimulatedPlayers()` to create enough bots to meet the minimum.
+- **Team Assignment:** All spawned bots are automatically considered part of the "Survivors" team for win condition checks.
+- **Functionality:** Bots are damageable and can be caged and eliminated just like real players. Their elimination correctly contributes to the Killer's Ultimate Ability counter.
+- **Despawning:** All bots are automatically destroyed when the game returns to the "Waiting" state at the end of a round.
