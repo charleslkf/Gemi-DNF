@@ -21,12 +21,12 @@
       },
       "GameStateManager": {
         "$path": "src/server/GameStateManager.module.lua"
-        },
-        "TestAssetManager": {
-            "$path": "src/server/TestAssetManager.server.lua"
-        },
-        "BotTestRunner": {
-            "$path": "src/server/BotTestRunner.server.lua"
+      },
+      "TestAssetManager": {
+        "$path": "src/server/TestAssetManager.server.lua"
+      },
+      "BotTestRunner": {
+        "$path": "src/server/BotTestRunner.server.lua"
       }
     },
     "ReplicatedStorage": {
@@ -46,6 +46,9 @@
         },
         "KillerAbilityManager": {
           "$path": "src/shared/KillerAbilityManager.module.lua"
+        },
+        "SimulatedPlayerManager": {
+          "$path": "src/shared/SimulatedPlayerManager.lua"
         }
       },
       "Remotes": {

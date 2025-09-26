@@ -5,6 +5,10 @@
     to verify its functionality.
 ]]
 
+-- Configuration
+local BOTS_TO_SPAWN = 5
+local DESPAWN_TIMER_SECONDS = 120 -- 2 minutes
+
 -- Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -17,14 +21,14 @@ task.wait(5)
 
 print("--- Starting Automated Bot Test ---")
 
--- Test spawning 5 bots
-print("Spawning 5 bots...")
-local spawnedBots = SimulatedPlayerManager.spawnSimulatedPlayers(5)
+-- Test spawning bots
+print(string.format("Spawning %d bots...", BOTS_TO_SPAWN))
+local spawnedBots = SimulatedPlayerManager.spawnSimulatedPlayers(BOTS_TO_SPAWN)
 print("Spawned " .. #spawnedBots .. " bots.")
 
 -- Let them wander around for a while to test movement
-print("Bots will now wander for 30 seconds...")
-task.wait(30)
+print(string.format("Bots will now wander for %d seconds...", DESPAWN_TIMER_SECONDS))
+task.wait(DESPAWN_TIMER_SECONDS)
 
 -- Test despawning the bots
 print("Despawning all bots...")
