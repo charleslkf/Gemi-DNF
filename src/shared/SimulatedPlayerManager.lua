@@ -7,6 +7,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+-- Require HealthManager to initialize and clean up bot health
 local HealthManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("HealthManager"))
 
 local SimulatedPlayerManager = {}
@@ -23,7 +24,8 @@ function SimulatedPlayerManager.despawnSimulatedPlayers()
     print(string.format("Despawning %d active bots.", #activeBots))
     for _, botModel in ipairs(activeBots) do
         if botModel and botModel.Parent then
-            HealthManager.cleanupEntity(botModel) -- Clean up health data first
+            -- Clean up the bot's health data before destroying the model
+            HealthManager.cleanupEntity(botModel)
             botModel:Destroy()
         end
     end
@@ -49,7 +51,7 @@ function SimulatedPlayerManager.spawnSimulatedPlayers(count)
     for i = 1, count do
         local newBot = botTemplate:Clone()
         newBot.Name = "Bot" .. i
-
+        
         -- Position the bot before parenting to avoid physics issues
         local spawnCFrame = CFrame.new(math.random(-50, 50), 5, math.random(-50, 50))
         newBot:SetPrimaryPartCFrame(spawnCFrame)
@@ -57,10 +59,10 @@ function SimulatedPlayerManager.spawnSimulatedPlayers(count)
         newBot.Parent = Workspace
 
         table.insert(activeBots, newBot)
-
-        -- Initialize health for the new bot
+        
+        -- Initialize health for the new bot so it can be damaged
         HealthManager.initializeHealth(newBot)
-
+        
         -- Start the movement logic for the newly spawned bot
         SimulatedPlayerManager.startRandomMovement(newBot)
     end
@@ -106,12 +108,12 @@ function SimulatedPlayerManager.startRandomMovement(botModel)
 
             if path.Status == Enum.PathStatus.Success then
                 local waypoints = path:GetWaypoints()
-
+                
                 -- Move to each waypoint in the path
                 for _, waypoint in ipairs(waypoints) do
                     -- Check if the bot still exists before moving
                     if not botModel.Parent then break end
-
+                    
                     humanoid:MoveTo(waypoint.Position)
                     humanoid.MoveToFinished:Wait() -- Wait until the bot reaches the waypoint
                 end
@@ -119,7 +121,7 @@ function SimulatedPlayerManager.startRandomMovement(botModel)
                 -- If path fails, wait a bit before trying again
                 task.wait(2)
             end
-
+            
             -- Small delay to prevent overly frequent pathfinding requests if a bot gets stuck
             task.wait(0.5)
         end
