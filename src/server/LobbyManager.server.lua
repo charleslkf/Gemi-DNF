@@ -137,6 +137,20 @@ function enterPlaying()
         killerPlayer.Team = killersTeam
         table.insert(currentKillers, killerPlayer)
 
+        -- Create or reset the Kills leaderstat for the killer
+        local leaderstats = killerPlayer:FindFirstChild("leaderstats")
+        if leaderstats then
+            local killsStat = leaderstats:FindFirstChild("Kills")
+            if killsStat then
+                killsStat.Value = 0
+            else
+                killsStat = Instance.new("IntValue")
+                killsStat.Name = "Kills"
+                killsStat.Value = 0
+                killsStat.Parent = leaderstats
+            end
+        end
+
         -- Assign all other real players as survivors
         for i, player in ipairs(realPlayers) do
             if i ~= killerIndex then

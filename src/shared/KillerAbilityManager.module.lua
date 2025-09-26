@@ -24,22 +24,30 @@ local ULTIMATE_DURATION = 10 -- seconds
 local ULTIMATE_SOUND_ID = "rbxassetid://2649334024" -- A placeholder menacing sound
 
 -- State
-local eliminationCounts = {} -- { [Player]: number }
 local ultimateActive = {}    -- { [Player]: boolean }
 
 --[[
     This function is connected to the EliminationEvent.
-    It increments the killer's elimination count and triggers the ultimate if the threshold is met.
+    It increments the killer's "Kills" leaderstat and triggers the ultimate if the threshold is met.
 ]]
-function KillerAbilityManager.onElimination(eliminatedPlayer, killer)
+function KillerAbilityManager.onElimination(eliminatedEntity, killer)
     if not killer or not killer:IsA("Player") then return end
 
-    eliminationCounts[killer] = (eliminationCounts[killer] or 0) + 1
-    print(string.format("[AbilityManager] %s now has %d eliminations.", killer.Name, eliminationCounts[killer]))
+    local leaderstats = killer:FindFirstChild("leaderstats")
+    local killsStat = leaderstats and leaderstats:FindFirstChild("Kills")
 
-    if eliminationCounts[killer] >= ELIMINATIONS_FOR_ULTIMATE then
-        -- Reset count and trigger ultimate
-        eliminationCounts[killer] = 0
+    if not killsStat then
+        warn("[AbilityManager] Killer " .. killer.Name .. " does not have a Kills leaderstat.")
+        return
+    end
+
+    -- Increment the leaderstat value
+    killsStat.Value = killsStat.Value + 1
+    local currentKills = killsStat.Value
+    print(string.format("[AbilityManager] %s now has %d eliminations.", killer.Name, currentKills))
+
+    -- Check if the cumulative kill count is a multiple of the threshold
+    if currentKills > 0 and currentKills % ELIMINATIONS_FOR_ULTIMATE == 0 then
         KillerAbilityManager.triggerUltimate(killer)
     end
 end
