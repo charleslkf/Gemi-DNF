@@ -7,6 +7,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local HealthManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("HealthManager"))
 
 local SimulatedPlayerManager = {}
 
@@ -22,6 +23,7 @@ function SimulatedPlayerManager.despawnSimulatedPlayers()
     print(string.format("Despawning %d active bots.", #activeBots))
     for _, botModel in ipairs(activeBots) do
         if botModel and botModel.Parent then
+            HealthManager.cleanupEntity(botModel) -- Clean up health data first
             botModel:Destroy()
         end
     end
@@ -55,6 +57,9 @@ function SimulatedPlayerManager.spawnSimulatedPlayers(count)
         newBot.Parent = Workspace
 
         table.insert(activeBots, newBot)
+
+        -- Initialize health for the new bot
+        HealthManager.initializeHealth(newBot)
 
         -- Start the movement logic for the newly spawned bot
         SimulatedPlayerManager.startRandomMovement(newBot)

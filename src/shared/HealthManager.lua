@@ -26,64 +26,82 @@ if RunService:IsServer() then
     -- Forward declaration for lazy loading
     local CagingManager
 
-    local healthData = {} -- { [Player]: { current: number, max: number } }
+    -- This table now uses the instance (Player or Model) as the key.
+    local healthData = {}
     local remotes = ReplicatedStorage:WaitForChild("Remotes")
     local healthChangedEvent = remotes:WaitForChild("HealthChanged")
 
-    -- Initializes a player's health and informs their client to create the UI.
-    function HealthManager.initializeHealth(player, maxHealth)
-        maxHealth = maxHealth or DEFAULT_MAX_HEALTH
-        print(string.format("Server: Initializing health for %s to %d.", player.Name, maxHealth))
+    ---
+    -- Removes health data for a given entity.
+    -- @param entity The Player or Model to clean up.
+    function HealthManager.cleanupEntity(entity)
+        if healthData[entity] then
+            healthData[entity] = nil
+            print(string.format("Server: Cleared health data for %s.", entity.Name))
+        end
+    end
 
-        healthData[player] = {
+    ---
+    -- Initializes health for an entity (Player or Model) and informs clients.
+    -- @param entity The Player or Model to initialize.
+    -- @param maxHealth The maximum health value.
+    function HealthManager.initializeHealth(entity, maxHealth)
+        maxHealth = maxHealth or DEFAULT_MAX_HEALTH
+        print(string.format("Server: Initializing health for %s to %d.", entity.Name, maxHealth))
+
+        healthData[entity] = {
             current = maxHealth,
             max = maxHealth,
         }
 
-        -- Tell all clients to create/update the health bar for this player
-        healthChangedEvent:FireAllClients(player, maxHealth, maxHealth)
+        -- Tell all clients to create/update the health bar for this entity
+        healthChangedEvent:FireAllClients(entity, maxHealth, maxHealth)
     end
 
-    -- Returns the current health of a player.
-    function HealthManager.getHealth(player)
-        if healthData[player] then
-            return healthData[player].current
+    ---
+    -- Returns the current health of an entity.
+    -- @param entity The Player or Model to query.
+    function HealthManager.getHealth(entity)
+        if healthData[entity] then
+            return healthData[entity].current
         end
         return nil
     end
 
-    -- Applies damage to a player and checks for elimination.
-    function HealthManager.applyDamage(player, amount, damageDealer) -- damageDealer can be nil
+    ---
+    -- Applies damage to an entity and checks for elimination.
+    -- @param entity The Player or Model to damage.
+    -- @param amount The amount of damage to apply.
+    -- @param damageDealer The Player who dealt the damage (can be nil).
+    function HealthManager.applyDamage(entity, amount, damageDealer)
         if not CagingManager then
             CagingManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("CagingManager"))
         end
 
-        if not healthData[player] then
-            warn(string.format("Attempted to apply damage to %s, but they have no health data.", player.Name))
+        if not healthData[entity] then
+            warn(string.format("Attempted to apply damage to %s, but they have no health data.", entity.Name))
             return
         end
 
-        local data = healthData[player]
+        local data = healthData[entity]
         data.current = math.max(0, data.current - amount)
 
-        print(string.format("Server: Applied %d damage to %s. New health: %d", amount, player.Name, data.current))
+        print(string.format("Server: Applied %d damage to %s. New health: %d", entity.Name, data.current))
 
-        -- Tell all clients to update the health bar for this player
-        healthChangedEvent:FireAllClients(player, data.current, data.max)
+        -- Tell all clients to update the health bar for this entity
+        healthChangedEvent:FireAllClients(entity, data.current, data.max)
 
         -- Check for elimination
         if data.current <= 0 then
-            healthData[player] = nil -- Clear health data before elimination
-            CagingManager.eliminatePlayer(player, damageDealer)
+            CagingManager.eliminatePlayer(entity, damageDealer)
+            -- Clear health data after elimination logic has run
+            HealthManager.cleanupEntity(entity)
         end
     end
 
-    -- Cleanup function for when a player leaves
+    -- Cleanup function for when a real player leaves
     Players.PlayerRemoving:Connect(function(player)
-        if healthData[player] then
-            healthData[player] = nil
-            print(string.format("Server: Cleared health data for disconnected player %s.", player.Name))
-        end
+        HealthManager.cleanupEntity(player)
     end)
 end
 

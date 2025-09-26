@@ -63,30 +63,36 @@ local function onInputBegan(input, gameProcessed)
     local targetPart = mouse.Target
     if not targetPart then return end
 
-    -- Find the character model and player from the clicked part
+    -- Find the character model from the clicked part
     local targetCharacter = findCharacterFromPart(targetPart)
-    local targetPlayer = targetCharacter and Players:GetPlayerFromCharacter(targetCharacter)
+    if not targetCharacter or targetCharacter == player.Character then
+        return -- Abort if no character was found, or if it's the killer's own character
+    end
 
-    -- Abort if the target isn't a player or is the killer themself
-    if not targetPlayer or targetPlayer == player then
+    -- Check if the target is a real player
+    local targetPlayer = Players:GetPlayerFromCharacter(targetCharacter)
+    if targetPlayer then
+        -- If it's a real player, they must be on the opposing team
+        if targetPlayer.Team == killersTeam then
+            return
+        end
+    -- If it's not a real player, check if it's a bot model
+    elseif not targetCharacter.Name:match("^Bot") then
+        -- If it's not a player and not a bot, it's an invalid target
         return
     end
 
-    -- Abort if the target player is not a survivor
-    if targetPlayer.Team == killersTeam then
-        return
-    end
-
-    -- Check the distance between the killer and the survivor
+    -- Check the distance between the killer and the target
     local distance = (player.Character.PrimaryPart.Position - targetCharacter.PrimaryPart.Position).Magnitude
     if distance > MAX_ATTACK_DISTANCE then
-        print(string.format("Attack failed: %s is too far away (%.1f studs).", targetPlayer.Name, distance))
+        print(string.format("Attack failed: %s is too far away (%.1f studs).", targetCharacter.Name, distance))
         return
     end
 
-    -- If all checks pass, notify the server
-    print(string.format("Attack success: Firing remote for %s.", targetPlayer.Name))
-    AttackRequest:FireServer(targetPlayer)
+    -- If all checks pass, notify the server, sending the character model itself.
+    -- The server can then determine if it's a player or a bot.
+    print(string.format("Attack success: Firing remote for %s.", targetCharacter.Name))
+    AttackRequest:FireServer(targetCharacter)
 end
 
 -- Connect the handler to user input
