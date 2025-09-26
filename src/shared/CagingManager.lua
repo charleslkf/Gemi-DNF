@@ -38,95 +38,113 @@ if RunService:IsServer() then
     local playerRescuedEvent = remotes:WaitForChild("PlayerRescued")
     local eliminationEvent = remotes:WaitForChild("EliminationEvent")
 
-    local cageData = {} -- { [Player]: { cageCount: number, isTimerActive: boolean, killerWhoCaged: Player } }
+    -- This table now uses the instance (Player or Model) as the key.
+    local cageData = {}
 
     -- Forward declaration
     local eliminatePlayer
 
-    -- Cages a player if their health is low enough.
-    function CagingManager.cagePlayer(player, killer) -- killer can be nil
+    ---
+    -- Cages an entity if their health is low enough.
+    -- @param entity The Player or Model to cage.
+    -- @param killer The Player who initiated the cage.
+    function CagingManager.cagePlayer(entity, killer)
         if not HealthManager then
             HealthManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("HealthManager"))
         end
 
-        local playerHealth = HealthManager.getHealth(player)
-        if not playerHealth or playerHealth > CAGE_HEALTH_THRESHOLD then
+        local entityHealth = HealthManager.getHealth(entity)
+        if not entityHealth or entityHealth > CAGE_HEALTH_THRESHOLD then
             return
         end
 
-        if not cageData[player] then
-            cageData[player] = { cageCount = 0, isTimerActive = false, killerWhoCaged = nil }
+        if not cageData[entity] then
+            cageData[entity] = { cageCount = 0, isTimerActive = false, killerWhoCaged = nil }
         end
 
-        -- A player who is already in a cage cannot be re-caged.
-        if cageData[player].isTimerActive then return end
+        -- An entity who is already in a cage cannot be re-caged.
+        if cageData[entity].isTimerActive then return end
 
-        cageData[player].cageCount += 1
-        cageData[player].killerWhoCaged = killer -- Store the killer who initiated the cage
-        local count = cageData[player].cageCount
+        cageData[entity].cageCount += 1
+        cageData[entity].killerWhoCaged = killer -- Store the killer who initiated the cage
+        local count = cageData[entity].cageCount
         local duration = CAGE_TIMERS[count]
 
-        print(string.format("Server: Caging %s (count: %d). Timer: %ds", player.Name, count, duration or 0))
-        playerCagedEvent:FireAllClients(player, duration)
+        print(string.format("Server: Caging %s (count: %d). Timer: %ds", entity.Name, count, duration or 0))
+        playerCagedEvent:FireAllClients(entity, duration)
 
         if duration == 0 then
-            eliminatePlayer(player, killer)
+            eliminatePlayer(entity, killer)
             return
         end
 
-        cageData[player].isTimerActive = true
+        cageData[entity].isTimerActive = true
         task.spawn(function()
             task.wait(duration)
-            if cageData[player] and cageData[player].isTimerActive then
+            if cageData[entity] and cageData[entity].isTimerActive then
                 -- When the timer runs out, use the stored killer identity
-                local originalKiller = cageData[player].killerWhoCaged
-                eliminatePlayer(player, originalKiller)
+                local originalKiller = cageData[entity].killerWhoCaged
+                eliminatePlayer(entity, originalKiller)
             end
         end)
     end
 
-    -- Returns true if a player is currently in a cage timer.
-    function CagingManager.isCaged(player)
-        return cageData[player] and cageData[player].isTimerActive
+    ---
+    -- Returns true if an entity is currently in a cage timer.
+    -- @param entity The Player or Model to query.
+    function CagingManager.isCaged(entity)
+        return cageData[entity] and cageData[entity].isTimerActive
     end
 
-    -- Rescues a player from their cage timer.
-    function CagingManager.rescuePlayer(player)
-        if not CagingManager.isCaged(player) then
+    ---
+    -- Rescues an entity from their cage timer.
+    -- @param entity The Player or Model to rescue.
+    function CagingManager.rescuePlayer(entity)
+        if not CagingManager.isCaged(entity) then
             return
         end
 
-        print(string.format("Server: %s has been rescued.", player.Name))
-        cageData[player].isTimerActive = false
-        cageData[player].killerWhoCaged = nil -- Clear the killer when rescued
-        playerRescuedEvent:FireAllClients(player)
+        print(string.format("Server: %s has been rescued.", entity.Name))
+        cageData[entity].isTimerActive = false
+        cageData[entity].killerWhoCaged = nil -- Clear the killer when rescued
+        playerRescuedEvent:FireAllClients(entity)
     end
 
-    -- Eliminates a player, sending them back to the lobby.
-    eliminatePlayer = function(player, killer) -- killer can be nil
-        print(string.format("Server: %s has been eliminated.", player.Name))
+    ---
+    -- Eliminates an entity, either respawning a player or destroying a bot.
+    -- @param entity The Player or Model to eliminate.
+    -- @param killer The Player who dealt the final blow.
+    eliminatePlayer = function(entity, killer)
+        print(string.format("Server: %s has been eliminated.", entity.Name))
 
-        if cageData[player] then
-            cageData[player].isTimerActive = false
-            cageData[player].killerWhoCaged = nil
-            cageData[player].cageCount = 0 -- Reset the cage count
+        if cageData[entity] then
+            cageData[entity].isTimerActive = false
+            cageData[entity].killerWhoCaged = nil
+            cageData[entity].cageCount = 0 -- Reset the cage count
         end
 
         -- Fire the elimination event for other systems to listen to
-        eliminationEvent:Fire(player, killer)
+        eliminationEvent:Fire(entity, killer)
 
         -- Update the kill count on the HUD
         GameStateManager:IncrementKills()
 
-        player.Team = nil
-        local lobbySpawn = Workspace:FindFirstChild("LobbySpawn")
-        if lobbySpawn then player.RespawnLocation = lobbySpawn end
-        player:LoadCharacter()
+        -- Check if the entity is a real player or a bot
+        if entity:IsA("Player") then
+            -- It's a real player, so respawn them in the lobby
+            entity.Team = nil
+            local lobbySpawn = Workspace:FindFirstChild("LobbySpawn")
+            if lobbySpawn then entity.RespawnLocation = lobbySpawn end
+            entity:LoadCharacter()
+        else
+            -- It's a bot (a Model), so just destroy it
+            entity:Destroy()
+        end
     end
     -- Make eliminatePlayer accessible to other server scripts
     CagingManager.eliminatePlayer = eliminatePlayer
 
-    -- Cleanup when a player leaves the game
+    -- Cleanup when a real player leaves the game
     Players.PlayerRemoving:Connect(function(player)
         if cageData[player] then
             cageData[player] = nil
@@ -138,15 +156,42 @@ end
 -- CLIENT-SIDE LOGIC
 -----------------------------------------------------------------------------
 if RunService:IsClient() then
-    local activeCageUIs = {} -- { [Player]: { gui: BillboardGui, timerThread: thread } }
+    local activeCageUIs = {} -- { [Entity]: { gui: BillboardGui, timerThread: thread } }
 
-    -- Creates and manages a countdown UI over a caged player's head.
-    function CagingManager.showCageUI(cagedPlayer, duration)
-        if not cagedPlayer or not cagedPlayer.Character then return end
+    ---
+    -- Removes the cage UI from an entity.
+    -- @param entity The Player or Model to hide the UI for.
+    function CagingManager.hideCageUI(entity)
+        if activeCageUIs[entity] then
+            local uiData = activeCageUIs[entity]
+            if uiData.timerThread then
+                task.cancel(uiData.timerThread)
+            end
+            if uiData.gui then
+                uiData.gui:Destroy()
+            end
+            activeCageUIs[entity] = nil
+        end
+    end
 
-        CagingManager.hideCageUI(cagedPlayer) -- Clean up any existing UI first
+    ---
+    -- Creates and manages a countdown UI over a caged entity's head.
+    -- @param entity The Player or Model to show the UI for.
+    -- @param duration The countdown duration.
+    function CagingManager.showCageUI(entity, duration)
+        -- Handle both real players (Player) and bots (Model)
+        local character
+        if entity:IsA("Player") then
+            character = entity.Character
+        else
+            character = entity -- It's a bot model
+        end
 
-        local head = cagedPlayer.Character:FindFirstChild("Head")
+        if not entity or not character then return end
+
+        CagingManager.hideCageUI(entity) -- Clean up any existing UI first
+
+        local head = character:FindFirstChild("Head")
         if not head then return end
 
         local billboardGui = Instance.new("BillboardGui")
@@ -165,12 +210,12 @@ if RunService:IsClient() then
         billboardGui.Parent = head
 
         local uiData = { gui = billboardGui, timerThread = nil }
-        activeCageUIs[cagedPlayer] = uiData
+        activeCageUIs[entity] = uiData
 
         if duration == 0 then
             textLabel.Text = "ELIMINATED"
             task.wait(1)
-            CagingManager.hideCageUI(cagedPlayer)
+            CagingManager.hideCageUI(entity)
             return
         end
 
@@ -181,20 +226,6 @@ if RunService:IsClient() then
                 task.wait(1)
             end
         end)
-    end
-
-    -- Removes the cage UI from a player.
-    function CagingManager.hideCageUI(cagedPlayer)
-        if activeCageUIs[cagedPlayer] then
-            local uiData = activeCageUIs[cagedPlayer]
-            if uiData.timerThread then
-                task.cancel(uiData.timerThread)
-            end
-            if uiData.gui then
-                uiData.gui:Destroy()
-            end
-            activeCageUIs[cagedPlayer] = nil
-        end
     end
 end
 

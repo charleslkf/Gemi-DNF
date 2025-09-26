@@ -34,7 +34,8 @@ local killersTeam = Teams:WaitForChild("Killers")
 local survivorsTeam = Teams:WaitForChild("Survivors")
 
 -- Main Handler for Attack Requests
-local function onAttackRequest(killerPlayer, targetPlayer)
+-- Main Handler for Attack Requests. The target can be a Player object or a Model.
+local function onAttackRequest(killerPlayer, targetCharacter)
     -- Lazily require all modules on first execution
     if not HealthManager then
         HealthManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("HealthManager"))
@@ -44,13 +45,20 @@ local function onAttackRequest(killerPlayer, targetPlayer)
 
     -- 1. VALIDATION AND SECURITY CHECKS
 
-    -- Verify the players exist and have characters
-    if not killerPlayer or not targetPlayer or not killerPlayer.Character or not targetPlayer.Character then
+    -- Verify the killer and target exist and have characters
+    if not killerPlayer or not killerPlayer.Character or not targetCharacter or not targetCharacter:FindFirstChild("Humanoid") then
         return
     end
 
-    -- Verify team affiliations
-    if killerPlayer.Team ~= killersTeam or targetPlayer.Team ~= survivorsTeam then
+    -- Determine if the target is a real player or a bot
+    local targetPlayer = Players:GetPlayerFromCharacter(targetCharacter)
+    if targetPlayer then
+        -- Target is a real player, validate their team
+        if targetPlayer.Team == killersTeam then
+            return -- Killers can't attack other killers
+        end
+    elseif not targetCharacter.Name:match("^Bot") then
+        -- Target is not a player and not a bot, so it's invalid
         return
     end
 
@@ -62,21 +70,25 @@ local function onAttackRequest(killerPlayer, targetPlayer)
     end
 
     -- Verify distance again on the server to prevent exploits
-    local distance = (killerPlayer.Character.PrimaryPart.Position - targetPlayer.Character.PrimaryPart.Position).Magnitude
+    local distance = (killerPlayer.Character.PrimaryPart.Position - targetCharacter.PrimaryPart.Position).Magnitude
     if distance > MAX_ATTACK_DISTANCE then
-        print(string.format("[InteractionManager] Attack blocked: %s is too far from %s (%.1f studs).", killerPlayer.Name, targetPlayer.Name, distance))
+        print(string.format("[InteractionManager] Attack blocked: %s is too far from %s (%.1f studs).", killerPlayer.Name, targetCharacter.Name, distance))
         return
     end
 
+    -- The "target entity" can be either a Player object or a bot's Model.
+    -- Other modules will need to be updated to handle this polymorphism.
+    local targetEntity = targetPlayer or targetCharacter
+
     -- Verify the target is not already caged
-    if CagingManager.isCaged(targetPlayer) then
-        print(string.format("[InteractionManager] Attack blocked: %s is already caged.", targetPlayer.Name))
+    if CagingManager.isCaged(targetEntity) then
+        print(string.format("[InteractionManager] Attack blocked: %s is already caged.", targetCharacter.Name))
         return
     end
 
     -- 2. APPLY GAME LOGIC
 
-    print(string.format("[InteractionManager] Attack validated: %s hit %s.", killerPlayer.Name, targetPlayer.Name))
+    print(string.format("[InteractionManager] Attack validated: %s hit %s.", killerPlayer.Name, targetCharacter.Name))
 
     -- Set the cooldown *before* applying damage
     lastAttackTimes[killerPlayer] = tick()
@@ -84,16 +96,16 @@ local function onAttackRequest(killerPlayer, targetPlayer)
     -- Check if the killer's ultimate is active
     if KillerAbilityManager.isUltimateActive(killerPlayer) then
         -- Perform an instant elimination
-        KillerAbilityManager.performUltimateKill(targetPlayer, killerPlayer)
+        KillerAbilityManager.performUltimateKill(targetEntity, killerPlayer)
     else
         -- Apply normal damage, passing the killerPlayer as the damageDealer
-        HealthManager.applyDamage(targetPlayer, ATTACK_DAMAGE, killerPlayer)
+        HealthManager.applyDamage(targetEntity, ATTACK_DAMAGE, killerPlayer)
 
-        -- Check if the survivor should be caged (only for normal attacks)
-        local survivorHealth = HealthManager.getHealth(targetPlayer)
-        if survivorHealth and survivorHealth <= CAGE_HEALTH_THRESHOLD then
-            print(string.format("[InteractionManager] Health is %d, attempting to cage %s.", survivorHealth, targetPlayer.Name))
-            CagingManager.cagePlayer(targetPlayer, killerPlayer)
+        -- Check if the survivor/bot should be caged (only for normal attacks)
+        local targetHealth = HealthManager.getHealth(targetEntity)
+        if targetHealth and targetHealth <= CAGE_HEALTH_THRESHOLD then
+            print(string.format("[InteractionManager] Health is %d, attempting to cage %s.", targetHealth, targetCharacter.Name))
+            CagingManager.cagePlayer(targetEntity, killerPlayer)
         end
     end
 end

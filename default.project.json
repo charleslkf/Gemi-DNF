@@ -40,6 +40,9 @@
         },
         "KillerAbilityManager": {
           "$path": "src/shared/KillerAbilityManager.module.lua"
+        },
+        "SimulatedPlayerManager": {
+          "$path": "src/shared/SimulatedPlayerManager.lua"
         }
       },
       "Remotes": {
