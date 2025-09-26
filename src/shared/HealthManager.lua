@@ -113,9 +113,18 @@ if RunService:IsClient() then
     local playerGui = player:WaitForChild("PlayerGui")
 
     -- Creates or updates a billboard health bar above a player's character.
-    function HealthManager.createOrUpdateHealthBar(targetPlayer, current, max)
-        if not targetPlayer then return end
-        local character = targetPlayer.Character or targetPlayer.CharacterAdded:Wait()
+    function HealthManager.createOrUpdateHealthBar(targetEntity, current, max)
+        if not targetEntity then return end
+
+        -- Handle both real players (Player) and bots (Model)
+        local character
+        if targetEntity:IsA("Player") then
+            character = targetEntity.Character or targetEntity.CharacterAdded:Wait()
+        else
+            character = targetEntity -- It's a bot model
+        end
+
+        if not character then return end
         local head = character:WaitForChild("Head")
 
         -- Find or create the BillboardGui

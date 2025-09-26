@@ -21,12 +21,6 @@
       },
       "GameStateManager": {
         "$path": "src/server/GameStateManager.module.lua"
-      },
-      "TestAssetManager": {
-        "$path": "src/server/TestAssetManager.server.lua"
-      },
-      "BotTestRunner": {
-        "$path": "src/server/BotTestRunner.server.lua"
       }
     },
     "ReplicatedStorage": {

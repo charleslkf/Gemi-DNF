@@ -18,6 +18,7 @@ local MapManager = require(ServerScriptService:WaitForChild("MapManager"))
 local HealthManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("HealthManager"))
 local CagingManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("CagingManager"))
 local InventoryManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("InventoryManager"))
+local SimulatedPlayerManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("SimulatedPlayerManager"))
 local StoreKeeperManager = require(ServerScriptService:WaitForChild("StoreKeeperManager"))
 local CoinStashManager = require(ServerScriptService:WaitForChild("CoinStashManager"))
 local GameStateManager = require(ServerScriptService:WaitForChild("GameStateManager"))
@@ -29,6 +30,7 @@ local CONFIG = {
     POST_ROUND_DURATION = 5,
     KILLER_SPAWN_DELAY = 5,
     LOBBY_SPAWN_POSITION = Vector3.new(0, 50, 0),
+    MIN_PLAYERS = 5,
 }
 
 -- Teams
@@ -91,6 +93,7 @@ end
 -- State Entry Functions (Non-Blocking)
 function enterWaiting()
     print("Status: Entering Waiting State.")
+    SimulatedPlayerManager.despawnSimulatedPlayers() -- Despawn bots at the end of a round
     MapManager.cleanup()
     StoreKeeperManager.stopManaging()
     CoinStashManager.cleanupStashes()
@@ -115,17 +118,43 @@ function enterPlaying()
     StoreKeeperManager.startManaging(currentLevel)
     CoinStashManager.spawnStashes()
 
-    local playersInRound = Players:GetPlayers()
-    -- Simplified team logic for now
-    table.insert(currentKillers, playersInRound[1])
-    for i = 2, #playersInRound do table.insert(currentSurvivors, playersInRound[i]) end
+    -- Spawn bots if the number of real players is below the minimum.
+    local realPlayers = Players:GetPlayers()
+    local botsToSpawn = 0
+    if #realPlayers < CONFIG.MIN_PLAYERS then
+        botsToSpawn = CONFIG.MIN_PLAYERS - #realPlayers
+    end
+    local spawnedBots = SimulatedPlayerManager.spawnSimulatedPlayers(botsToSpawn)
 
-    for _, p in ipairs(currentKillers) do p.Team = killersTeam end
-    for _, p in ipairs(currentSurvivors) do p.Team = survivorsTeam end
-    print(string.format("Status: Teams assigned. %d Killer(s), %d Survivor(s).", #currentKillers, #currentSurvivors))
+    -- Team Assignment
+    table.clear(currentKillers)
+    table.clear(currentSurvivors)
 
-    -- Reset LevelCoins for all players in the round
-    for _, player in ipairs(playersInRound) do
+    if #realPlayers > 0 then
+        -- Assign one real player as the killer
+        local killerIndex = math.random(#realPlayers)
+        local killerPlayer = realPlayers[killerIndex]
+        killerPlayer.Team = killersTeam
+        table.insert(currentKillers, killerPlayer)
+
+        -- Assign all other real players as survivors
+        for i, player in ipairs(realPlayers) do
+            if i ~= killerIndex then
+                player.Team = survivorsTeam
+                table.insert(currentSurvivors, player)
+            end
+        end
+    end
+
+    -- Add all bots to the survivor list
+    for _, bot in ipairs(spawnedBots) do
+        table.insert(currentSurvivors, bot)
+    end
+
+    print(string.format("Status: Teams assigned. %d Killer(s), %d Survivor(s) (including %d bots).", #currentKillers, #currentSurvivors, #spawnedBots))
+
+    -- Reset LevelCoins for all real players
+    for _, player in ipairs(realPlayers) do
         local leaderstats = player:FindFirstChild("leaderstats")
         local levelCoins = leaderstats and leaderstats:FindFirstChild("LevelCoins")
         if levelCoins then
@@ -133,7 +162,8 @@ function enterPlaying()
         end
     end
 
-    for _, player in ipairs(playersInRound) do
+    -- Spawn characters for real players
+    for _, player in ipairs(realPlayers) do
         local isKiller = (player.Team == killersTeam)
         spawnPlayerCharacter(player, isKiller)
         HealthManager.initializeHealth(player)
