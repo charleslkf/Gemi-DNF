@@ -152,7 +152,7 @@ if RunService:IsClient() then
         local billboardGui = Instance.new("BillboardGui")
         billboardGui.Name = CAGE_UI_NAME
         billboardGui.Size = UDim2.new(0, 200, 0, 50)
-        billboardGui.StudsOffset = Vector3.new(0, 3, 0)
+        billboardGui.StudsOffset = Vector3.new(0, 2.25, 0) -- Lowered to be below the health bar
         billboardGui.AlwaysOnTop = true
 
         local textLabel = Instance.new("TextLabel", billboardGui)
