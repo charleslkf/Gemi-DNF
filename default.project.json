@@ -4,13 +4,74 @@
   "tree": {
     "$className": "DataModel",
     "ServerScriptService": {
-      "MyGameScript": {
-        "$path": "src/server"
+      "LobbyManager": {
+        "$path": "src/server/LobbyManager.server.lua"
+      },
+      "MapManager": {
+        "$path": "src/server/MapManager.lua"
+      },
+      "KillerInteractionManager": {
+        "$path": "src/server/KillerInteractionManager.server.lua"
+      },
+      "StoreKeeperManager": {
+        "$path": "src/server/StoreKeeperManager.module.lua"
+      },
+      "CoinStashManager": {
+        "$path": "src/server/CoinStashManager.module.lua"
+      },
+      "GameStateManager": {
+        "$path": "src/server/GameStateManager.module.lua"
       }
     },
     "ReplicatedStorage": {
       "MyModules": {
-        "$path": "src/shared"
+        "$className": "Folder",
+        "CagingManager": {
+          "$path": "src/shared/CagingManager.lua"
+        },
+        "HealthManager": {
+          "$path": "src/shared/HealthManager.lua"
+        },
+        "InventoryManager": {
+          "$path": "src/shared/InventoryManager.lua"
+        },
+        "MiniGameManager": {
+          "$path": "src/shared/MiniGameManager.lua"
+        },
+        "KillerAbilityManager": {
+          "$path": "src/shared/KillerAbilityManager.module.lua"
+        }
+      },
+      "Remotes": {
+        "$path": "src/remotes"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "MainClient": {
+          "$path": "src/client/MainClient.client.lua"
+        },
+        "StoreClient": {
+          "$path": "src/client/StoreClient.lua"
+        },
+        "AdminControls": {
+          "$path": "src/client/AdminControls.client.lua"
+        },
+        "CagingClient": {
+          "$path": "src/client/CagingClient.client.lua"
+        },
+        "HealthClient": {
+          "$path": "src/client/HealthClient.client.lua"
+        },
+        "InventoryClient": {
+          "$path": "src/client/InventoryClient.client.lua"
+        },
+        "KillerControls": {
+          "$path": "src/client/KillerControls.client.lua"
+        },
+        "UIManager": {
+            "$path": "src/client/UIManager.client.lua"
+        }
       }
     }
   }

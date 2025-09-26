@@ -1,0 +1,2 @@
+-- This script has been intentionally left blank to prevent duplicate UI.
+-- The primary health bar logic is now handled by HealthManager and UIManager.
