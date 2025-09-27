@@ -81,6 +81,8 @@ function SimulatedPlayerManager.startRandomMovement(botModel)
         return
     end
 
+    humanoid.WalkSpeed = 12 -- Reduce speed from the default of 16
+
     local playableArea = Workspace:FindFirstChild("PlayableArea")
     if not playableArea then
         warn("SimulatedPlayerManager: Cannot find PlayableArea part in Workspace. Bots will not move.")
