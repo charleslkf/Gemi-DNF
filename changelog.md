@@ -2,6 +2,17 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 2.2.5
+- **Major Refactor: GameManager**
+  - Centralized the entire game loop logic into a new, authoritative `GameManager.server.lua` script.
+  - This refactor establishes a single source of truth for game state, improving stability and scalability.
+- **Bug Fix: Startup Crash & Sync Issues**
+  - Resolved a critical startup crash caused by circular dependencies and script synchronization problems by creating a new `LobbyUtils` module and neutralizing old, conflicting scripts.
+- **Bug Fix: Manual Start Button**
+  - The "Manual Start" button is now fully functional and correctly managed by the `GameManager`.
+- **Bug Fix: Bot Movement**
+  - The logic to create the `PlayableArea` and `BotTemplate` assets was moved into the `GameManager` to ensure bots can always navigate correctly.
+
 ## Version 2.1.0
 - **Feature: Cumulative Ultimate Ability**
   - Added a visible "Kills" leaderstat for the Killer.

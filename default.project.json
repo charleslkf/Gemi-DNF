@@ -4,12 +4,6 @@
   "tree": {
     "$className": "DataModel",
     "ServerScriptService": {
-      "LobbyUtils": {
-        "$path": "src/server/LobbyUtils.module.lua"
-      },
-      "MapManager": {
-        "$path": "src/server/MapManager.lua"
-      },
       "KillerInteractionManager": {
         "$path": "src/server/KillerInteractionManager.server.lua"
       },
