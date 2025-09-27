@@ -45,6 +45,15 @@ if RunService:IsServer() then
     local eliminatePlayer
 
     ---
+    -- Resets the cage counts for all players at the start of a new round.
+    function CagingManager.resetAllCageCounts()
+        for entity, data in pairs(cageData) do
+            data.cageCount = 0
+        end
+        print("Server: All player cage counts have been reset.")
+    end
+
+    ---
     -- Cages an entity if their health is low enough.
     -- @param entity The Player or Model to cage.
     -- @param killer The Player who initiated the cage.

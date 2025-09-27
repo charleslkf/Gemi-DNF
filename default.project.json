@@ -4,8 +4,8 @@
   "tree": {
     "$className": "DataModel",
     "ServerScriptService": {
-      "LobbyManager": {
-        "$path": "src/server/LobbyManager.server.lua"
+      "LobbyUtils": {
+        "$path": "src/server/LobbyUtils.module.lua"
       },
       "MapManager": {
         "$path": "src/server/MapManager.lua"
@@ -21,6 +21,9 @@
       },
       "GameStateManager": {
         "$path": "src/server/GameStateManager.module.lua"
+      },
+      "GameManager": {
+        "$path": "src/server/GameManager.server.lua"
       }
     },
     "ReplicatedStorage": {

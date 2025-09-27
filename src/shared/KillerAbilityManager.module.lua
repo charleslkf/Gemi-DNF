@@ -21,25 +21,33 @@ local KillerAbilityManager = {}
 -- Configuration
 local ELIMINATIONS_FOR_ULTIMATE = 3
 local ULTIMATE_DURATION = 10 -- seconds
-local ULTIMATE_SOUND_ID = "rbxassetid://2649334024" -- A placeholder menacing sound
+local ULTIMATE_SOUND_ID = "rbxassetid://105412647520497" -- A placeholder menacing sound
 
 -- State
-local eliminationCounts = {} -- { [Player]: number }
 local ultimateActive = {}    -- { [Player]: boolean }
 
 --[[
     This function is connected to the EliminationEvent.
-    It increments the killer's elimination count and triggers the ultimate if the threshold is met.
+    It increments the killer's "Kills" leaderstat and triggers the ultimate if the threshold is met.
 ]]
-function KillerAbilityManager.onElimination(eliminatedPlayer, killer)
+function KillerAbilityManager.onElimination(eliminatedEntity, killer)
     if not killer or not killer:IsA("Player") then return end
 
-    eliminationCounts[killer] = (eliminationCounts[killer] or 0) + 1
-    print(string.format("[AbilityManager] %s now has %d eliminations.", killer.Name, eliminationCounts[killer]))
+    local leaderstats = killer:FindFirstChild("leaderstats")
+    local killsStat = leaderstats and leaderstats:FindFirstChild("Kills")
 
-    if eliminationCounts[killer] >= ELIMINATIONS_FOR_ULTIMATE then
-        -- Reset count and trigger ultimate
-        eliminationCounts[killer] = 0
+    if not killsStat then
+        warn("[AbilityManager] Killer " .. killer.Name .. " does not have a Kills leaderstat.")
+        return
+    end
+
+    -- Increment the leaderstat value
+    killsStat.Value = killsStat.Value + 1
+    local currentKills = killsStat.Value
+    print(string.format("[AbilityManager] %s now has %d eliminations.", killer.Name, currentKills))
+
+    -- Check if the cumulative kill count is a multiple of the threshold
+    if currentKills > 0 and currentKills % ELIMINATIONS_FOR_ULTIMATE == 0 then
         KillerAbilityManager.triggerUltimate(killer)
     end
 end
@@ -63,12 +71,12 @@ function KillerAbilityManager.triggerUltimate(killer)
     -- Create visual and audio effects
     local rootPart = character:FindFirstChild("HumanoidRootPart")
     if rootPart then
-        local trail = Instance.new("Trail")
-        trail.Attachment0 = rootPart:FindFirstChild("RootRigAttachment")
-        trail.Color = ColorSequence.new(Color3.fromRGB(255, 0, 0))
-        trail.Lifetime = 0.5
-        trail.Transparency = NumberSequence.new(0.5)
-        trail.Parent = rootPart
+        -- Create a red glow effect using a PointLight
+        local glow = Instance.new("PointLight")
+        glow.Color = Color3.fromRGB(255, 0, 0)
+        glow.Brightness = 2
+        glow.Range = 20
+        glow.Parent = rootPart
 
         local sound = Instance.new("Sound")
         sound.SoundId = ULTIMATE_SOUND_ID
@@ -79,10 +87,12 @@ function KillerAbilityManager.triggerUltimate(killer)
 
         -- Start countdown to deactivate
         task.delay(ULTIMATE_DURATION, function()
-            if not ultimateActive[killer] then return end -- In case player disconnected
+            -- Check if the player is still valid before cleaning up
+            if not killer.Parent or not ultimateActive[killer] then return end
+
             print(string.format("[AbilityManager] Ultimate for %s has ended.", killer.Name))
             ultimateActive[killer] = nil
-            if trail then trail:Destroy() end
+            if glow then glow:Destroy() end
             if sound then sound:Destroy() end
         end)
     else
@@ -117,7 +127,7 @@ end
 
 -- Cleanup when a player leaves
 Players.PlayerRemoving:Connect(function(player)
-    eliminationCounts[player] = nil
+    -- The eliminationCounts table was removed, so this line is no longer needed.
     ultimateActive[player] = nil
 end)
 
