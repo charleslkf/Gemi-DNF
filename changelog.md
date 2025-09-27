@@ -2,6 +2,16 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 2.3.0
+- **Feature: World Management System**
+  - Created a new `WorldManager.server.lua` script to handle loading and unloading pre-made map assets from `ServerStorage`.
+  - Integrated the `WorldManager` into the `GameManager` to load a random map at the start of each round.
+- **Bug Fix: Random Map Selection**
+  - Fixed a bug where the same map was being loaded every round by properly seeding the random number generator.
+- **Architectural Refactor: Finalized GameManager**
+  - Completed the major refactor by consolidating all game loop, lobby, world, and test asset creation logic into the `GameManager`.
+  - This resolved all outstanding startup crashes and synchronization issues, resulting in a stable and robust game loop.
+
 ## Version 2.2.5
 - **Major Refactor: GameManager**
   - Centralized the entire game loop logic into a new, authoritative `GameManager.server.lua` script.
