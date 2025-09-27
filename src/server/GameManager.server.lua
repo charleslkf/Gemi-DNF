@@ -33,8 +33,8 @@ local CONFIG = {
 }
 
 -- Teams
-local killersTeam = Teams:FindFirstChild("Killers")
-local survivorsTeam = Teams:FindFirstChild("Survivors")
+local killersTeam = Teams:FindFirstChild("Killers") or Instance.new("Team", Teams); killersTeam.Name = "Killers"; killersTeam.TeamColor = BrickColor.new("Really red")
+local survivorsTeam = Teams:FindFirstChild("Survivors") or Instance.new("Team", Teams); survivorsTeam.Name = "Survivors"; survivorsTeam.TeamColor = BrickColor.new("Bright blue")
 
 -- Game State
 local gameState = "Waiting"

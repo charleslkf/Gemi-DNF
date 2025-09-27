@@ -5,7 +5,7 @@
     "$className": "DataModel",
     "ServerScriptService": {
       "LobbyManager": {
-        "$path": "src/server/LobbyManager.server.lua"
+        "$path": "src/server/LobbyManager.module.lua"
       },
       "MapManager": {
         "$path": "src/server/MapManager.lua"

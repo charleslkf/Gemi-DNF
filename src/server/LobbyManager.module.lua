@@ -69,6 +69,4 @@ function LobbyManager.spawnPlayerInMap(player, isKiller, killerSpawnDelay)
     player:LoadCharacter()
 end
 
-print("LobbyManager (refactored) is running.")
-
 return LobbyManager
