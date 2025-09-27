@@ -71,12 +71,12 @@ function KillerAbilityManager.triggerUltimate(killer)
     -- Create visual and audio effects
     local rootPart = character:FindFirstChild("HumanoidRootPart")
     if rootPart then
-        local trail = Instance.new("Trail")
-        trail.Attachment0 = rootPart:FindFirstChild("RootRigAttachment")
-        trail.Color = ColorSequence.new(Color3.fromRGB(255, 0, 0))
-        trail.Lifetime = 0.5
-        trail.Transparency = NumberSequence.new(0.5)
-        trail.Parent = rootPart
+        -- Create a red glow effect using a PointLight
+        local glow = Instance.new("PointLight")
+        glow.Color = Color3.fromRGB(255, 0, 0)
+        glow.Brightness = 2
+        glow.Range = 20
+        glow.Parent = rootPart
 
         local sound = Instance.new("Sound")
         sound.SoundId = ULTIMATE_SOUND_ID
@@ -87,10 +87,12 @@ function KillerAbilityManager.triggerUltimate(killer)
 
         -- Start countdown to deactivate
         task.delay(ULTIMATE_DURATION, function()
-            if not ultimateActive[killer] then return end -- In case player disconnected
+            -- Check if the player is still valid before cleaning up
+            if not killer.Parent or not ultimateActive[killer] then return end
+
             print(string.format("[AbilityManager] Ultimate for %s has ended.", killer.Name))
             ultimateActive[killer] = nil
-            if trail then trail:Destroy() end
+            if glow then glow:Destroy() end
             if sound then sound:Destroy() end
         end)
     else
@@ -125,7 +127,7 @@ end
 
 -- Cleanup when a player leaves
 Players.PlayerRemoving:Connect(function(player)
-    eliminationCounts[player] = nil
+    -- The eliminationCounts table was removed, so this line is no longer needed.
     ultimateActive[player] = nil
 end)
 

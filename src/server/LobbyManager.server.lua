@@ -26,7 +26,7 @@ local GameStateManager = require(ServerScriptService:WaitForChild("GameStateMana
 -- Configuration
 local CONFIG = {
     INTERMISSION_DURATION = 15,
-    ROUND_DURATION = 120,
+    ROUND_DURATION = 180, -- 3 minutes, increased for testing
     POST_ROUND_DURATION = 5,
     KILLER_SPAWN_DELAY = 5,
     LOBBY_SPAWN_POSITION = Vector3.new(0, 50, 0),
