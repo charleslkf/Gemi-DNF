@@ -30,7 +30,7 @@ local CONFIG = {
     POST_ROUND_DURATION = 5,
     KILLER_SPAWN_DELAY = 5,
     LOBBY_SPAWN_POSITION = Vector3.new(0, 50, 0),
-    MIN_PLAYERS = 7, -- Temporarily increased for testing the 6-kill ultimate trigger
+    MIN_PLAYERS = 5,
 }
 
 -- Teams
