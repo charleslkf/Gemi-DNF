@@ -21,7 +21,6 @@ local SimulatedPlayerManager = require(ReplicatedStorage:WaitForChild("MyModules
 local StoreKeeperManager = require(ServerScriptService:WaitForChild("StoreKeeperManager"))
 local CoinStashManager = require(ServerScriptService:WaitForChild("CoinStashManager"))
 local GameStateManager = require(ServerScriptService:WaitForChild("GameStateManager"))
-local LobbyUtils = require(ServerScriptService:WaitForChild("LobbyUtils"))
 
 -- Configuration
 local CONFIG = {
@@ -30,11 +29,22 @@ local CONFIG = {
     POST_ROUND_DURATION = 5,
     KILLER_SPAWN_DELAY = 5,
     MIN_PLAYERS = 5,
+    LOBBY_SPAWN_POSITION = Vector3.new(0, 50, 0),
 }
 
 -- Teams
 local killersTeam = Teams:FindFirstChild("Killers") or Instance.new("Team", Teams); killersTeam.Name = "Killers"; killersTeam.TeamColor = BrickColor.new("Really red")
 local survivorsTeam = Teams:FindFirstChild("Survivors") or Instance.new("Team", Teams); survivorsTeam.Name = "Survivors"; survivorsTeam.TeamColor = BrickColor.new("Bright blue")
+
+-- World Setup for Lobby
+local lobbySpawn = Workspace:FindFirstChild("LobbySpawn")
+if not lobbySpawn then
+    lobbySpawn = Instance.new("SpawnLocation", Workspace)
+    lobbySpawn.Name = "LobbySpawn"
+    lobbySpawn.Position = CONFIG.LOBBY_SPAWN_POSITION
+    lobbySpawn.Anchored = true
+    lobbySpawn.Neutral = true
+end
 
 -- Game State
 local gameState = "Waiting"
@@ -46,6 +56,40 @@ local manualStart = false
 
 -- Forward declarations for state functions
 local enterWaiting, enterIntermission, enterPlaying, enterPostRound, checkWinConditions
+local teleportToLobby, spawnPlayerInMap
+
+-- Helper Functions
+function teleportToLobby(player)
+    if not player or not player.Parent then return end
+    player.Team = nil
+    player.RespawnLocation = lobbySpawn
+    player:LoadCharacter()
+    print(string.format("[GameManager] Teleported %s to lobby.", player.Name))
+end
+
+function spawnPlayerInMap(player, isKiller)
+    local conn
+    conn = player.CharacterAdded:Connect(function(character)
+        if conn then conn:Disconnect(); conn = nil end
+        task.defer(function()
+            if not character or not character.Parent then return end
+            local spawnPos = Vector3.new(math.random(-50, 50), 5, math.random(-50, 50))
+            character:SetPrimaryPartCFrame(CFrame.new(spawnPos))
+            if isKiller then
+                print("[GameManager] Freezing killer: " .. player.Name)
+                local hrp = character:WaitForChild("HumanoidRootPart")
+                hrp.Anchored = true
+                task.delay(CONFIG.KILLER_SPAWN_DELAY, function()
+                    if hrp and hrp.Parent then
+                        print("[GameManager] Unfreezing " .. player.Name)
+                        hrp.Anchored = false
+                    end
+                end)
+            end
+        end)
+    end)
+    player:LoadCharacter()
+end
 
 -- State Entry Functions
 function enterWaiting()
@@ -57,7 +101,7 @@ function enterWaiting()
     table.clear(currentKillers)
     table.clear(currentSurvivors)
     for _, player in ipairs(Players:GetPlayers()) do
-        LobbyUtils.teleportToLobby(player)
+        teleportToLobby(player)
     end
 end
 
@@ -82,7 +126,6 @@ function enterPlaying()
     CoinStashManager.spawnStashes()
     CagingManager.resetAllCageCounts()
 
-    -- Spawn bots
     local realPlayers = Players:GetPlayers()
     local botsToSpawn = 0
     if #realPlayers < CONFIG.MIN_PLAYERS then
@@ -90,7 +133,6 @@ function enterPlaying()
     end
     local spawnedBots = SimulatedPlayerManager.spawnSimulatedPlayers(botsToSpawn)
 
-    -- Team Assignment
     table.clear(currentKillers)
     table.clear(currentSurvivors)
     if #realPlayers > 0 then
@@ -115,10 +157,9 @@ function enterPlaying()
     end
     print(string.format("[GameManager] Teams assigned: %d Killer(s), %d Survivor(s) (including %d bots).", #currentKillers, #currentSurvivors, #spawnedBots))
 
-    -- Spawn and initialize all real players
     for _, player in ipairs(realPlayers) do
         local isKiller = (player.Team == killersTeam)
-        LobbyUtils.spawnPlayerInMap(player, isKiller, CONFIG.KILLER_SPAWN_DELAY)
+        spawnPlayerInMap(player, isKiller)
         HealthManager.initializeHealth(player)
         InventoryManager.initializeInventory(player)
         local leaderstats = player:FindFirstChild("leaderstats")
@@ -133,7 +174,6 @@ function enterPostRound()
     stateTimer = CONFIG.POST_ROUND_DURATION
 end
 
--- Win Condition Logic
 function checkWinConditions()
     local activeSurvivors = 0
     for _, entity in ipairs(currentSurvivors) do
@@ -141,14 +181,12 @@ function checkWinConditions()
             activeSurvivors = activeSurvivors + 1
         end
     end
-
     local activeKillers = 0
     for _, killer in ipairs(currentKillers) do
         if killer.Parent and killer.Team == killersTeam then
             activeKillers = activeKillers + 1
         end
     end
-
     if #currentSurvivors > 0 and activeSurvivors == 0 then
         print("[GameManager] Win Condition: All survivors eliminated. Killers win!")
         return true
@@ -160,9 +198,8 @@ function checkWinConditions()
     return false
 end
 
--- Main Game Loop (Heartbeat)
 task.spawn(function()
-    enterWaiting() -- Initial setup
+    enterWaiting()
     while true do
         task.wait(1)
         if gameState == "Waiting" then
@@ -177,7 +214,7 @@ task.spawn(function()
                 stateTimer = stateTimer - 1
                 GameStateManager:SetTimer(stateTimer)
                 if stateTimer <= 0 then
-                    manualStart = false -- Reset the flag after use
+                    manualStart = false
                     gameState = "Playing"; enterPlaying()
                 end
             end
@@ -196,7 +233,6 @@ task.spawn(function()
     end
 end)
 
--- Player Stats Setup
 local function setupPlayerStats(player)
     local leaderstats = Instance.new("Folder")
     leaderstats.Name = "leaderstats"
@@ -213,7 +249,6 @@ for _, player in ipairs(Players:GetPlayers()) do
     end
 end
 
--- Event Listeners to allow manual control over the game loop
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local resetRoundEvent = remotes:WaitForChild("ResetRoundRequest")
 local startRoundEvent = remotes:WaitForChild("StartRoundRequest")
@@ -225,18 +260,15 @@ resetRoundEvent.OnServerEvent:Connect(function(player)
 end)
 
 startRoundEvent.OnServerEvent:Connect(function(player)
-    -- The GDD specifies automatic start, but we will leave this here for testing.
     print(string.format("[GameManager] Manual start requested by %s.", player.Name))
     if gameState == "Waiting" then
-        manualStart = true -- Set flag to bypass player count check
+        manualStart = true
         gameState = "Intermission"
         enterIntermission()
     end
 end)
 
--- Asset Creation for Testing
 local function createTestAssets()
-    -- --- Create PlayableArea ---
     if not Workspace:FindFirstChild("PlayableArea") then
         print("[GameManager] Creating PlayableArea part for bot navigation.")
         local playableArea = Instance.new("Part")
@@ -248,8 +280,6 @@ local function createTestAssets()
         playableArea.CanCollide = false
         playableArea.Parent = Workspace
     end
-
-    -- --- Create BotTemplate ---
     if not ReplicatedStorage:FindFirstChild("BotTemplate") then
         print("[GameManager] Creating R6 BotTemplate model.")
         local model = Instance.new("Model")
@@ -276,7 +306,6 @@ local function createTestAssets()
     end
 end
 
--- Create assets at startup
 createTestAssets()
 
 print("GameManager is running.")

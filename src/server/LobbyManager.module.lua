@@ -1,3 +1,3 @@
--- This script has been deprecated and its logic moved to LobbyUtils.module.lua and GameManager.server.lua.
+-- This script has been deprecated. Its functionality is now handled by GameManager.server.lua.
 -- It is intentionally left blank to prevent execution.
 return {}
