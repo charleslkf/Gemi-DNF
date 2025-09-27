@@ -21,7 +21,7 @@ local SimulatedPlayerManager = require(ReplicatedStorage:WaitForChild("MyModules
 local StoreKeeperManager = require(ServerScriptService:WaitForChild("StoreKeeperManager"))
 local CoinStashManager = require(ServerScriptService:WaitForChild("CoinStashManager"))
 local GameStateManager = require(ServerScriptService:WaitForChild("GameStateManager"))
-local LobbyManager = require(ServerScriptService:WaitForChild("LobbyManager"))
+local LobbyUtils = require(ServerScriptService:WaitForChild("LobbyUtils"))
 
 -- Configuration
 local CONFIG = {
@@ -56,7 +56,7 @@ function enterWaiting()
     table.clear(currentKillers)
     table.clear(currentSurvivors)
     for _, player in ipairs(Players:GetPlayers()) do
-        LobbyManager.teleportToLobby(player)
+        LobbyUtils.teleportToLobby(player)
     end
 end
 
@@ -111,7 +111,7 @@ function enterPlaying()
     -- Spawn and initialize all real players
     for _, player in ipairs(realPlayers) do
         local isKiller = (player.Team == killersTeam)
-        LobbyManager.spawnPlayerInMap(player, isKiller, CONFIG.KILLER_SPAWN_DELAY)
+        LobbyUtils.spawnPlayerInMap(player, isKiller, CONFIG.KILLER_SPAWN_DELAY)
         HealthManager.initializeHealth(player)
         InventoryManager.initializeInventory(player)
         local leaderstats = player:FindFirstChild("leaderstats")

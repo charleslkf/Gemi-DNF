@@ -4,8 +4,8 @@
   "tree": {
     "$className": "DataModel",
     "ServerScriptService": {
-      "LobbyManager": {
-        "$path": "src/server/LobbyManager.module.lua"
+      "LobbyUtils": {
+        "$path": "src/server/LobbyUtils.module.lua"
       },
       "MapManager": {
         "$path": "src/server/MapManager.lua"
