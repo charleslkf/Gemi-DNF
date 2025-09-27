@@ -1,8 +1,8 @@
 --[[
-    GameManager.server.lua
+    GameManager.server.lua (Consolidated)
 
-    The authoritative "brain" of the game. This script manages the game's state
-    through a formal state machine and orchestrates all other major systems.
+    The authoritative "brain" of the game. This script manages the game's state,
+    map loading, and player spawning to be fully self-contained.
 ]]
 
 -- Services
@@ -11,9 +11,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Teams = game:GetService("Teams")
 local Workspace = game:GetService("Workspace")
+local ServerStorage = game:GetService("ServerStorage")
 
 -- Modules
-local WorldManager = require(ServerScriptService:WaitForChild("WorldManager"))
 local HealthManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("HealthManager"))
 local CagingManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("CagingManager"))
 local InventoryManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("InventoryManager"))
@@ -36,14 +36,18 @@ local CONFIG = {
 local killersTeam = Teams:FindFirstChild("Killers") or Instance.new("Team", Teams); killersTeam.Name = "Killers"; killersTeam.TeamColor = BrickColor.new("Really red")
 local survivorsTeam = Teams:FindFirstChild("Survivors") or Instance.new("Team", Teams); survivorsTeam.Name = "Survivors"; survivorsTeam.TeamColor = BrickColor.new("Bright blue")
 
--- World Setup for Lobby
-local lobbySpawn = Workspace:FindFirstChild("LobbySpawn")
-if not lobbySpawn then
-    lobbySpawn = Instance.new("SpawnLocation", Workspace)
-    lobbySpawn.Name = "LobbySpawn"
-    lobbySpawn.Position = CONFIG.LOBBY_SPAWN_POSITION
-    lobbySpawn.Anchored = true
-    lobbySpawn.Neutral = true
+-- World/Lobby Setup
+local lobbySpawn = Workspace:FindFirstChild("LobbySpawn") or Instance.new("SpawnLocation", Workspace)
+lobbySpawn.Name = "LobbySpawn"
+lobbySpawn.Position = CONFIG.LOBBY_SPAWN_POSITION
+lobbySpawn.Anchored = true
+lobbySpawn.Neutral = true
+
+local mapsFolder = ServerStorage:FindFirstChild("Maps")
+if not mapsFolder then
+    mapsFolder = Instance.new("Folder", ServerStorage)
+    mapsFolder.Name = "Maps"
+    print("[GameManager] Created Maps folder in ServerStorage. Please add map models to it.")
 end
 
 -- Game State
@@ -53,12 +57,40 @@ local currentLevel = 0
 local currentKillers = {}
 local currentSurvivors = {}
 local manualStart = false
+local currentMap = nil
 
--- Forward declarations for state functions
+-- Forward declarations
 local enterWaiting, enterIntermission, enterPlaying, enterPostRound, checkWinConditions
 local teleportToLobby, spawnPlayerInMap
+local loadRandomLevel, cleanupCurrentLevel
 
--- Helper Functions
+-- #############################
+-- ## World & Lobby Helpers   ##
+-- #############################
+
+function cleanupCurrentLevel()
+    if currentMap and currentMap.Parent then
+        currentMap:Destroy()
+        print("[GameManager] Current map cleaned up.")
+    end
+    currentMap = nil
+end
+
+function loadRandomLevel()
+    cleanupCurrentLevel()
+    local availableMaps = mapsFolder:GetChildren()
+    if #availableMaps == 0 then
+        warn("[GameManager] No maps found in ServerStorage/Maps folder!")
+        return nil
+    end
+    local randomIndex = math.random(#availableMaps)
+    local selectedMapTemplate = availableMaps[randomIndex]
+    print(string.format("[GameManager] Loading map: %s", selectedMapTemplate.Name))
+    currentMap = selectedMapTemplate:Clone()
+    currentMap.Parent = Workspace
+    return currentMap
+end
+
 function teleportToLobby(player)
     if not player or not player.Parent then return end
     player.Team = nil
@@ -91,11 +123,14 @@ function spawnPlayerInMap(player, isKiller)
     player:LoadCharacter()
 end
 
--- State Entry Functions
+-- #############################
+-- ## State Machine Logic     ##
+-- #############################
+
 function enterWaiting()
     print("[GameManager] State -> Waiting")
     SimulatedPlayerManager.despawnSimulatedPlayers()
-    WorldManager.cleanupCurrentLevel()
+    cleanupCurrentLevel()
     StoreKeeperManager.stopManaging()
     CoinStashManager.cleanupStashes()
     table.clear(currentKillers)
@@ -115,7 +150,7 @@ function enterPlaying()
     currentLevel = currentLevel + 1
     GameStateManager:SetNewRoundState(CONFIG.ROUND_DURATION)
     stateTimer = CONFIG.ROUND_DURATION
-    local loadedMap = WorldManager.loadRandomLevel()
+    local loadedMap = loadRandomLevel()
     if not loadedMap then
         warn("[GameManager] CRITICAL: No map could be loaded. Returning to Waiting state.")
         gameState = "Waiting"
@@ -203,7 +238,7 @@ task.spawn(function()
     while true do
         task.wait(1)
         if gameState == "Waiting" then
-            if #Players:GetPlayers() >= CONFIG.MIN_PLAYERS then
+            if not manualStart and #Players:GetPlayers() >= CONFIG.MIN_PLAYERS then
                 gameState = "Intermission"; enterIntermission()
             end
         elseif gameState == "Intermission" then

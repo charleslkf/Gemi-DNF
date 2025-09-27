@@ -4,9 +4,6 @@
   "tree": {
     "$className": "DataModel",
     "ServerScriptService": {
-      "WorldManager": {
-        "$path": "src/server/WorldManager.server.lua"
-      },
       "KillerInteractionManager": {
         "$path": "src/server/KillerInteractionManager.server.lua"
       },
