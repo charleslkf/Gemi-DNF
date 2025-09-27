@@ -13,7 +13,7 @@ local Teams = game:GetService("Teams")
 local Workspace = game:GetService("Workspace")
 
 -- Modules
-local MapManager = require(ServerScriptService:WaitForChild("MapManager"))
+local WorldManager = require(ServerScriptService:WaitForChild("WorldManager"))
 local HealthManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("HealthManager"))
 local CagingManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("CagingManager"))
 local InventoryManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("InventoryManager"))
@@ -51,7 +51,7 @@ local enterWaiting, enterIntermission, enterPlaying, enterPostRound, checkWinCon
 function enterWaiting()
     print("[GameManager] State -> Waiting")
     SimulatedPlayerManager.despawnSimulatedPlayers()
-    MapManager.cleanup()
+    WorldManager.cleanupCurrentLevel()
     StoreKeeperManager.stopManaging()
     CoinStashManager.cleanupStashes()
     table.clear(currentKillers)
@@ -71,7 +71,13 @@ function enterPlaying()
     currentLevel = currentLevel + 1
     GameStateManager:SetNewRoundState(CONFIG.ROUND_DURATION)
     stateTimer = CONFIG.ROUND_DURATION
-    MapManager.generate()
+    local loadedMap = WorldManager.loadRandomLevel()
+    if not loadedMap then
+        warn("[GameManager] CRITICAL: No map could be loaded. Returning to Waiting state.")
+        gameState = "Waiting"
+        enterWaiting()
+        return
+    end
     StoreKeeperManager.startManaging(currentLevel)
     CoinStashManager.spawnStashes()
     CagingManager.resetAllCageCounts()
