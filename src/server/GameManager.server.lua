@@ -205,4 +205,24 @@ for _, player in ipairs(Players:GetPlayers()) do
     end
 end
 
+-- Event Listeners to allow manual control over the game loop
+local remotes = ReplicatedStorage:WaitForChild("Remotes")
+local resetRoundEvent = remotes:WaitForChild("ResetRoundRequest")
+local startRoundEvent = remotes:WaitForChild("StartRoundRequest")
+
+resetRoundEvent.OnServerEvent:Connect(function(player)
+    print(string.format("[GameManager] Soft reset requested by %s. Forcing return to Waiting state.", player.Name))
+    gameState = "Waiting"
+    enterWaiting()
+end)
+
+startRoundEvent.OnServerEvent:Connect(function(player)
+    -- The GDD specifies automatic start, but we will leave this here for testing.
+    print(string.format("[GameManager] Manual start requested by %s.", player.Name))
+    if gameState == "Waiting" then
+        gameState = "Intermission"
+        enterIntermission()
+    end
+end)
+
 print("GameManager is running.")
