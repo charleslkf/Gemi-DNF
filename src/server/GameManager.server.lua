@@ -42,6 +42,7 @@ local stateTimer = 0
 local currentLevel = 0
 local currentKillers = {}
 local currentSurvivors = {}
+local manualStart = false
 
 -- Forward declarations for state functions
 local enterWaiting, enterIntermission, enterPlaying, enterPostRound, checkWinConditions
@@ -163,13 +164,14 @@ task.spawn(function()
                 gameState = "Intermission"; enterIntermission()
             end
         elseif gameState == "Intermission" then
-            if #Players:GetPlayers() < CONFIG.MIN_PLAYERS then
+            if not manualStart and #Players:GetPlayers() < CONFIG.MIN_PLAYERS then
                 print("[GameManager] Player count dropped below minimum. Returning to Waiting state.")
                 gameState = "Waiting"; enterWaiting()
             else
                 stateTimer = stateTimer - 1
                 GameStateManager:SetTimer(stateTimer)
                 if stateTimer <= 0 then
+                    manualStart = false -- Reset the flag after use
                     gameState = "Playing"; enterPlaying()
                 end
             end
@@ -220,6 +222,7 @@ startRoundEvent.OnServerEvent:Connect(function(player)
     -- The GDD specifies automatic start, but we will leave this here for testing.
     print(string.format("[GameManager] Manual start requested by %s.", player.Name))
     if gameState == "Waiting" then
+        manualStart = true -- Set flag to bypass player count check
         gameState = "Intermission"
         enterIntermission()
     end
