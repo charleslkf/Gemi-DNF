@@ -5,6 +5,9 @@
     map loading, and player spawning to be fully self-contained.
 ]]
 
+-- Initialize the random number generator to ensure variety
+math.randomseed(os.time())
+
 -- Services
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
