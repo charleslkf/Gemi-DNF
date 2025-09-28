@@ -349,6 +349,7 @@ function enterPlaying()
             leaderstats.LevelCoins.Value = 0
         end
     end
+
 end
 
 function enterPostRound()

@@ -149,5 +149,97 @@ healthChangedEvent.OnClientEvent:Connect(function(player, currentHealth, maxHeal
     HealthManager.createOrUpdateHealthBar(player, currentHealth, maxHealth)
 end)
 
+-- #############################
+-- ## Escape Sequence UI      ##
+-- #############################
+
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+-- Create the UI elements for the escape sequence
+local arrowGui = Instance.new("BillboardGui")
+arrowGui.Name = "EscapeArrowGui"
+arrowGui.Size = UDim2.new(0, 100, 0, 100)
+arrowGui.Adornee = player.Character and player.Character:FindFirstChild("Head")
+arrowGui.AlwaysOnTop = true
+arrowGui.Enabled = false
+arrowGui.Parent = playerGui
+
+local arrowImage = Instance.new("ImageLabel")
+arrowImage.Image = "rbxassetid://5989193313" -- A simple arrow texture
+arrowImage.Size = UDim2.new(1, 0, 1, 0)
+arrowImage.BackgroundTransparency = 1
+arrowImage.Parent = arrowGui
+
+local screenCrackImage = Instance.new("ImageLabel")
+screenCrackImage.Name = "ScreenCrackEffect"
+screenCrackImage.Image = "rbxassetid://268393522" -- A screen crack texture
+screenCrackImage.Size = UDim2.new(1, 0, 1, 0)
+screenCrackImage.BackgroundTransparency = 0.5
+screenCrackImage.Visible = false
+screenCrackImage.Parent = screenGui
+
+local escapeConnection = nil
+
+local function findNearestGate()
+    local playerChar = player.Character
+    if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") then
+        return nil
+    end
+
+    local playerPos = playerChar.HumanoidRootPart.Position
+    local nearestGate, minDistance = nil, math.huge
+
+    for _, part in ipairs(Workspace:GetChildren()) do
+        if part.Name:match("VictoryGate") then
+            local distance = (playerPos - part.Position).Magnitude
+            if distance < minDistance then
+                minDistance = distance
+                nearestGate = part
+            end
+        end
+    end
+    return nearestGate
+end
+
+local function updateEscapeUI()
+    local nearestGate = findNearestGate()
+    if nearestGate and player.Character and player.Character:FindFirstChild("Head") then
+        arrowGui.Adornee = player.Character.Head
+        local direction = (nearestGate.Position - player.Character.Head.Position).Unit
+        arrowGui.CFrame = CFrame.new(player.Character.Head.Position + direction * 5) * CFrame.Angles(0, math.rad(90), 0)
+    else
+        arrowGui.Enabled = false
+    end
+end
+
+-- Update the main state change listener
+GameStateChanged.OnClientEvent:Connect(function(newState)
+    -- Update Timer, Machines, Kills (existing logic)
+    local minutes = math.floor(newState.Timer / 60)
+    local seconds = newState.Timer % 60
+    timerLabel.Text = string.format("%d:%02d", minutes, seconds)
+    machineLabel.Text = string.format("Machines: %d/%d", newState.MachinesCompleted, newState.MachinesTotal)
+    killsLabel.Text = string.format("Kills: %d", newState.Kills)
+
+    -- Handle Escape State
+    if newState.Name == "Escape" then
+        if not escapeConnection then
+            screenCrackImage.Visible = true
+            arrowGui.Enabled = true
+            escapeConnection = RunService.Heartbeat:Connect(updateEscapeUI)
+            print("[UIManager] Escape sequence UI activated.")
+        end
+    else
+        if escapeConnection then
+            escapeConnection:Disconnect()
+            escapeConnection = nil
+            screenCrackImage.Visible = false
+            arrowGui.Enabled = false
+            print("[UIManager] Escape sequence UI deactivated.")
+        end
+    end
+end)
+
 
 print("UIManager.client.lua loaded and created base frames.")
