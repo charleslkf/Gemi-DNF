@@ -198,7 +198,11 @@ function spawnVictoryGates()
                 player.Team = nil
                 print(string.format("[GameManager] Survivor %s has escaped!", player.Name))
 
-                -- Make character invisible and non-collidable
+                -- Make character invisible, non-collidable, and immobile
+                local hrp = character:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    hrp.Anchored = true
+                end
                 for _, part in ipairs(character:GetDescendants()) do
                     if part:IsA("BasePart") then
                         part.Transparency = 1

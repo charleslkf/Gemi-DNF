@@ -155,37 +155,32 @@ end)
 
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+local camera = Workspace.CurrentCamera
 
 -- Create the UI elements for the escape sequence
-local arrowGui = Instance.new("BillboardGui")
-arrowGui.Name = "EscapeArrowGui"
-arrowGui.Size = UDim2.new(0, 100, 0, 100)
-arrowGui.Adornee = player.Character and player.Character:FindFirstChild("Head")
-arrowGui.AlwaysOnTop = true
-arrowGui.Enabled = false
-arrowGui.Parent = playerGui
-
 local arrowImage = Instance.new("ImageLabel")
+arrowImage.Name = "EscapeArrow"
 arrowImage.Image = "rbxassetid://5989193313" -- A simple arrow texture
-arrowImage.Size = UDim2.new(1, 0, 1, 0)
+arrowImage.Size = UDim2.new(0, 50, 0, 50)
+arrowImage.AnchorPoint = Vector2.new(0.5, 0.5)
 arrowImage.BackgroundTransparency = 1
-arrowImage.Parent = arrowGui
+arrowImage.Visible = false
+arrowImage.Parent = screenGui
 
 local screenCrackImage = Instance.new("ImageLabel")
 screenCrackImage.Name = "ScreenCrackEffect"
 screenCrackImage.Image = "rbxassetid://268393522" -- A screen crack texture
+screenCrackImage.ImageTransparency = 0.8
 screenCrackImage.Size = UDim2.new(1, 0, 1, 0)
-screenCrackImage.BackgroundTransparency = 0.5
 screenCrackImage.Visible = false
 screenCrackImage.Parent = screenGui
 
 local escapeConnection = nil
+local flickerCounter = 0
 
 local function findNearestGate()
     local playerChar = player.Character
-    if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") then
-        return nil
-    end
+    if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") then return nil end
 
     local playerPos = playerChar.HumanoidRootPart.Position
     local nearestGate, minDistance = nil, math.huge
@@ -203,18 +198,40 @@ local function findNearestGate()
 end
 
 local function updateEscapeUI()
+    -- Flicker the screen crack effect
+    flickerCounter = (flickerCounter + 1) % 10
+    screenCrackImage.Visible = (flickerCounter < 5)
+
+    -- Update the arrow
     local nearestGate = findNearestGate()
-    if nearestGate and player.Character and player.Character:FindFirstChild("Head") then
-        arrowGui.Adornee = player.Character.Head
-        local direction = (nearestGate.Position - player.Character.Head.Position).Unit
-        arrowGui.CFrame = CFrame.new(player.Character.Head.Position + direction * 5) * CFrame.Angles(0, math.rad(90), 0)
+    if not nearestGate or not camera then
+        arrowImage.Visible = false
+        return
+    end
+
+    local gatePos = nearestGate.Position
+    local screenPoint, onScreen = camera:WorldToScreenPoint(gatePos)
+
+    if onScreen then
+        arrowImage.Position = UDim2.new(0, screenPoint.X, 0, screenPoint.Y)
+        arrowImage.Rotation = 0
+        arrowImage.Visible = true
     else
-        arrowGui.Enabled = false
+        local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+        local direction = (Vector2.new(screenPoint.X, screenPoint.Y) - screenCenter).Unit
+
+        -- Clamp to screen edges
+        local boundX = math.clamp(screenCenter.X + direction.X * 1000, 50, camera.ViewportSize.X - 50)
+        local boundY = math.clamp(screenCenter.Y + direction.Y * 1000, 50, camera.ViewportSize.Y - 50)
+
+        arrowImage.Position = UDim2.new(0, boundX, 0, boundY)
+        arrowImage.Rotation = math.deg(math.atan2(direction.Y, direction.X)) + 90
+        arrowImage.Visible = true
     end
 end
 
 -- Update the main state change listener
-GameStateChanged.OnClientEvent:Connect(function(newState)
+local originalGameStateConnect = GameStateChanged.OnClientEvent:Connect(function(newState)
     -- Update Timer, Machines, Kills (existing logic)
     local minutes = math.floor(newState.Timer / 60)
     local seconds = newState.Timer % 60
@@ -225,8 +242,7 @@ GameStateChanged.OnClientEvent:Connect(function(newState)
     -- Handle Escape State
     if newState.Name == "Escape" then
         if not escapeConnection then
-            screenCrackImage.Visible = true
-            arrowGui.Enabled = true
+            arrowImage.Visible = true
             escapeConnection = RunService.Heartbeat:Connect(updateEscapeUI)
             print("[UIManager] Escape sequence UI activated.")
         end
@@ -235,7 +251,7 @@ GameStateChanged.OnClientEvent:Connect(function(newState)
             escapeConnection:Disconnect()
             escapeConnection = nil
             screenCrackImage.Visible = false
-            arrowGui.Enabled = false
+            arrowImage.Visible = false
             print("[UIManager] Escape sequence UI deactivated.")
         end
     end
