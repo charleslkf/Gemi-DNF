@@ -90,6 +90,25 @@ function loadRandomLevel()
     local selectedMapTemplate = availableMaps[randomIndex]
     print(string.format("[GameManager] Loading map: %s", selectedMapTemplate.Name))
     currentMap = selectedMapTemplate:Clone()
+
+    -- Ensure the map has a PrimaryPart for bounds checking, a common setup oversight.
+    if not currentMap.PrimaryPart then
+        local largestPart, largestSize = nil, 0
+        for _, child in ipairs(currentMap:GetDescendants()) do
+            if child:IsA("BasePart") then
+                local size = child.Size.X * child.Size.Y * child.Size.Z
+                if size > largestSize then
+                    largestSize = size
+                    largestPart = child
+                end
+            end
+        end
+        if largestPart then
+            currentMap.PrimaryPart = largestPart
+            print(string.format("[GameManager] Auto-assigned PrimaryPart for map %s to %s", currentMap.Name, largestPart.Name))
+        end
+    end
+
     currentMap.Parent = Workspace
     return currentMap
 end
