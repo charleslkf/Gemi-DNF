@@ -33,6 +33,7 @@ local CONFIG = {
     KILLER_SPAWN_DELAY = 5,
     MIN_PLAYERS = 5,
     LOBBY_SPAWN_POSITION = Vector3.new(0, 50, 0),
+    MACHINES_TO_SPAWN = 3,
 }
 
 -- Teams
@@ -82,7 +83,6 @@ end
 function loadRandomLevel()
     cleanupCurrentLevel()
 
-    -- Filter out the LMS map from the selection pool for normal rounds
     local allMaps = mapsFolder:GetChildren()
     local availableMaps = {}
     for _, map in ipairs(allMaps) do
@@ -102,7 +102,6 @@ function loadRandomLevel()
     print(string.format("[GameManager] Loading map: %s", selectedMapTemplate.Name))
     currentMap = selectedMapTemplate:Clone()
 
-    -- Ensure the map has a PrimaryPart for bounds checking, a common setup oversight.
     if not currentMap.PrimaryPart then
         local largestPart, largestSize = nil, 0
         for _, child in ipairs(currentMap:GetDescendants()) do
@@ -165,7 +164,7 @@ function cleanupMachines()
 end
 
 function spawnMachines(mapModel)
-    cleanupMachines() -- Ensure no old machines exist
+    cleanupMachines()
 
     local assetsFolder = ServerStorage:FindFirstChild("Assets")
     if not assetsFolder then
@@ -190,11 +189,10 @@ function spawnMachines(mapModel)
     local mapBounds = mapModel.PrimaryPart
     local gameTypes = {"ButtonMash", "MemoryCheck", "MatchingGame"}
 
-    for i = 1, 3 do
+    for i = 1, CONFIG.MACHINES_TO_SPAWN do
         local machine = machineTemplate:Clone()
         machine.Name = "Machine" .. i
 
-        -- Auto-assign PrimaryPart for the machine if it's missing, to prevent crashes.
         if not machine.PrimaryPart then
             local largestPart, largestSize = nil, 0
             for _, child in ipairs(machine:GetDescendants()) do
@@ -221,7 +219,7 @@ function spawnMachines(mapModel)
         machine.Parent = machineFolder
     end
 
-    print("[GameManager] Spawned 5 machines.")
+    print(string.format("[GameManager] Spawned %d machines.", CONFIG.MACHINES_TO_SPAWN))
 end
 
 -- #############################
@@ -250,7 +248,7 @@ end
 function enterPlaying()
     print("[GameManager] State -> Playing")
     currentLevel = currentLevel + 1
-    GameStateManager:SetNewRoundState(CONFIG.ROUND_DURATION)
+    GameStateManager:SetNewRoundState(CONFIG.ROUND_DURATION, CONFIG.MACHINES_TO_SPAWN)
     stateTimer = CONFIG.ROUND_DURATION
     local loadedMap = loadRandomLevel()
     if not loadedMap then
