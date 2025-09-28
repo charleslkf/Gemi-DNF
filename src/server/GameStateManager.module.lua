@@ -35,13 +35,17 @@ function GameStateManager:SetTimer(newTime)
     end
 end
 
-function GameStateManager:SetNewRoundState(roundDuration)
+function GameStateManager:SetNewRoundState(roundDuration, machinesTotal)
     gameState.Timer = roundDuration
-    -- In the future, we can get the real machine count from MapManager
+    gameState.MachinesTotal = machinesTotal or 3 -- Use provided total, or default
     gameState.MachinesCompleted = 0
     gameState.Kills = 0
     _broadcastState()
     print("GameStateManager: Set new round state.")
+end
+
+function GameStateManager:AreAllMachinesRepaired()
+    return gameState.MachinesCompleted >= gameState.MachinesTotal
 end
 
 function GameStateManager:IncrementMachinesCompleted()
