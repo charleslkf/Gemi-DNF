@@ -145,14 +145,17 @@ screenCrackImage.Parent = screenGui
 
 local escapeConnection = nil
 local flickerCounter = 0
+local activeGates = {} -- Will be populated by the server event
 
-local function findNearestGate()
+local function findNearestGateFromActive()
     local playerChar = player.Character
-    if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") then return nil end
+    if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") or #activeGates == 0 then return nil end
+
     local playerPos = playerChar.HumanoidRootPart.Position
     local nearestGate, minDistance = nil, math.huge
-    for _, part in ipairs(Workspace:GetChildren()) do
-        if part.Name:match("VictoryGate") then
+
+    for _, part in ipairs(activeGates) do
+        if part and part.Parent then -- Check if gate is valid
             local distance = (playerPos - part.Position).Magnitude
             if distance < minDistance then
                 minDistance = distance
@@ -167,7 +170,7 @@ local function updateEscapeUI()
     flickerCounter = (flickerCounter + 1) % 10
     screenCrackImage.Visible = (flickerCounter < 5)
 
-    local nearestGate = findNearestGate()
+    local nearestGate = findNearestGateFromActive()
     if nearestGate and camera then
         arrowImage.Visible = true
         local gatePos = nearestGate.Position
@@ -188,6 +191,16 @@ local function updateEscapeUI()
     end
 end
 
+-- Listen for the new dedicated escape event
+local escapeEvent = Remotes:WaitForChild("EscapeSequenceStarted")
+escapeEvent.OnClientEvent:Connect(function(gates)
+    print("[UIManager] Received EscapeSequenceStarted event with gates.")
+    activeGates = gates
+    if not escapeConnection then
+        escapeConnection = RunService.Heartbeat:Connect(updateEscapeUI)
+    end
+end)
+
 -- CONSOLIDATED LISTENER
 GameStateChanged.OnClientEvent:Connect(function(newState)
     -- Update standard HUD elements
@@ -197,18 +210,14 @@ GameStateChanged.OnClientEvent:Connect(function(newState)
     machineLabel.Text = string.format("Machines: %d/%d", newState.MachinesCompleted, newState.MachinesTotal)
     killsLabel.Text = string.format("Kills: %d", newState.Kills)
 
-    -- Handle Escape State UI (Survivors only)
-    if newState.Name == "Escape" and player.Team and player.Team.Name == "Survivors" then
-        if not escapeConnection then
-            escapeConnection = RunService.Heartbeat:Connect(updateEscapeUI)
-            print("[UIManager] Escape sequence UI activated for survivor.")
-        end
-    else
+    -- Handle stopping the Escape State UI
+    if newState.Name ~= "Escape" then
         if escapeConnection then
             escapeConnection:Disconnect()
             escapeConnection = nil
             screenCrackImage.Visible = false
             arrowImage.Visible = false
+            activeGates = {}
             print("[UIManager] Escape sequence UI deactivated.")
         end
     end

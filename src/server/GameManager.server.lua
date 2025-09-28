@@ -167,8 +167,10 @@ end
 
 function activateVictoryGates()
     print("[GameManager] Activating Victory Gates.")
+    local activatedGates = {}
     for _, part in ipairs(Workspace:GetChildren()) do
         if part.Name:match("VictoryGate") then
+            table.insert(activatedGates, part)
             part.Transparency = 0
             part.Material = Enum.Material.Neon
             part.BrickColor = BrickColor.new("Bright yellow")
@@ -198,6 +200,7 @@ function activateVictoryGates()
             end)
         end
     end
+    return activatedGates
 end
 
 function cleanupMachines()
@@ -378,9 +381,19 @@ end
 
 function enterEscape()
     print("[GameManager] State -> ESCAPE")
-    activateVictoryGates()
+    local gates = activateVictoryGates()
     stateTimer = CONFIG.VICTORY_GATE_TIMER
     GameStateManager:SetTimer(stateTimer) -- Update the HUD timer
+
+    -- Fire the new event to all survivors with the gate references
+    local remotes = ReplicatedStorage:WaitForChild("Remotes")
+    local escapeEvent = remotes:WaitForChild("EscapeSequenceStarted")
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Team == survivorsTeam then
+            -- Pass the gates as a table to handle any number of them
+            escapeEvent:FireClient(player, gates)
+        end
+    end
 end
 
 function checkWinConditions()
