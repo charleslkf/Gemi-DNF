@@ -118,37 +118,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local GameStateChanged = Remotes:WaitForChild("GameStateChanged")
 
-GameStateChanged.OnClientEvent:Connect(function(newState)
-    -- Update Timer
-    local minutes = math.floor(newState.Timer / 60)
-    local seconds = newState.Timer % 60
-    timerLabel.Text = string.format("%d:%02d", minutes, seconds)
-
-    -- Update Machine Count
-    machineLabel.Text = string.format("Machines: %d/%d", newState.MachinesCompleted, newState.MachinesTotal)
-
-    -- Update Kills Count
-    killsLabel.Text = string.format("Kills: %d", newState.Kills)
-end)
-
--- Listen for local player stat changes
-local leaderstats = player:WaitForChild("leaderstats")
-local levelCoins = leaderstats:WaitForChild("LevelCoins")
-
-levelCoins.Changed:Connect(function(newCoins)
-    coinLabel.Text = string.format("Coins: %d", newCoins)
-end)
-
--- Listen for health updates directly from the HealthManager
--- Listen for health updates for all players and delegate to HealthManager
-local MyModules = ReplicatedStorage:WaitForChild("MyModules")
-local HealthManager = require(MyModules:WaitForChild("HealthManager"))
-local healthChangedEvent = Remotes:WaitForChild("HealthChanged")
-
-healthChangedEvent.OnClientEvent:Connect(function(player, currentHealth, maxHealth)
-    HealthManager.createOrUpdateHealthBar(player, currentHealth, maxHealth)
-end)
-
 -- #############################
 -- ## Escape Sequence UI      ##
 -- #############################
@@ -157,10 +126,9 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local camera = Workspace.CurrentCamera
 
--- Create the UI elements for the escape sequence
 local arrowImage = Instance.new("ImageLabel")
 arrowImage.Name = "EscapeArrow"
-arrowImage.Image = "rbxassetid://5989193313" -- A simple arrow texture
+arrowImage.Image = "rbxassetid://5989193313"
 arrowImage.Size = UDim2.new(0, 50, 0, 50)
 arrowImage.AnchorPoint = Vector2.new(0.5, 0.5)
 arrowImage.BackgroundTransparency = 1
@@ -169,7 +137,7 @@ arrowImage.Parent = screenGui
 
 local screenCrackImage = Instance.new("ImageLabel")
 screenCrackImage.Name = "ScreenCrackEffect"
-screenCrackImage.Image = "rbxassetid://268393522" -- A screen crack texture
+screenCrackImage.Image = "rbxassetid://268393522"
 screenCrackImage.ImageTransparency = 0.8
 screenCrackImage.Size = UDim2.new(1, 0, 1, 0)
 screenCrackImage.Visible = false
@@ -181,10 +149,8 @@ local flickerCounter = 0
 local function findNearestGate()
     local playerChar = player.Character
     if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") then return nil end
-
     local playerPos = playerChar.HumanoidRootPart.Position
     local nearestGate, minDistance = nil, math.huge
-
     for _, part in ipairs(Workspace:GetChildren()) do
         if part.Name:match("VictoryGate") then
             local distance = (playerPos - part.Position).Magnitude
@@ -198,51 +164,42 @@ local function findNearestGate()
 end
 
 local function updateEscapeUI()
-    -- Flicker the screen crack effect
     flickerCounter = (flickerCounter + 1) % 10
     screenCrackImage.Visible = (flickerCounter < 5)
 
-    -- Update the arrow
     local nearestGate = findNearestGate()
-    if not nearestGate or not camera then
-        arrowImage.Visible = false
-        return
-    end
-
-    local gatePos = nearestGate.Position
-    local screenPoint, onScreen = camera:WorldToScreenPoint(gatePos)
-
-    if onScreen then
-        arrowImage.Position = UDim2.new(0, screenPoint.X, 0, screenPoint.Y)
-        arrowImage.Rotation = 0
+    if nearestGate and camera then
         arrowImage.Visible = true
+        local gatePos = nearestGate.Position
+        local screenPoint, onScreen = camera:WorldToScreenPoint(gatePos)
+        if onScreen then
+            arrowImage.Position = UDim2.new(0, screenPoint.X, 0, screenPoint.Y)
+            arrowImage.Rotation = 0
+        else
+            local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+            local direction = (Vector2.new(screenPoint.X, screenPoint.Y) - screenCenter).Unit
+            local boundX = math.clamp(screenCenter.X + direction.X * 1000, 50, camera.ViewportSize.X - 50)
+            local boundY = math.clamp(screenCenter.Y + direction.Y * 1000, 50, camera.ViewportSize.Y - 50)
+            arrowImage.Position = UDim2.new(0, boundX, 0, boundY)
+            arrowImage.Rotation = math.deg(math.atan2(direction.Y, direction.X)) + 90
+        end
     else
-        local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
-        local direction = (Vector2.new(screenPoint.X, screenPoint.Y) - screenCenter).Unit
-
-        -- Clamp to screen edges
-        local boundX = math.clamp(screenCenter.X + direction.X * 1000, 50, camera.ViewportSize.X - 50)
-        local boundY = math.clamp(screenCenter.Y + direction.Y * 1000, 50, camera.ViewportSize.Y - 50)
-
-        arrowImage.Position = UDim2.new(0, boundX, 0, boundY)
-        arrowImage.Rotation = math.deg(math.atan2(direction.Y, direction.X)) + 90
-        arrowImage.Visible = true
+        arrowImage.Visible = false
     end
 end
 
--- Update the main state change listener
-local originalGameStateConnect = GameStateChanged.OnClientEvent:Connect(function(newState)
-    -- Update Timer, Machines, Kills (existing logic)
+-- CONSOLIDATED LISTENER
+GameStateChanged.OnClientEvent:Connect(function(newState)
+    -- Update standard HUD elements
     local minutes = math.floor(newState.Timer / 60)
     local seconds = newState.Timer % 60
     timerLabel.Text = string.format("%d:%02d", minutes, seconds)
     machineLabel.Text = string.format("Machines: %d/%d", newState.MachinesCompleted, newState.MachinesTotal)
     killsLabel.Text = string.format("Kills: %d", newState.Kills)
 
-    -- Handle Escape State
+    -- Handle Escape State UI
     if newState.Name == "Escape" then
         if not escapeConnection then
-            arrowImage.Visible = true
             escapeConnection = RunService.Heartbeat:Connect(updateEscapeUI)
             print("[UIManager] Escape sequence UI activated.")
         end
@@ -257,5 +214,19 @@ local originalGameStateConnect = GameStateChanged.OnClientEvent:Connect(function
     end
 end)
 
+-- Listen for local player stat changes
+local leaderstats = player:WaitForChild("leaderstats")
+local levelCoins = leaderstats:WaitForChild("LevelCoins")
+levelCoins.Changed:Connect(function(newCoins)
+    coinLabel.Text = string.format("Coins: %d", newCoins)
+end)
+
+-- Listen for health updates
+local MyModules = ReplicatedStorage:WaitForChild("MyModules")
+local HealthManager = require(MyModules:WaitForChild("HealthManager"))
+local healthChangedEvent = Remotes:WaitForChild("HealthChanged")
+healthChangedEvent.OnClientEvent:Connect(function(player, currentHealth, maxHealth)
+    HealthManager.createOrUpdateHealthBar(player, currentHealth, maxHealth)
+end)
 
 print("UIManager.client.lua loaded and created base frames.")
