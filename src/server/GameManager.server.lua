@@ -34,6 +34,7 @@ local CONFIG = {
     MIN_PLAYERS = 5,
     LOBBY_SPAWN_POSITION = Vector3.new(0, 50, 0),
     MACHINES_TO_SPAWN = 3,
+    VICTORY_GATE_TIMER = 15,
 }
 
 -- Teams
@@ -64,7 +65,7 @@ local manualStart = false
 local currentMap = nil
 
 -- Forward declarations
-local enterWaiting, enterIntermission, enterPlaying, enterPostRound, checkWinConditions
+local enterWaiting, enterIntermission, enterPlaying, enterPostRound, enterEscape, checkWinConditions
 local teleportToLobby, spawnPlayerInMap
 local loadRandomLevel, cleanupCurrentLevel, spawnMachines, cleanupMachines
 
@@ -153,6 +154,51 @@ function spawnPlayerInMap(player, isKiller)
         end)
     end)
     player:LoadCharacter()
+end
+
+function spawnVictoryGates()
+    print("[GameManager] Spawning Victory Gates.")
+    if not currentMap or not currentMap.PrimaryPart then
+        warn("[GameManager] Cannot spawn Victory Gates without a valid map model with a PrimaryPart.")
+        return
+    end
+    local mapBounds = currentMap.PrimaryPart
+
+    for i = 1, 2 do
+        local gate = Instance.new("Part")
+        gate.Name = "VictoryGate" .. i
+        gate.Size = Vector3.new(12, 15, 2)
+        gate.Anchored = true
+        gate.CanCollide = false
+        gate.BrickColor = BrickColor.new("Bright yellow")
+        gate.Material = Enum.Material.Neon
+
+        local randomX = mapBounds.Position.X + math.random(-mapBounds.Size.X / 2, mapBounds.Size.X / 2)
+        local randomZ = mapBounds.Position.Z + math.random(-mapBounds.Size.Z / 2, mapBounds.Size.Z / 2)
+        gate.Position = Vector3.new(randomX, mapBounds.Position.Y + gate.Size.Y / 2, randomZ)
+
+        gate.Parent = Workspace
+
+        gate.Touched:Connect(function(otherPart)
+            local character = otherPart.Parent
+            if not character then return end
+
+            local player = Players:GetPlayerFromCharacter(character)
+            if player and player.Team == survivorsTeam then
+                -- Mark the player as escaped
+                player.Team = nil
+                print(string.format("[GameManager] Survivor %s has escaped!", player.Name))
+
+                -- Make character invisible and non-collidable
+                for _, part in ipairs(character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.Transparency = 1
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end)
+    end
 end
 
 function cleanupMachines()
@@ -310,7 +356,20 @@ function enterPostRound()
     stateTimer = CONFIG.POST_ROUND_DURATION
 end
 
+function enterEscape()
+    print("[GameManager] State -> ESCAPE")
+    spawnVictoryGates()
+    stateTimer = CONFIG.VICTORY_GATE_TIMER
+    GameStateManager:SetTimer(stateTimer) -- Update the HUD timer
+end
+
 function checkWinConditions()
+    -- Check for machine repair victory first
+    if GameStateManager:AreAllMachinesRepaired() then
+        print("[GameManager] Win Condition: All machines repaired! Starting escape sequence.")
+        return "SurvivorsWin_Escape"
+    end
+
     local activeSurvivors = 0
     for _, entity in ipairs(currentSurvivors) do
         if (entity:IsA("Player") and entity.Parent and entity.Team == survivorsTeam) or (not entity:IsA("Player") and entity.Parent) then
@@ -357,7 +416,16 @@ task.spawn(function()
         elseif gameState == "Playing" then
             stateTimer = stateTimer - 1
             GameStateManager:SetTimer(stateTimer)
-            if checkWinConditions() or stateTimer <= 0 then
+            local winStatus = checkWinConditions()
+            if winStatus == "SurvivorsWin_Escape" then
+                gameState = "Escape"; enterEscape()
+            elseif winStatus or stateTimer <= 0 then
+                gameState = "PostRound"; enterPostRound()
+            end
+        elseif gameState == "Escape" then
+            stateTimer = stateTimer - 1
+            GameStateManager:SetTimer(stateTimer)
+            if stateTimer <= 0 then
                 gameState = "PostRound"; enterPostRound()
             end
         elseif gameState == "PostRound" then
