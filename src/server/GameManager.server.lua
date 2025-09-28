@@ -33,6 +33,8 @@ local CONFIG = {
     KILLER_SPAWN_DELAY = 5,
     MIN_PLAYERS = 5,
     LOBBY_SPAWN_POSITION = Vector3.new(0, 50, 0),
+    MACHINES_TO_SPAWN = 3,
+    VICTORY_GATE_TIMER = 15,
 }
 
 -- Teams
@@ -63,7 +65,7 @@ local manualStart = false
 local currentMap = nil
 
 -- Forward declarations
-local enterWaiting, enterIntermission, enterPlaying, enterPostRound, checkWinConditions
+local enterWaiting, enterIntermission, enterPlaying, enterPostRound, enterEscape, checkWinConditions
 local teleportToLobby, spawnPlayerInMap
 local loadRandomLevel, cleanupCurrentLevel, spawnMachines, cleanupMachines
 
@@ -81,15 +83,43 @@ end
 
 function loadRandomLevel()
     cleanupCurrentLevel()
-    local availableMaps = mapsFolder:GetChildren()
+
+    local allMaps = mapsFolder:GetChildren()
+    local availableMaps = {}
+    for _, map in ipairs(allMaps) do
+        if map.Name ~= "LMS_Arena" then
+            table.insert(availableMaps, map)
+        end
+    end
+
     if #availableMaps == 0 then
-        warn("[GameManager] No maps found in ServerStorage/Maps folder!")
+        warn("[GameManager] No non-LMS maps found in ServerStorage/Maps folder!")
         return nil
     end
+
     local randomIndex = math.random(#availableMaps)
     local selectedMapTemplate = availableMaps[randomIndex]
+
     print(string.format("[GameManager] Loading map: %s", selectedMapTemplate.Name))
     currentMap = selectedMapTemplate:Clone()
+
+    if not currentMap.PrimaryPart then
+        local largestPart, largestSize = nil, 0
+        for _, child in ipairs(currentMap:GetDescendants()) do
+            if child:IsA("BasePart") then
+                local size = child.Size.X * child.Size.Y * child.Size.Z
+                if size > largestSize then
+                    largestSize = size
+                    largestPart = child
+                end
+            end
+        end
+        if largestPart then
+            currentMap.PrimaryPart = largestPart
+            print(string.format("[GameManager] Auto-assigned PrimaryPart for map %s to %s", currentMap.Name, largestPart.Name))
+        end
+    end
+
     currentMap.Parent = Workspace
     return currentMap
 end
@@ -126,6 +156,51 @@ function spawnPlayerInMap(player, isKiller)
     player:LoadCharacter()
 end
 
+function spawnVictoryGates()
+    print("[GameManager] Spawning Victory Gates.")
+    if not currentMap or not currentMap.PrimaryPart then
+        warn("[GameManager] Cannot spawn Victory Gates without a valid map model with a PrimaryPart.")
+        return
+    end
+    local mapBounds = currentMap.PrimaryPart
+
+    for i = 1, 2 do
+        local gate = Instance.new("Part")
+        gate.Name = "VictoryGate" .. i
+        gate.Size = Vector3.new(12, 15, 2)
+        gate.Anchored = true
+        gate.CanCollide = false
+        gate.BrickColor = BrickColor.new("Bright yellow")
+        gate.Material = Enum.Material.Neon
+
+        local randomX = mapBounds.Position.X + math.random(-mapBounds.Size.X / 2, mapBounds.Size.X / 2)
+        local randomZ = mapBounds.Position.Z + math.random(-mapBounds.Size.Z / 2, mapBounds.Size.Z / 2)
+        gate.Position = Vector3.new(randomX, mapBounds.Position.Y + gate.Size.Y / 2, randomZ)
+
+        gate.Parent = Workspace
+
+        gate.Touched:Connect(function(otherPart)
+            local character = otherPart.Parent
+            if not character then return end
+
+            local player = Players:GetPlayerFromCharacter(character)
+            if player and player.Team == survivorsTeam then
+                -- Mark the player as escaped
+                player.Team = nil
+                print(string.format("[GameManager] Survivor %s has escaped!", player.Name))
+
+                -- Make character invisible and non-collidable
+                for _, part in ipairs(character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.Transparency = 1
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end)
+    end
+end
+
 function cleanupMachines()
     local machineFolder = Workspace:FindFirstChild("MiniGameMachines")
     if machineFolder then
@@ -135,7 +210,7 @@ function cleanupMachines()
 end
 
 function spawnMachines(mapModel)
-    cleanupMachines() -- Ensure no old machines exist
+    cleanupMachines()
 
     local assetsFolder = ServerStorage:FindFirstChild("Assets")
     if not assetsFolder then
@@ -153,16 +228,32 @@ function spawnMachines(mapModel)
     machineFolder.Name = "MiniGameMachines"
     machineFolder.Parent = Workspace
 
-    if not mapModel or not mapModel.PrimaryPart then
-        warn("[GameManager] Cannot spawn machines without a valid map model with a PrimaryPart.")
+    if not mapModel or not mapModel.PrimaryPart or not mapModel.PrimaryPart:IsA("BasePart") then
+        warn("[GameManager] Cannot spawn machines: Map model is missing a valid PrimaryPart.")
         return
     end
     local mapBounds = mapModel.PrimaryPart
     local gameTypes = {"ButtonMash", "MemoryCheck", "MatchingGame"}
 
-    for i = 1, 5 do
+    for i = 1, CONFIG.MACHINES_TO_SPAWN do
         local machine = machineTemplate:Clone()
         machine.Name = "Machine" .. i
+
+        if not machine.PrimaryPart then
+            local largestPart, largestSize = nil, 0
+            for _, child in ipairs(machine:GetDescendants()) do
+                if child:IsA("BasePart") then
+                    local size = child.Size.X * child.Size.Y * child.Size.Z
+                    if size > largestSize then
+                        largestSize = size
+                        largestPart = child
+                    end
+                end
+            end
+            if largestPart then
+                machine.PrimaryPart = largestPart
+            end
+        end
 
         local randomType = gameTypes[math.random(#gameTypes)]
         machine:SetAttribute("GameType", randomType)
@@ -174,7 +265,7 @@ function spawnMachines(mapModel)
         machine.Parent = machineFolder
     end
 
-    print("[GameManager] Spawned 5 machines.")
+    print(string.format("[GameManager] Spawned %d machines.", CONFIG.MACHINES_TO_SPAWN))
 end
 
 -- #############################
@@ -203,7 +294,7 @@ end
 function enterPlaying()
     print("[GameManager] State -> Playing")
     currentLevel = currentLevel + 1
-    GameStateManager:SetNewRoundState(CONFIG.ROUND_DURATION)
+    GameStateManager:SetNewRoundState(CONFIG.ROUND_DURATION, CONFIG.MACHINES_TO_SPAWN)
     stateTimer = CONFIG.ROUND_DURATION
     local loadedMap = loadRandomLevel()
     if not loadedMap then
@@ -265,7 +356,20 @@ function enterPostRound()
     stateTimer = CONFIG.POST_ROUND_DURATION
 end
 
+function enterEscape()
+    print("[GameManager] State -> ESCAPE")
+    spawnVictoryGates()
+    stateTimer = CONFIG.VICTORY_GATE_TIMER
+    GameStateManager:SetTimer(stateTimer) -- Update the HUD timer
+end
+
 function checkWinConditions()
+    -- Check for machine repair victory first
+    if GameStateManager:AreAllMachinesRepaired() then
+        print("[GameManager] Win Condition: All machines repaired! Starting escape sequence.")
+        return "SurvivorsWin_Escape"
+    end
+
     local activeSurvivors = 0
     for _, entity in ipairs(currentSurvivors) do
         if (entity:IsA("Player") and entity.Parent and entity.Team == survivorsTeam) or (not entity:IsA("Player") and entity.Parent) then
@@ -312,7 +416,16 @@ task.spawn(function()
         elseif gameState == "Playing" then
             stateTimer = stateTimer - 1
             GameStateManager:SetTimer(stateTimer)
-            if checkWinConditions() or stateTimer <= 0 then
+            local winStatus = checkWinConditions()
+            if winStatus == "SurvivorsWin_Escape" then
+                gameState = "Escape"; enterEscape()
+            elseif winStatus or stateTimer <= 0 then
+                gameState = "PostRound"; enterPostRound()
+            end
+        elseif gameState == "Escape" then
+            stateTimer = stateTimer - 1
+            GameStateManager:SetTimer(stateTimer)
+            if stateTimer <= 0 then
                 gameState = "PostRound"; enterPostRound()
             end
         elseif gameState == "PostRound" then
@@ -398,5 +511,9 @@ local function createTestAssets()
 end
 
 createTestAssets()
+
+-- Initialize all necessary manager modules that have listeners
+StoreKeeperManager.initialize()
+GameStateManager.initialize()
 
 print("GameManager is running.")

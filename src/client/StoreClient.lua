@@ -249,7 +249,7 @@ function StoreClient.init()
         local storeNpc = Workspace:FindFirstChild(CONFIG.NPC_NAME)
         local closestNpcFound = nil
 
-        if storeNpc then
+        if storeNpc and storeNpc.PrimaryPart then
             if (characterPos - storeNpc.PrimaryPart.Position).Magnitude < CONFIG.INTERACTION_DISTANCE then
                 closestNpcFound = storeNpc
             end

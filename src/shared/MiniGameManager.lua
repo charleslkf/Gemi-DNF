@@ -192,7 +192,7 @@ function MiniGameManager.startMatchingGame()
     local isInterrupted, stopInterruptCheck = startInterruptionCheck()
 
     -- Game configuration
-    local symbols = {"A", "B", "C", "D", "E", "F", "G", "H"}
+    local symbols = {"A", "B", "C", "D"} -- Reduced to 4 pairs for easier testing
     local cardValues = shuffle(rep(symbols, 2))
     local cards = {}
     local revealedCards = {}
@@ -319,8 +319,8 @@ function MiniGameManager.init()
         local closestMachineFound
 
         for _, machine in ipairs(machinesFolder:GetChildren()) do
-            if not machine:IsA("BasePart") then continue end
-            if (characterPos - machine.Position).Magnitude < CONFIG.INTERACTION_DISTANCE and not machine:GetAttribute("IsCompleted") then
+            if not machine:IsA("Model") or not machine.PrimaryPart then continue end
+            if (characterPos - machine.PrimaryPart.Position).Magnitude < CONFIG.INTERACTION_DISTANCE and not machine:GetAttribute("IsCompleted") then
                 closestMachineFound = machine
                 break
             end
@@ -359,7 +359,9 @@ function MiniGameManager.init()
         if success then
             -- On success, mark machine as completed and change color
             nearbyMachine:SetAttribute("IsCompleted", true)
-            nearbyMachine.Color = Color3.fromRGB(0, 255, 0)
+            if nearbyMachine.PrimaryPart then
+                nearbyMachine.PrimaryPart.Color = Color3.fromRGB(0, 255, 0)
+            end
             -- Notify the server that a machine was fixed
             MachineFixed:FireServer()
             -- The interaction prompt will be removed on the next RenderStepped cycle
