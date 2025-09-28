@@ -81,13 +81,24 @@ end
 
 function loadRandomLevel()
     cleanupCurrentLevel()
-    local availableMaps = mapsFolder:GetChildren()
+
+    -- Filter out the LMS map from the selection pool for normal rounds
+    local allMaps = mapsFolder:GetChildren()
+    local availableMaps = {}
+    for _, map in ipairs(allMaps) do
+        if map.Name ~= "LMS_Arena" then
+            table.insert(availableMaps, map)
+        end
+    end
+
     if #availableMaps == 0 then
-        warn("[GameManager] No maps found in ServerStorage/Maps folder!")
+        warn("[GameManager] No non-LMS maps found in ServerStorage/Maps folder!")
         return nil
     end
+
     local randomIndex = math.random(#availableMaps)
     local selectedMapTemplate = availableMaps[randomIndex]
+
     print(string.format("[GameManager] Loading map: %s", selectedMapTemplate.Name))
     currentMap = selectedMapTemplate:Clone()
 
@@ -172,8 +183,8 @@ function spawnMachines(mapModel)
     machineFolder.Name = "MiniGameMachines"
     machineFolder.Parent = Workspace
 
-    if not mapModel or not mapModel.PrimaryPart then
-        warn("[GameManager] Cannot spawn machines without a valid map model with a PrimaryPart.")
+    if not mapModel or not mapModel.PrimaryPart or not mapModel.PrimaryPart:IsA("BasePart") then
+        warn("[GameManager] Cannot spawn machines: Map model is missing a valid PrimaryPart.")
         return
     end
     local mapBounds = mapModel.PrimaryPart
