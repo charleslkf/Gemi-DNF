@@ -67,7 +67,7 @@ local currentMap = nil
 -- Forward declarations
 local enterWaiting, enterIntermission, enterPlaying, enterPostRound, enterEscape, checkWinConditions
 local teleportToLobby, spawnPlayerInMap
-local loadRandomLevel, cleanupCurrentLevel, spawnMachines, cleanupMachines, cleanupVictoryGates
+local loadRandomLevel, cleanupCurrentLevel, spawnMachines, cleanupMachines, cleanupVictoryGates, activateVictoryGates
 
 -- #############################
 -- ## World & Object Helpers  ##
@@ -165,52 +165,38 @@ function cleanupVictoryGates()
     print("[GameManager] Cleaned up Victory Gates.")
 end
 
-function spawnVictoryGates()
-    print("[GameManager] Spawning Victory Gates.")
-    if not currentMap or not currentMap.PrimaryPart then
-        warn("[GameManager] Cannot spawn Victory Gates without a valid map model with a PrimaryPart.")
-        return
-    end
-    local mapBounds = currentMap.PrimaryPart
+function activateVictoryGates()
+    print("[GameManager] Activating Victory Gates.")
+    for _, part in ipairs(Workspace:GetChildren()) do
+        if part.Name:match("VictoryGate") then
+            part.Transparency = 0
+            part.Material = Enum.Material.Neon
+            part.BrickColor = BrickColor.new("Bright yellow")
 
-    for i = 1, 2 do
-        local gate = Instance.new("Part")
-        gate.Name = "VictoryGate" .. i
-        gate.Size = Vector3.new(12, 15, 2)
-        gate.Anchored = true
-        gate.CanCollide = false
-        gate.BrickColor = BrickColor.new("Bright yellow")
-        gate.Material = Enum.Material.Neon
+            part.Touched:Connect(function(otherPart)
+                local character = otherPart.Parent
+                if not character then return end
 
-        local randomX = mapBounds.Position.X + math.random(-mapBounds.Size.X / 2, mapBounds.Size.X / 2)
-        local randomZ = mapBounds.Position.Z + math.random(-mapBounds.Size.Z / 2, mapBounds.Size.Z / 2)
-        gate.Position = Vector3.new(randomX, mapBounds.Position.Y + gate.Size.Y / 2, randomZ)
+                local player = Players:GetPlayerFromCharacter(character)
+                if player and player.Team == survivorsTeam then
+                    -- Mark the player as escaped
+                    player.Team = nil
+                    print(string.format("[GameManager] Survivor %s has escaped!", player.Name))
 
-        gate.Parent = Workspace
-
-        gate.Touched:Connect(function(otherPart)
-            local character = otherPart.Parent
-            if not character then return end
-
-            local player = Players:GetPlayerFromCharacter(character)
-            if player and player.Team == survivorsTeam then
-                -- Mark the player as escaped
-                player.Team = nil
-                print(string.format("[GameManager] Survivor %s has escaped!", player.Name))
-
-                -- Make character invisible, non-collidable, and immobile
-                local hrp = character:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    hrp.Anchored = true
-                end
-                for _, part in ipairs(character:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.Transparency = 1
-                        part.CanCollide = false
+                    -- Make character invisible, non-collidable, and immobile
+                    local hrp = character:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        hrp.Anchored = true
+                    end
+                    for _, p in ipairs(character:GetDescendants()) do
+                        if p:IsA("BasePart") then
+                            p.Transparency = 1
+                            p.CanCollide = false
+                        end
                     end
                 end
-            end
-        end)
+            end)
+        end
     end
 end
 
@@ -279,6 +265,25 @@ function spawnMachines(mapModel)
     end
 
     print(string.format("[GameManager] Spawned %d machines.", CONFIG.MACHINES_TO_SPAWN))
+
+    -- Also spawn the inactive Victory Gates
+    for i = 1, 2 do
+        local gate = Instance.new("Part")
+        gate.Name = "VictoryGate" .. i
+        gate.Size = Vector3.new(12, 15, 2)
+        gate.Anchored = true
+        gate.CanCollide = false
+        gate.Transparency = 1 -- Initially invisible
+        gate.Material = Enum.Material.Plastic
+        gate.BrickColor = BrickColor.new("Black")
+
+        local randomX = mapBounds.Position.X + math.random(-mapBounds.Size.X / 2, mapBounds.Size.X / 2)
+        local randomZ = mapBounds.Position.Z + math.random(-mapBounds.Size.Z / 2, mapBounds.Size.Z / 2)
+        gate.Position = Vector3.new(randomX, mapBounds.Position.Y + gate.Size.Y / 2, randomZ)
+
+        gate.Parent = Workspace
+    end
+    print("[GameManager] Spawned 2 inactive Victory Gates.")
 end
 
 -- #############################
@@ -373,7 +378,7 @@ end
 
 function enterEscape()
     print("[GameManager] State -> ESCAPE")
-    spawnVictoryGates()
+    activateVictoryGates()
     stateTimer = CONFIG.VICTORY_GATE_TIMER
     GameStateManager:SetTimer(stateTimer) -- Update the HUD timer
 end

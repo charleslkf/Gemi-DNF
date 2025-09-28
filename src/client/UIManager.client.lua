@@ -197,11 +197,11 @@ GameStateChanged.OnClientEvent:Connect(function(newState)
     machineLabel.Text = string.format("Machines: %d/%d", newState.MachinesCompleted, newState.MachinesTotal)
     killsLabel.Text = string.format("Kills: %d", newState.Kills)
 
-    -- Handle Escape State UI
-    if newState.Name == "Escape" then
+    -- Handle Escape State UI (Survivors only)
+    if newState.Name == "Escape" and player.Team and player.Team.Name == "Survivors" then
         if not escapeConnection then
             escapeConnection = RunService.Heartbeat:Connect(updateEscapeUI)
-            print("[UIManager] Escape sequence UI activated.")
+            print("[UIManager] Escape sequence UI activated for survivor.")
         end
     else
         if escapeConnection then
