@@ -15,6 +15,7 @@ local GameStateManager = {}
 
 -- The central table holding the current state of the game
 local gameState = {
+    Name = "Waiting",
     Timer = 0,
     MachinesTotal = 3, -- Default value, can be updated
     MachinesCompleted = 0,
@@ -31,6 +32,13 @@ end
 function GameStateManager:SetTimer(newTime)
     if gameState.Timer ~= newTime then
         gameState.Timer = newTime
+        _broadcastState()
+    end
+end
+
+function GameStateManager:SetStateName(newStateName)
+    if gameState.Name ~= newStateName then
+        gameState.Name = newStateName
         _broadcastState()
     end
 end

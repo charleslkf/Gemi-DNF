@@ -67,7 +67,7 @@ local currentMap = nil
 -- Forward declarations
 local enterWaiting, enterIntermission, enterPlaying, enterPostRound, enterEscape, checkWinConditions
 local teleportToLobby, spawnPlayerInMap
-local loadRandomLevel, cleanupCurrentLevel, spawnMachines, cleanupMachines
+local loadRandomLevel, cleanupCurrentLevel, spawnMachines, cleanupMachines, cleanupVictoryGates
 
 -- #############################
 -- ## World & Object Helpers  ##
@@ -154,6 +154,15 @@ function spawnPlayerInMap(player, isKiller)
         end)
     end)
     player:LoadCharacter()
+end
+
+function cleanupVictoryGates()
+    for _, part in ipairs(Workspace:GetChildren()) do
+        if part.Name:match("VictoryGate") then
+            part:Destroy()
+        end
+    end
+    print("[GameManager] Cleaned up Victory Gates.")
 end
 
 function spawnVictoryGates()
@@ -277,6 +286,7 @@ function enterWaiting()
     SimulatedPlayerManager.despawnSimulatedPlayers()
     cleanupCurrentLevel()
     cleanupMachines()
+    cleanupVictoryGates()
     StoreKeeperManager.stopManaging()
     CoinStashManager.cleanupStashes()
     table.clear(currentKillers)
@@ -395,23 +405,24 @@ function checkWinConditions()
 end
 
 task.spawn(function()
+    GameStateManager:SetStateName(gameState)
     enterWaiting()
     while true do
         task.wait(1)
         if gameState == "Waiting" then
             if not manualStart and #Players:GetPlayers() >= CONFIG.MIN_PLAYERS then
-                gameState = "Intermission"; enterIntermission()
+                gameState = "Intermission"; GameStateManager:SetStateName("Intermission"); enterIntermission()
             end
         elseif gameState == "Intermission" then
             if not manualStart and #Players:GetPlayers() < CONFIG.MIN_PLAYERS then
                 print("[GameManager] Player count dropped below minimum. Returning to Waiting state.")
-                gameState = "Waiting"; enterWaiting()
+                gameState = "Waiting"; GameStateManager:SetStateName("Waiting"); enterWaiting()
             else
                 stateTimer = stateTimer - 1
                 GameStateManager:SetTimer(stateTimer)
                 if stateTimer <= 0 then
                     manualStart = false
-                    gameState = "Playing"; enterPlaying()
+                    gameState = "Playing"; GameStateManager:SetStateName("Playing"); enterPlaying()
                 end
             end
         elseif gameState == "Playing" then
@@ -419,20 +430,20 @@ task.spawn(function()
             GameStateManager:SetTimer(stateTimer)
             local winStatus = checkWinConditions()
             if winStatus == "SurvivorsWin_Escape" then
-                gameState = "Escape"; enterEscape()
+                gameState = "Escape"; GameStateManager:SetStateName("Escape"); enterEscape()
             elseif winStatus or stateTimer <= 0 then
-                gameState = "PostRound"; enterPostRound()
+                gameState = "PostRound"; GameStateManager:SetStateName("PostRound"); enterPostRound()
             end
         elseif gameState == "Escape" then
             stateTimer = stateTimer - 1
             GameStateManager:SetTimer(stateTimer)
             if stateTimer <= 0 then
-                gameState = "PostRound"; enterPostRound()
+                gameState = "PostRound"; GameStateManager:SetStateName("PostRound"); enterPostRound()
             end
         elseif gameState == "PostRound" then
             stateTimer = stateTimer - 1
             if stateTimer <= 0 then
-                gameState = "Waiting"; enterWaiting()
+                gameState = "Waiting"; GameStateManager:SetStateName("Waiting"); enterWaiting()
             end
         end
     end
@@ -461,6 +472,7 @@ local startRoundEvent = remotes:WaitForChild("StartRoundRequest")
 resetRoundEvent.OnServerEvent:Connect(function(player)
     print(string.format("[GameManager] Soft reset requested by %s. Forcing return to Waiting state.", player.Name))
     gameState = "Waiting"
+    GameStateManager:SetStateName("Waiting")
     enterWaiting()
 end)
 
@@ -469,6 +481,7 @@ startRoundEvent.OnServerEvent:Connect(function(player)
     if gameState == "Waiting" then
         manualStart = true
         gameState = "Intermission"
+        GameStateManager:SetStateName("Intermission")
         enterIntermission()
     end
 end)
