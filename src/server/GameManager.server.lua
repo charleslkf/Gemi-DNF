@@ -194,6 +194,23 @@ function spawnMachines(mapModel)
         local machine = machineTemplate:Clone()
         machine.Name = "Machine" .. i
 
+        -- Auto-assign PrimaryPart for the machine if it's missing, to prevent crashes.
+        if not machine.PrimaryPart then
+            local largestPart, largestSize = nil, 0
+            for _, child in ipairs(machine:GetDescendants()) do
+                if child:IsA("BasePart") then
+                    local size = child.Size.X * child.Size.Y * child.Size.Z
+                    if size > largestSize then
+                        largestSize = size
+                        largestPart = child
+                    end
+                end
+            end
+            if largestPart then
+                machine.PrimaryPart = largestPart
+            end
+        end
+
         local randomType = gameTypes[math.random(#gameTypes)]
         machine:SetAttribute("GameType", randomType)
 
