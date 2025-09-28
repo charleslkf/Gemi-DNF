@@ -192,7 +192,7 @@ function MiniGameManager.startMatchingGame()
     local isInterrupted, stopInterruptCheck = startInterruptionCheck()
 
     -- Game configuration
-    local symbols = {"A", "B", "C", "D", "E", "F", "G", "H"}
+    local symbols = {"A", "B", "C", "D"} -- Reduced to 4 pairs for easier testing
     local cardValues = shuffle(rep(symbols, 2))
     local cards = {}
     local revealedCards = {}

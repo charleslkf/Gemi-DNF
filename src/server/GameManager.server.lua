@@ -190,7 +190,7 @@ function spawnMachines(mapModel)
     local mapBounds = mapModel.PrimaryPart
     local gameTypes = {"ButtonMash", "MemoryCheck", "MatchingGame"}
 
-    for i = 1, 5 do
+    for i = 1, 3 do
         local machine = machineTemplate:Clone()
         machine.Name = "Machine" .. i
 
@@ -445,5 +445,9 @@ local function createTestAssets()
 end
 
 createTestAssets()
+
+-- Initialize all necessary manager modules that have listeners
+StoreKeeperManager.initialize()
+GameStateManager.initialize()
 
 print("GameManager is running.")
