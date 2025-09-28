@@ -65,10 +65,10 @@ local currentMap = nil
 -- Forward declarations
 local enterWaiting, enterIntermission, enterPlaying, enterPostRound, checkWinConditions
 local teleportToLobby, spawnPlayerInMap
-local loadRandomLevel, cleanupCurrentLevel
+local loadRandomLevel, cleanupCurrentLevel, spawnMachines, cleanupMachines
 
 -- #############################
--- ## World & Lobby Helpers   ##
+-- ## World & Object Helpers  ##
 -- #############################
 
 function cleanupCurrentLevel()
@@ -126,6 +126,57 @@ function spawnPlayerInMap(player, isKiller)
     player:LoadCharacter()
 end
 
+function cleanupMachines()
+    local machineFolder = Workspace:FindFirstChild("MiniGameMachines")
+    if machineFolder then
+        machineFolder:Destroy()
+        print("[GameManager] Cleaned up machines.")
+    end
+end
+
+function spawnMachines(mapModel)
+    cleanupMachines() -- Ensure no old machines exist
+
+    local assetsFolder = ServerStorage:FindFirstChild("Assets")
+    if not assetsFolder then
+        warn("[GameManager] Assets folder not found in ServerStorage. Cannot spawn machines.")
+        return
+    end
+
+    local machineTemplate = assetsFolder:FindFirstChild("MachineTemplate")
+    if not machineTemplate then
+        warn("[GameManager] MachineTemplate not found in ServerStorage/Assets. Cannot spawn machines.")
+        return
+    end
+
+    local machineFolder = Instance.new("Folder")
+    machineFolder.Name = "MiniGameMachines"
+    machineFolder.Parent = Workspace
+
+    if not mapModel or not mapModel.PrimaryPart then
+        warn("[GameManager] Cannot spawn machines without a valid map model with a PrimaryPart.")
+        return
+    end
+    local mapBounds = mapModel.PrimaryPart
+    local gameTypes = {"ButtonMash", "MemoryCheck", "MatchingGame"}
+
+    for i = 1, 5 do
+        local machine = machineTemplate:Clone()
+        machine.Name = "Machine" .. i
+
+        local randomType = gameTypes[math.random(#gameTypes)]
+        machine:SetAttribute("GameType", randomType)
+
+        local randomX = mapBounds.Position.X + math.random(-mapBounds.Size.X / 2, mapBounds.Size.X / 2)
+        local randomZ = mapBounds.Position.Z + math.random(-mapBounds.Size.Z / 2, mapBounds.Size.Z / 2)
+        machine:SetPrimaryPartCFrame(CFrame.new(randomX, mapBounds.Position.Y + machine.PrimaryPart.Size.Y / 2, randomZ))
+
+        machine.Parent = machineFolder
+    end
+
+    print("[GameManager] Spawned 5 machines.")
+end
+
 -- #############################
 -- ## State Machine Logic     ##
 -- #############################
@@ -134,6 +185,7 @@ function enterWaiting()
     print("[GameManager] State -> Waiting")
     SimulatedPlayerManager.despawnSimulatedPlayers()
     cleanupCurrentLevel()
+    cleanupMachines()
     StoreKeeperManager.stopManaging()
     CoinStashManager.cleanupStashes()
     table.clear(currentKillers)
@@ -160,6 +212,7 @@ function enterPlaying()
         enterWaiting()
         return
     end
+    spawnMachines(loadedMap)
     StoreKeeperManager.startManaging(currentLevel)
     CoinStashManager.spawnStashes()
     CagingManager.resetAllCageCounts()

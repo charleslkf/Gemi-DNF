@@ -185,11 +185,115 @@ function MiniGameManager.startQTE()
     stopInterruptCheck(); screenGui:Destroy(); showEndResult(success, wasInterrupted); return success
 end
 
+function MiniGameManager.startMatchingGame()
+    local screenGui, frame, timerLabel = createBaseGui("Matching Game")
+    local success = false
+    local wasInterrupted = false
+    local isInterrupted, stopInterruptCheck = startInterruptionCheck()
+
+    -- Game configuration
+    local symbols = {"A", "B", "C", "D", "E", "F", "G", "H"}
+    local cardValues = shuffle(rep(symbols, 2))
+    local cards = {}
+    local revealedCards = {}
+    local matchedPairs = 0
+    local totalPairs = #symbols
+    local canClick = true
+
+    -- Create the grid of cards
+    local gridFrame = Instance.new("Frame", frame)
+    gridFrame.Size = UDim2.new(1, -20, 1, -60)
+    gridFrame.Position = UDim2.new(0, 10, 0, 50)
+    gridFrame.BackgroundTransparency = 1
+    local gridLayout = Instance.new("UIGridLayout", gridFrame)
+    gridLayout.CellSize = UDim2.new(0, 100, 0, 80)
+    gridLayout.CellPadding = UDim2.new(0, 10, 0, 10)
+    gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    gridLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+
+    for i = 1, #cardValues do
+        local cardButton = Instance.new("TextButton", gridFrame)
+        cardButton.Name = "Card" .. i
+        cardButton.BackgroundColor3 = Color3.fromRGB(80, 80, 200)
+        cardButton.Text = ""
+        cardButton.Font = Enum.Font.SourceSansBold
+        cardButton.TextSize = 40
+        cardButton.TextColor3 = Color3.new(1, 1, 1)
+
+        local card = {
+            button = cardButton,
+            value = cardValues[i],
+            isFlipped = false,
+            isMatched = false,
+        }
+        table.insert(cards, card)
+
+        cardButton.MouseButton1Click:Connect(function()
+            if not canClick or card.isFlipped or card.isMatched or #revealedCards >= 2 then return end
+
+            -- Flip the card
+            card.isFlipped = true
+            cardButton.Text = card.value
+            table.insert(revealedCards, card)
+
+            -- Check for a match if two cards are revealed
+            if #revealedCards == 2 then
+                canClick = false -- Prevent more clicks while checking
+                task.wait(0.7) -- Give player time to see the second card
+
+                local card1 = revealedCards[1]
+                local card2 = revealedCards[2]
+
+                if card1.value == card2.value then
+                    -- It's a match!
+                    card1.isMatched = true
+                    card2.isMatched = true
+                    card1.button.BackgroundColor3 = Color3.fromRGB(80, 200, 80)
+                    card2.button.BackgroundColor3 = Color3.fromRGB(80, 200, 80)
+                    matchedPairs = matchedPairs + 1
+                else
+                    -- Not a match, flip them back
+                    card1.isFlipped = false
+                    card2.isFlipped = false
+                    card1.button.Text = ""
+                    card2.button.Text = ""
+                end
+
+                table.clear(revealedCards)
+                canClick = true -- Allow clicks again
+            end
+        end)
+    end
+
+    -- Game loop
+    local startTime = tick()
+    local timeLimit = 60 -- 60 second time limit for the matching game
+    while matchedPairs < totalPairs do
+        if isInterrupted() or (tick() - startTime > timeLimit) then
+            wasInterrupted = true
+            break
+        end
+        local timeLeft = timeLimit - (tick() - startTime)
+        timerLabel.Text = string.format("%.1fs", timeLeft)
+        RunService.Heartbeat:Wait()
+    end
+
+    if matchedPairs >= totalPairs then
+        success = true
+    end
+
+    stopInterruptCheck()
+    screenGui:Destroy()
+    showEndResult(success, wasInterrupted)
+    return success
+end
+
 -- ACTIVATION & MAIN LOGIC ---
 
 local gameFunctions = {
     ButtonMash = MiniGameManager.startButtonMashing,
-    MemoryCheck = MiniGameManager.startQTE
+    MemoryCheck = MiniGameManager.startQTE,
+    MatchingGame = MiniGameManager.startMatchingGame
 }
 
 function MiniGameManager.init()
