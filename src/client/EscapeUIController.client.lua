@@ -1,53 +1,119 @@
--- EscapeUIController.client.lua
--- THIS IS A TEMPORARY DIAGNOSTIC SCRIPT
+--[[
+    EscapeUIController.client.lua
 
-print("[DIAGNOSTIC] EscapeUIController script has started.")
+    This script is solely responsible for managing the UI effects during
+    the escape sequence (the screen crack and the directional arrow).
+]]
 
--- Define services and local player
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+local camera = Workspace.CurrentCamera
 
-print("[DIAGNOSTIC] PlayerGui found:", playerGui.Name)
+-- Use WaitForChild to ensure all remote events are loaded before continuing
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local GameStateChanged = Remotes:WaitForChild("GameStateChanged")
+local EscapeSequenceStarted = Remotes:WaitForChild("EscapeSequenceStarted")
 
--- 1. VERIFY THE REMOTE EVENT
-local remoteEvent = ReplicatedStorage:FindFirstChild("EscapeSequenceStarted")
-if not remoteEvent then
-    print("[DIAGNOSTIC-FATAL] COULD NOT FIND 'EscapeSequenceStarted' RemoteEvent in ReplicatedStorage.")
-    return -- Stop the script
+-- Use WaitForChild to ensure the UIManager has created the MainHUD
+local screenGui = playerGui:WaitForChild("MainHUD", 10)
+if not screenGui then
+    print("[EscapeUIController] FATAL: MainHUD not found after 10 seconds. Aborting.")
+    return
 end
-print("[DIAGNOSTIC] Successfully found RemoteEvent:", remoteEvent.Name)
 
--- 2. VERIFY THE UI HIERARCHY
-local mainHUD = playerGui:WaitForChild("MainHUD", 5) -- Wait up to 5 seconds
-if not mainHUD then
-    print("[DIAGNOSTIC-FATAL] COULD NOT FIND 'MainHUD' ScreenGui in PlayerGui.")
-    return -- Stop the script
+local arrowImage = Instance.new("ImageLabel")
+arrowImage.Name = "EscapeArrow"
+arrowImage.Image = "rbxassetid://5989193313"
+arrowImage.Size = UDim2.new(0, 50, 0, 50)
+arrowImage.AnchorPoint = Vector2.new(0.5, 0.5)
+arrowImage.BackgroundTransparency = 1
+arrowImage.Visible = false
+arrowImage.ZIndex = 2 -- Set ZIndex to render on top
+arrowImage.Parent = screenGui
+
+local screenCrackImage = Instance.new("ImageLabel")
+screenCrackImage.Name = "ScreenCrackEffect"
+screenCrackImage.Image = "rbxassetid://268393522"
+screenCrackImage.ImageTransparency = 0.8
+screenCrackImage.Size = UDim2.new(1, 0, 1, 0)
+screenCrackImage.Visible = false
+screenCrackImage.ZIndex = 1 -- Keep crack effect behind the arrow
+screenCrackImage.Parent = screenGui
+
+local escapeConnection = nil
+local flickerCounter = 0
+local activeGates = {}
+
+local function findNearestGateFromActive()
+    local playerChar = player.Character
+    if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") or #activeGates == 0 then return nil end
+
+    local playerPos = playerChar.HumanoidRootPart.Position
+    local nearestGate, minDistance = nil, math.huge
+
+    for _, part in ipairs(activeGates) do
+        if part and part.Parent then -- Check if gate is valid
+            local distance = (playerPos - part.Position).Magnitude
+            if distance < minDistance then
+                minDistance = distance
+                nearestGate = part
+            end
+        end
+    end
+    return nearestGate
 end
-print("[DIAGNOSTIC] Successfully found ScreenGui:", mainHUD.Name)
 
-local escapeArrow = mainHUD:FindFirstChild("EscapeArrow")
-if not escapeArrow then
-    print("[DIAGNOSTIC-FATAL] COULD NOT FIND 'EscapeArrow' ImageLabel inside MainHUD.")
-    return -- Stop the script
+local function updateEscapeUI()
+    flickerCounter = (flickerCounter + 1) % 10
+    screenCrackImage.Visible = (flickerCounter < 5)
+
+    local nearestGate = findNearestGateFromActive()
+    if nearestGate and camera then
+        arrowImage.Visible = true
+        local gatePos = nearestGate.Position
+        local screenPoint, onScreen = camera:WorldToScreenPoint(gatePos)
+        if onScreen then
+            arrowImage.Position = UDim2.new(0, screenPoint.X, 0, screenPoint.Y)
+            arrowImage.Rotation = 0
+        else
+            local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+            local direction = (Vector2.new(screenPoint.X, screenPoint.Y) - screenCenter).Unit
+            local boundX = math.clamp(screenCenter.X + direction.X * 1000, 50, camera.ViewportSize.X - 50)
+            local boundY = math.clamp(screenCenter.Y + direction.Y * 1000, 50, camera.ViewportSize.Y - 50)
+            arrowImage.Position = UDim2.new(0, boundX, 0, boundY)
+            arrowImage.Rotation = math.deg(math.atan2(direction.Y, direction.X)) + 90
+        end
+    else
+        arrowImage.Visible = false
+    end
 end
-print("[DIAGNOSTIC] Successfully found ImageLabel:", escapeArrow.Name)
 
--- 3. CONNECT THE LISTENER
-remoteEvent.OnClientEvent:Connect(function(gate1Pos, gate2Pos)
-    print("[DIAGNOSTIC-SUCCESS] 'OnClientEvent' FIRED! The event was received from the server.")
-
-    -- Log the data received from the server
-    print("[DIAGNOSTIC] Data received for Gate1:", gate1Pos)
-    print("[DIAGNOSTIC] Data received for Gate2:", gate2Pos)
-
-    -- Attempt to make the arrow visible
-    if mainHUD and escapeArrow then
-        mainHUD.Enabled = true
-        escapeArrow.Visible = true
-        print("[DIAGNOSTIC] Set mainHUD.Enabled and escapeArrow.Visible to TRUE.")
+-- Listen for the dedicated escape event to start the UI
+EscapeSequenceStarted.OnClientEvent:Connect(function(gates)
+    if player.Team and player.Team.Name == "Survivors" then
+        activeGates = gates
+        if not escapeConnection then
+            escapeConnection = RunService.Heartbeat:Connect(updateEscapeUI)
+        end
     end
 end)
 
-print("[DIAGNOSTIC] Script setup complete. Now listening for 'EscapeSequenceStarted' event.")
+-- Listen for general game state changes to know when to stop
+GameStateChanged.OnClientEvent:Connect(function(newState)
+    if newState.Name ~= "Escape" then
+        if escapeConnection then
+            escapeConnection:Disconnect()
+            escapeConnection = nil
+            screenCrackImage.Visible = false
+            arrowImage.Visible = false
+            activeGates = {}
+        end
+    end
+end)
+
+print("EscapeUIController.client.lua loaded.")
