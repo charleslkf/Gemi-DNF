@@ -385,11 +385,15 @@ function enterEscape()
     stateTimer = CONFIG.VICTORY_GATE_TIMER
     GameStateManager:SetTimer(stateTimer) -- Update the HUD timer
 
+    -- DIAGNOSTIC: Wait 2 seconds to test race condition
+    task.wait(2)
+
     -- Fire the new event to all survivors with the gate references
     local remotes = ReplicatedStorage:WaitForChild("Remotes")
     local escapeEvent = remotes:WaitForChild("EscapeSequenceStarted")
     for _, player in ipairs(Players:GetPlayers()) do
         if player.Team == survivorsTeam then
+            print("[GameManager-DEBUG] Firing event for: " .. player.Name)
             -- Pass the gates as a table to handle any number of them
             escapeEvent:FireClient(player, gates)
         end
