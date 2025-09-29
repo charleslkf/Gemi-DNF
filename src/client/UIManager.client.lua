@@ -133,6 +133,7 @@ arrowImage.Size = UDim2.new(0, 50, 0, 50)
 arrowImage.AnchorPoint = Vector2.new(0.5, 0.5)
 arrowImage.BackgroundTransparency = 1
 arrowImage.Visible = false
+arrowImage.ZIndex = 2 -- Set ZIndex to render on top
 arrowImage.Parent = screenGui
 
 local screenCrackImage = Instance.new("ImageLabel")
@@ -141,6 +142,7 @@ screenCrackImage.Image = "rbxassetid://268393522"
 screenCrackImage.ImageTransparency = 0.8
 screenCrackImage.Size = UDim2.new(1, 0, 1, 0)
 screenCrackImage.Visible = false
+screenCrackImage.ZIndex = 1 -- Keep crack effect behind the arrow
 screenCrackImage.Parent = screenGui
 
 local escapeConnection = nil
@@ -171,11 +173,8 @@ local function updateEscapeUI()
     screenCrackImage.Visible = (flickerCounter < 5)
 
     local nearestGate = findNearestGateFromActive()
-    print("[UIManager-DEBUG] updateEscapeUI frame. Nearest gate found:", nearestGate)
-
     if nearestGate and camera then
         arrowImage.Visible = true
-        print("[UIManager-DEBUG] Arrow should be visible.")
         local gatePos = nearestGate.Position
         local screenPoint, onScreen = camera:WorldToScreenPoint(gatePos)
         if onScreen then
@@ -191,22 +190,12 @@ local function updateEscapeUI()
         end
     else
         arrowImage.Visible = false
-        print("[UIManager-DEBUG] Arrow should be hidden. Reason: nearestGate is", nearestGate, "and camera is", camera)
     end
 end
 
 -- Listen for the new dedicated escape event
 local escapeEvent = Remotes:WaitForChild("EscapeSequenceStarted")
 escapeEvent.OnClientEvent:Connect(function(gates)
-    print("[UIManager-DEBUG] Received EscapeSequenceStarted event.")
-    if type(gates) == "table" then
-        print("[UIManager-DEBUG] Gates table received with #", #gates, "elements.")
-        for i, gate in ipairs(gates) do
-            print("[UIManager-DEBUG] Gate", i, ":", gate:GetFullName(), "at", gate.Position)
-        end
-    else
-        print("[UIManager-DEBUG] Gates received is not a table:", gates)
-    end
     activeGates = gates
     if not escapeConnection then
         escapeConnection = RunService.Heartbeat:Connect(updateEscapeUI)
