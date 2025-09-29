@@ -43,6 +43,7 @@ screenCrackImage.Parent = screenGui
 local escapeConnection = nil
 local flickerCounter = 0
 local activeGates = {} -- Will be populated by the server event
+local hasPrintedDebugReport = false
 
 local function findNearestGateFromActive()
     local playerChar = player.Character
@@ -68,33 +69,68 @@ local function updateEscapeUI()
     screenCrackImage.Visible = (flickerCounter < 5)
 
     local nearestGate = findNearestGateFromActive()
+    local newRotation = arrowImage.Rotation -- Default to current rotation
+
     if nearestGate and camera then
         arrowImage.Visible = true
         local gatePos = nearestGate.Position
         local screenPoint, onScreen = camera:WorldToScreenPoint(gatePos)
         if onScreen then
             arrowImage.Position = UDim2.new(0, screenPoint.X, 0, screenPoint.Y)
-            arrowImage.Rotation = 0
+            newRotation = 0
         else
             local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
             local direction = (Vector2.new(screenPoint.X, screenPoint.Y) - screenCenter).Unit
             local boundX = math.clamp(screenCenter.X + direction.X * 1000, 50, camera.ViewportSize.X - 50)
             local boundY = math.clamp(screenCenter.Y + direction.Y * 1000, 50, camera.ViewportSize.Y - 50)
             arrowImage.Position = UDim2.new(0, boundX, 0, boundY)
-            arrowImage.Rotation = math.deg(math.atan2(direction.Y, direction.X)) + 90
+            newRotation = math.deg(math.atan2(direction.Y, direction.X)) + 90
         end
+        arrowImage.Rotation = newRotation
     else
         arrowImage.Visible = false
     end
+    -- Log #6
+    print("[UIManager-DEBUG] In update loop. New rotation is:", newRotation)
 end
 
 -- Listen for the dedicated escape event to start the UI
 EscapeSequenceStarted.OnClientEvent:Connect(function(gates)
     if player.Team and player.Team.Name == "Survivors" then
+        -- Log #1
+        print("[UIManager-DEBUG] 'EscapeSequenceStarted' event received by client.")
         activeGates = gates
+
+        -- Log #2
+        print("[UIManager-DEBUG] Attempting to find the Arrow GUI object.")
+        if arrowImage then
+            -- Log #3
+            print("[UIManager-DEBUG] Arrow GUI object found:", arrowImage.Name)
+            arrowImage.Visible = true
+            -- Log #4
+            print("[UIManager-DEBUG] Set arrow visibility to true. Current absolute position:", arrowImage.AbsolutePosition)
+
+            print("--- ARROW UI DEBUG REPORT ---")
+            print("  - Arrow Name:", arrowImage.Name)
+            print("  - Arrow Parent:", arrowImage.Parent and arrowImage.Parent.Name or "nil")
+            print("  - Is Arrow Visible:", arrowImage.Visible)
+            print("  - Is Parent Visible:", arrowImage.Parent and arrowImage.Parent.Visible or "nil")
+            print("  - Position (UDim2):", arrowImage.Position)
+            print("  - AbsolutePosition (Pixels):", arrowImage.AbsolutePosition)
+            print("  - Size (UDim2):", arrowImage.Size)
+            print("  - AbsoluteSize (Pixels):", arrowImage.AbsoluteSize)
+            print("  - ZIndex:", arrowImage.ZIndex)
+            print("  - Image Asset ID:", arrowImage.Image)
+            print("  - ImageTransparency:", arrowImage.ImageTransparency)
+            print("--- END REPORT ---")
+        else
+            print("  - ERROR: Arrow object is nil!")
+        end
+
         if not escapeConnection then
+            -- Log #5
+            print("[UIManager-DEBUG] Preparing to start the arrow direction update loop.")
             escapeConnection = RunService.Heartbeat:Connect(updateEscapeUI)
-            print("[EscapeUIController] Escape sequence UI activated for survivor.")
         end
     end
 end)
