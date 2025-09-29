@@ -171,8 +171,11 @@ local function updateEscapeUI()
     screenCrackImage.Visible = (flickerCounter < 5)
 
     local nearestGate = findNearestGateFromActive()
+    print("[UIManager-DEBUG] updateEscapeUI frame. Nearest gate found:", nearestGate)
+
     if nearestGate and camera then
         arrowImage.Visible = true
+        print("[UIManager-DEBUG] Arrow should be visible.")
         local gatePos = nearestGate.Position
         local screenPoint, onScreen = camera:WorldToScreenPoint(gatePos)
         if onScreen then
@@ -188,13 +191,22 @@ local function updateEscapeUI()
         end
     else
         arrowImage.Visible = false
+        print("[UIManager-DEBUG] Arrow should be hidden. Reason: nearestGate is", nearestGate, "and camera is", camera)
     end
 end
 
 -- Listen for the new dedicated escape event
 local escapeEvent = Remotes:WaitForChild("EscapeSequenceStarted")
 escapeEvent.OnClientEvent:Connect(function(gates)
-    print("[UIManager] Received EscapeSequenceStarted event with gates.")
+    print("[UIManager-DEBUG] Received EscapeSequenceStarted event.")
+    if type(gates) == "table" then
+        print("[UIManager-DEBUG] Gates table received with #", #gates, "elements.")
+        for i, gate in ipairs(gates) do
+            print("[UIManager-DEBUG] Gate", i, ":", gate:GetFullName(), "at", gate.Position)
+        end
+    else
+        print("[UIManager-DEBUG] Gates received is not a table:", gates)
+    end
     activeGates = gates
     if not escapeConnection then
         escapeConnection = RunService.Heartbeat:Connect(updateEscapeUI)
