@@ -28,7 +28,7 @@ end
 
 local arrowImage = Instance.new("ImageLabel")
 arrowImage.Name = "EscapeArrow"
-arrowImage.Image = "rbxassetid://5989193313"
+arrowImage.Image = "rbxassetid://4984448565" -- New, valid asset ID provided by user
 arrowImage.Size = UDim2.new(0, 50, 0, 50)
 arrowImage.AnchorPoint = Vector2.new(0.5, 0.5)
 arrowImage.BackgroundTransparency = 1
@@ -94,22 +94,10 @@ local function updateEscapeUI()
 end
 
 -- Listen for the dedicated escape event to start the UI
-EscapeSequenceStarted.OnClientEvent:Connect(function(gateNames)
+EscapeSequenceStarted.OnClientEvent:Connect(function(gates)
     if player.Team and player.Team.Name == "Survivors" then
-        -- Clear previous gates and find the new ones in the Workspace by name
-        table.clear(activeGates)
-        for _, name in ipairs(gateNames) do
-            local gatePart = Workspace:FindFirstChild(name)
-            if gatePart then
-                table.insert(activeGates, gatePart)
-            else
-                warn("[EscapeUIController] Could not find a gate named: " .. name)
-            end
-        end
-
-        -- Only start the UI update loop if we successfully found gates
-        if #activeGates > 0 and not escapeConnection then
-            print("[EscapeUIController] Escape sequence started. Activating UI.")
+        activeGates = gates
+        if not escapeConnection then
             escapeConnection = RunService.Heartbeat:Connect(updateEscapeUI)
         end
     end
