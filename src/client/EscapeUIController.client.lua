@@ -91,49 +91,60 @@ local function updateEscapeUI()
     flickerCounter = (flickerCounter + 1) % 10
     screenCrackImage.Visible = (flickerCounter < 5)
 
-    -- Hide all arrows by default each frame
-    for _, arrow in pairs(arrows) do
-        arrow.Visible = false
-    end
+    for _, arrow in pairs(arrows) do arrow.Visible = false end
 
     local character = player.Character
     local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
     if not humanoidRootPart or not camera then return end
 
-    -- DIAGNOSTIC: Ignore pathfinding. Point directly at the nearest gate.
     local nearestGate = findNearestGateFromActive()
-    if not nearestGate then return end -- No gate found, do nothing.
+    if not nearestGate then
+        print("[ARROW_DEBUG] No nearest gate found.")
+        return
+    end
+    print("[ARROW_DEBUG] Nearest gate is: " .. nearestGate.Name)
 
     local targetPosition = nearestGate.Position
 
     local screenPoint, onScreen = camera:WorldToScreenPoint(targetPosition)
     if onScreen and (humanoidRootPart.Position - targetPosition).Magnitude < 12 then
-        return -- Hide all arrows if close to the gate and it's on screen
+        print("[ARROW_DEBUG] Player is close to the gate, hiding arrow.")
+        return
     end
 
     local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
     local direction = (Vector2.new(screenPoint.X, screenPoint.Y) - screenCenter).Unit
+    print("[ARROW_DEBUG] Direction Vector: " .. tostring(direction))
 
-    -- Determine which arrow to show based on the angle of the direction vector
     local angle = math.deg(math.atan2(direction.Y, direction.X))
-    local arrowToShow
+    print("[ARROW_DEBUG] Calculated Angle: " .. angle)
 
+    local arrowToShow
     if angle >= -45 and angle < 45 then
         arrowToShow = arrows.Right
+        print("[ARROW_DEBUG] Selected Arrow: RIGHT")
     elseif angle >= 45 and angle < 135 then
         arrowToShow = arrows.Down
+        print("[ARROW_DEBUG] Selected Arrow: DOWN")
     elseif angle >= 135 or angle < -135 then
         arrowToShow = arrows.Left
-    else -- angle is between -135 and -45
+        print("[ARROW_DEBUG] Selected Arrow: LEFT")
+    else
         arrowToShow = arrows.Up
+        print("[ARROW_DEBUG] Selected Arrow: UP")
     end
 
-    -- Position the chosen arrow
+    if not arrowToShow then
+        print("[ARROW_DEBUG] ERROR: No arrow was selected!")
+        return
+    end
+
     local boundX = math.clamp(screenCenter.X + direction.X * (screenCenter.X * 0.8), 50, camera.ViewportSize.X - 50)
     local boundY = math.clamp(screenCenter.Y + direction.Y * (screenCenter.Y * 0.8), 50, camera.ViewportSize.Y - 50)
 
     arrowToShow.Position = UDim2.new(0, boundX, 0, boundY)
     arrowToShow.Visible = true
+    print("[ARROW_DEBUG] Arrow should be visible at: " .. tostring(arrowToShow.Position))
 end
 
 -- Listen for the dedicated escape event to start the UI
