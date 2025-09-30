@@ -113,21 +113,26 @@ local function updateEscapeUI()
     end
 
     local screenPoint, onScreen = camera:WorldToScreenPoint(targetPosition)
-    if onScreen and (humanoidRootPart.Position - targetPosition).Magnitude < 12 then
-        return -- Hide all arrows if close and on screen
+    -- Hide the arrow only if we are close to the FINAL waypoint and it's on screen.
+    if onScreen and currentPath and currentWaypointIndex == #currentPath and (humanoidRootPart.Position - targetPosition).Magnitude < 12 then
+        return -- Hide all arrows
     end
 
     local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
     local direction = (Vector2.new(screenPoint.X, screenPoint.Y) - screenCenter).Unit
 
-    -- Determine which arrow to show based on the direction vector
+    -- Determine which arrow to show based on the angle of the direction vector
+    local angle = math.deg(math.atan2(direction.Y, direction.X))
     local arrowToShow
-    if math.abs(direction.X) > math.abs(direction.Y) then
-        -- More horizontal than vertical, so use Left or Right
-        if direction.X > 0 then arrowToShow = arrows.Right else arrowToShow = arrows.Left end
-    else
-        -- More vertical than horizontal, so use Up or Down
-        if direction.Y > 0 then arrowToShow = arrows.Down else arrowToShow = arrows.Up end
+
+    if angle >= -45 and angle < 45 then
+        arrowToShow = arrows.Right
+    elseif angle >= 45 and angle < 135 then
+        arrowToShow = arrows.Down
+    elseif angle >= 135 or angle < -135 then
+        arrowToShow = arrows.Left
+    else -- angle is between -135 and -45
+        arrowToShow = arrows.Up
     end
 
     -- Position the chosen arrow
@@ -170,6 +175,11 @@ EscapeSequenceStarted.OnClientEvent:Connect(function(gateNames)
     if path.Status == Enum.PathStatus.Success then
         print("[EscapeUIController] Path to nearest gate computed successfully.")
         currentPath = path:GetWaypoints()
+        -- CRITICAL FIX: If the path has waypoints, start by targeting the second one.
+        -- The first waypoint is the player's current location, which causes the arrow to hide immediately.
+        if #currentPath > 1 then
+            currentWaypointIndex = 2
+        end
     else
         warn("[EscapeUIController] Could not compute path to the nearest gate. Arrow will point directly at the gate.")
     end

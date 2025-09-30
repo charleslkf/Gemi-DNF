@@ -385,8 +385,7 @@ function enterEscape()
     stateTimer = CONFIG.VICTORY_GATE_TIMER
     GameStateManager:SetTimer(stateTimer) -- Update the HUD timer
 
-    -- DIAGNOSTIC: Wait 2 seconds to test race condition
-    task.wait(2)
+    -- The 2-second diagnostic wait has been removed as per user request.
 
     -- Fire the new event to all survivors with the gate NAMES
     local remotes = ReplicatedStorage:WaitForChild("Remotes")
