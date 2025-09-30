@@ -27,15 +27,31 @@ if not screenGui then
     return
 end
 
-local arrowImage = Instance.new("ImageLabel")
-arrowImage.Name = "EscapeArrow"
-arrowImage.Image = "rbxassetid://4984448565" -- New, valid asset ID provided by user
-arrowImage.Size = UDim2.new(0, 50, 0, 50)
-arrowImage.AnchorPoint = Vector2.new(0.5, 0.5)
-arrowImage.BackgroundTransparency = 1
-arrowImage.Visible = false
-arrowImage.ZIndex = 2 -- Set ZIndex to render on top
-arrowImage.Parent = screenGui
+-- Create a container for all the arrow images
+local arrows = {
+    Up = Instance.new("ImageLabel"),
+    Down = Instance.new("ImageLabel"),
+    Left = Instance.new("ImageLabel"),
+    Right = Instance.new("ImageLabel")
+}
+
+local ARROW_ASSETS = {
+    Up = "rbxassetid://9852743620",
+    Down = "rbxassetid://9852746355",
+    Left = "rbxassetid://9852736351",
+    Right = "rbxassetid://9852741348"
+}
+
+for direction, arrow in pairs(arrows) do
+    arrow.Name = "Arrow" .. direction
+    arrow.Image = ARROW_ASSETS[direction]
+    arrow.Size = UDim2.new(0, 50, 0, 50)
+    arrow.AnchorPoint = Vector2.new(0.5, 0.5)
+    arrow.BackgroundTransparency = 1
+    arrow.Visible = false
+    arrow.ZIndex = 2
+    arrow.Parent = screenGui
+end
 
 local screenCrackImage = Instance.new("ImageLabel")
 screenCrackImage.Name = "ScreenCrackEffect"
@@ -75,53 +91,51 @@ local function updateEscapeUI()
     flickerCounter = (flickerCounter + 1) % 10
     screenCrackImage.Visible = (flickerCounter < 5)
 
-    local character = player.Character
-    local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
-    if not humanoidRootPart or not camera then
-        arrowImage.Visible = false
-        return
+    -- Hide all arrows by default each frame
+    for _, arrow in pairs(arrows) do
+        arrow.Visible = false
     end
 
+    local character = player.Character
+    local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart or not camera then return end
+
     local targetPosition
-    -- Determine the target: the next waypoint or the gate itself
     if currentPath and #currentPath > 0 and currentPath[currentWaypointIndex] then
         local waypoint = currentPath[currentWaypointIndex]
         targetPosition = waypoint.Position
-
-        -- Check if player has reached the current waypoint, then advance
         if (humanoidRootPart.Position - waypoint.Position).Magnitude < 8 then
             currentWaypointIndex = math.min(currentWaypointIndex + 1, #currentPath)
         end
     else
-        -- Fallback: if no path, find the nearest gate directly
         local nearestGate = findNearestGateFromActive()
-        if nearestGate then
-            targetPosition = nearestGate.Position
-        else
-            arrowImage.Visible = false
-            return
-        end
+        if nearestGate then targetPosition = nearestGate.Position else return end
     end
 
-    -- If we have a target, update the arrow's position and rotation
-    arrowImage.Visible = true
-
-    -- Always clamp the arrow to the edge of the screen for compass-like behavior
     local screenPoint, onScreen = camera:WorldToScreenPoint(targetPosition)
-    local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
-
-    -- If player is very close to the final target and it's on screen, hide the arrow
     if onScreen and (humanoidRootPart.Position - targetPosition).Magnitude < 12 then
-         arrowImage.Visible = false
-         return
+        return -- Hide all arrows if close and on screen
     end
 
+    local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
     local direction = (Vector2.new(screenPoint.X, screenPoint.Y) - screenCenter).Unit
+
+    -- Determine which arrow to show based on the direction vector
+    local arrowToShow
+    if math.abs(direction.X) > math.abs(direction.Y) then
+        -- More horizontal than vertical, so use Left or Right
+        if direction.X > 0 then arrowToShow = arrows.Right else arrowToShow = arrows.Left end
+    else
+        -- More vertical than horizontal, so use Up or Down
+        if direction.Y > 0 then arrowToShow = arrows.Down else arrowToShow = arrows.Up end
+    end
+
+    -- Position the chosen arrow
     local boundX = math.clamp(screenCenter.X + direction.X * (screenCenter.X * 0.8), 50, camera.ViewportSize.X - 50)
     local boundY = math.clamp(screenCenter.Y + direction.Y * (screenCenter.Y * 0.8), 50, camera.ViewportSize.Y - 50)
 
-    arrowImage.Position = UDim2.new(0, boundX, 0, boundY)
-    arrowImage.Rotation = math.deg(math.atan2(direction.Y, direction.X)) + 90
+    arrowToShow.Position = UDim2.new(0, boundX, 0, boundY)
+    arrowToShow.Visible = true
 end
 
 -- Listen for the dedicated escape event to start the UI
@@ -173,7 +187,9 @@ GameStateChanged.OnClientEvent:Connect(function(newState)
             escapeConnection:Disconnect()
             escapeConnection = nil
             screenCrackImage.Visible = false
-            arrowImage.Visible = false
+            for _, arrow in pairs(arrows) do
+                arrow.Visible = false
+            end
             activeGates = {}
         end
     end
