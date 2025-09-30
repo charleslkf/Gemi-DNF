@@ -9,6 +9,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+local PathfindingService = game:GetService("PathfindingService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -48,6 +49,8 @@ screenCrackImage.Parent = screenGui
 local escapeConnection = nil
 local flickerCounter = 0
 local activeGates = {}
+local currentPath = nil -- This will hold the table of waypoints for the path
+local currentWaypointIndex = 1 -- This tracks which waypoint the player is heading towards
 
 local function findNearestGateFromActive()
     local playerChar = player.Character
@@ -72,34 +75,94 @@ local function updateEscapeUI()
     flickerCounter = (flickerCounter + 1) % 10
     screenCrackImage.Visible = (flickerCounter < 5)
 
-    local nearestGate = findNearestGateFromActive()
-    if nearestGate and camera then
-        arrowImage.Visible = true
-        local gatePos = nearestGate.Position
-        local screenPoint, onScreen = camera:WorldToScreenPoint(gatePos)
-        if onScreen then
-            arrowImage.Position = UDim2.new(0, screenPoint.X, 0, screenPoint.Y)
-            arrowImage.Rotation = 0
-        else
-            local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
-            local direction = (Vector2.new(screenPoint.X, screenPoint.Y) - screenCenter).Unit
-            local boundX = math.clamp(screenCenter.X + direction.X * 1000, 50, camera.ViewportSize.X - 50)
-            local boundY = math.clamp(screenCenter.Y + direction.Y * 1000, 50, camera.ViewportSize.Y - 50)
-            arrowImage.Position = UDim2.new(0, boundX, 0, boundY)
-            arrowImage.Rotation = math.deg(math.atan2(direction.Y, direction.X)) + 90
+    local character = player.Character
+    local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart or not camera then
+        arrowImage.Visible = false
+        return
+    end
+
+    local targetPosition
+    -- Determine the target: the next waypoint or the gate itself
+    if currentPath and #currentPath > 0 and currentPath[currentWaypointIndex] then
+        local waypoint = currentPath[currentWaypointIndex]
+        targetPosition = waypoint.Position
+
+        -- Check if player has reached the current waypoint, then advance
+        if (humanoidRootPart.Position - waypoint.Position).Magnitude < 8 then
+            currentWaypointIndex = math.min(currentWaypointIndex + 1, #currentPath)
         end
     else
-        arrowImage.Visible = false
+        -- Fallback: if no path, find the nearest gate directly
+        local nearestGate = findNearestGateFromActive()
+        if nearestGate then
+            targetPosition = nearestGate.Position
+        else
+            arrowImage.Visible = false
+            return
+        end
     end
+
+    -- If we have a target, update the arrow's position and rotation
+    arrowImage.Visible = true
+
+    -- Always clamp the arrow to the edge of the screen for compass-like behavior
+    local screenPoint, onScreen = camera:WorldToScreenPoint(targetPosition)
+    local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+
+    -- If player is very close to the final target and it's on screen, hide the arrow
+    if onScreen and (humanoidRootPart.Position - targetPosition).Magnitude < 12 then
+         arrowImage.Visible = false
+         return
+    end
+
+    local direction = (Vector2.new(screenPoint.X, screenPoint.Y) - screenCenter).Unit
+    local boundX = math.clamp(screenCenter.X + direction.X * (screenCenter.X * 0.8), 50, camera.ViewportSize.X - 50)
+    local boundY = math.clamp(screenCenter.Y + direction.Y * (screenCenter.Y * 0.8), 50, camera.ViewportSize.Y - 50)
+
+    arrowImage.Position = UDim2.new(0, boundX, 0, boundY)
+    arrowImage.Rotation = math.deg(math.atan2(direction.Y, direction.X)) + 90
 end
 
 -- Listen for the dedicated escape event to start the UI
-EscapeSequenceStarted.OnClientEvent:Connect(function(gates)
-    if player.Team and player.Team.Name == "Survivors" then
-        activeGates = gates
-        if not escapeConnection then
-            escapeConnection = RunService.Heartbeat:Connect(updateEscapeUI)
+EscapeSequenceStarted.OnClientEvent:Connect(function(gateNames)
+    if player.Team and player.Team.Name ~= "Survivors" then return end
+
+    -- Correctly populate activeGates from the received names
+    table.clear(activeGates)
+    for _, name in ipairs(gateNames) do
+        local gatePart = Workspace:FindFirstChild(name)
+        if gatePart then
+            table.insert(activeGates, gatePart)
+        else
+            warn("[EscapeUIController] Could not find a gate named: " .. name)
         end
+    end
+
+    currentPath = nil
+    currentWaypointIndex = 1
+
+    local character = player.Character
+    local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart or #activeGates == 0 then return end
+
+    local nearestGate = findNearestGateFromActive()
+    if not nearestGate then return end
+
+    -- Create and compute the path
+    local path = PathfindingService:CreatePath()
+    path:ComputeAsync(humanoidRootPart.Position, nearestGate.Position)
+
+    if path.Status == Enum.PathStatus.Success then
+        print("[EscapeUIController] Path to nearest gate computed successfully.")
+        currentPath = path:GetWaypoints()
+    else
+        warn("[EscapeUIController] Could not compute path to the nearest gate. Arrow will point directly at the gate.")
+    end
+
+    if not escapeConnection then
+        print("[EscapeUIController] Escape sequence started. Activating UI.")
+        escapeConnection = RunService.Heartbeat:Connect(updateEscapeUI)
     end
 end)
 
