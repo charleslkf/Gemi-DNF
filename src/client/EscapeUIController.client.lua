@@ -94,10 +94,22 @@ local function updateEscapeUI()
 end
 
 -- Listen for the dedicated escape event to start the UI
-EscapeSequenceStarted.OnClientEvent:Connect(function(gates)
+EscapeSequenceStarted.OnClientEvent:Connect(function(gateNames)
     if player.Team and player.Team.Name == "Survivors" then
-        activeGates = gates
-        if not escapeConnection then
+        -- Clear previous gates and find the new ones in the Workspace by name
+        table.clear(activeGates)
+        for _, name in ipairs(gateNames) do
+            local gatePart = Workspace:FindFirstChild(name)
+            if gatePart then
+                table.insert(activeGates, gatePart)
+            else
+                warn("[EscapeUIController] Could not find a gate named: " .. name)
+            end
+        end
+
+        -- Only start the UI update loop if we successfully found gates
+        if #activeGates > 0 and not escapeConnection then
+            print("[EscapeUIController] Escape sequence started. Activating UI.")
             escapeConnection = RunService.Heartbeat:Connect(updateEscapeUI)
         end
     end
