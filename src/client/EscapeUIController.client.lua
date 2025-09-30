@@ -9,7 +9,6 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
-local PathfindingService = game:GetService("PathfindingService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -65,8 +64,6 @@ screenCrackImage.Parent = screenGui
 local escapeConnection = nil
 local flickerCounter = 0
 local activeGates = {}
-local currentPath = nil -- This will hold the table of waypoints for the path
-local currentWaypointIndex = 1 -- This tracks which waypoint the player is heading towards
 
 local function findNearestGateFromActive()
     local playerChar = player.Character
@@ -88,109 +85,18 @@ local function findNearestGateFromActive()
 end
 
 local function updateEscapeUI()
-    flickerCounter = (flickerCounter + 1) % 10
-    screenCrackImage.Visible = (flickerCounter < 5)
-
-    for _, arrow in pairs(arrows) do arrow.Visible = false end
-
-    local character = player.Character
-    local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
-    if not humanoidRootPart or not camera then return end
-
-    local nearestGate = findNearestGateFromActive()
-    if not nearestGate then
-        print("[ARROW_DEBUG] No nearest gate found.")
-        return
-    end
-    print("[ARROW_DEBUG] Nearest gate is: " .. nearestGate.Name)
-
-    local targetPosition = nearestGate.Position
-
-    local screenPoint, onScreen = camera:WorldToScreenPoint(targetPosition)
-    if onScreen and (humanoidRootPart.Position - targetPosition).Magnitude < 12 then
-        print("[ARROW_DEBUG] Player is close to the gate, hiding arrow.")
-        return
-    end
-
-    local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
-    local direction = (Vector2.new(screenPoint.X, screenPoint.Y) - screenCenter).Unit
-    print("[ARROW_DEBUG] Direction Vector: " .. tostring(direction))
-
-    local angle = math.deg(math.atan2(direction.Y, direction.X))
-    print("[ARROW_DEBUG] Calculated Angle: " .. angle)
-
-    local arrowToShow
-    if angle >= -45 and angle < 45 then
-        arrowToShow = arrows.Right
-        print("[ARROW_DEBUG] Selected Arrow: RIGHT")
-    elseif angle >= 45 and angle < 135 then
-        arrowToShow = arrows.Down
-        print("[ARROW_DEBUG] Selected Arrow: DOWN")
-    elseif angle >= 135 or angle < -135 then
-        arrowToShow = arrows.Left
-        print("[ARROW_DEBUG] Selected Arrow: LEFT")
-    else
-        arrowToShow = arrows.Up
-        print("[ARROW_DEBUG] Selected Arrow: UP")
-    end
-
-    if not arrowToShow then
-        print("[ARROW_DEBUG] ERROR: No arrow was selected!")
-        return
-    end
-
-    local boundX = math.clamp(screenCenter.X + direction.X * (screenCenter.X * 0.8), 50, camera.ViewportSize.X - 50)
-    local boundY = math.clamp(screenCenter.Y + direction.Y * (screenCenter.Y * 0.8), 50, camera.ViewportSize.Y - 50)
-
-    arrowToShow.Position = UDim2.new(0, boundX, 0, boundY)
-    arrowToShow.Visible = true
-    print("[ARROW_DEBUG] Arrow should be visible at: " .. tostring(arrowToShow.Position))
+    -- DIAGNOSTIC: Force the UP arrow to be visible in the center of the screen.
+    arrows.Up.Visible = true
+    arrows.Up.Position = UDim2.new(0.5, 0, 0.5, 0)
 end
 
 -- Listen for the dedicated escape event to start the UI
-EscapeSequenceStarted.OnClientEvent:Connect(function(gateNames)
-    if player.Team and player.Team.Name ~= "Survivors" then return end
-
-    -- Correctly populate activeGates from the received names
-    table.clear(activeGates)
-    for _, name in ipairs(gateNames) do
-        local gatePart = Workspace:FindFirstChild(name)
-        if gatePart then
-            table.insert(activeGates, gatePart)
-        else
-            warn("[EscapeUIController] Could not find a gate named: " .. name)
+EscapeSequenceStarted.OnClientEvent:Connect(function(gates)
+    if player.Team and player.Team.Name == "Survivors" then
+        activeGates = gates
+        if not escapeConnection then
+            escapeConnection = RunService.Heartbeat:Connect(updateEscapeUI)
         end
-    end
-
-    currentPath = nil
-    currentWaypointIndex = 1
-
-    local character = player.Character
-    local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
-    if not humanoidRootPart or #activeGates == 0 then return end
-
-    local nearestGate = findNearestGateFromActive()
-    if not nearestGate then return end
-
-    -- Create and compute the path
-    local path = PathfindingService:CreatePath()
-    path:ComputeAsync(humanoidRootPart.Position, nearestGate.Position)
-
-    if path.Status == Enum.PathStatus.Success then
-        print("[EscapeUIController] Path to nearest gate computed successfully.")
-        currentPath = path:GetWaypoints()
-        -- CRITICAL FIX: If the path has waypoints, start by targeting the second one.
-        -- The first waypoint is the player's current location, which causes the arrow to hide immediately.
-        if #currentPath > 1 then
-            currentWaypointIndex = 2
-        end
-    else
-        warn("[EscapeUIController] Could not compute path to the nearest gate. Arrow will point directly at the gate.")
-    end
-
-    if not escapeConnection then
-        print("[EscapeUIController] Escape sequence started. Activating UI.")
-        escapeConnection = RunService.Heartbeat:Connect(updateEscapeUI)
     end
 end)
 
@@ -201,9 +107,7 @@ GameStateChanged.OnClientEvent:Connect(function(newState)
             escapeConnection:Disconnect()
             escapeConnection = nil
             screenCrackImage.Visible = false
-            for _, arrow in pairs(arrows) do
-                arrow.Visible = false
-            end
+            arrowImage.Visible = false
             activeGates = {}
         end
     end

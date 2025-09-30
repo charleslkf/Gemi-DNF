@@ -301,16 +301,6 @@ function MiniGameManager.init()
 
     -- Proximity check loop (RenderStepped)
     RunService.RenderStepped:Connect(function()
-        -- Team Check: Do not show interaction prompts for Killers.
-        if player.Team and player.Team.Name == "Killers" then
-            if nearbyMachine and nearbyMachine.Parent then
-                local oldPrompt = nearbyMachine:FindFirstChild("InteractionPrompt")
-                if oldPrompt then oldPrompt:Destroy() end
-                nearbyMachine = nil
-            end
-            return
-        end
-
         if isGameActive then return end
 
         local machinesFolder = Workspace:FindFirstChild(CONFIG.MACHINE_FOLDER_NAME)
@@ -351,11 +341,6 @@ function MiniGameManager.init()
     -- Input handling
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed or isGameActive or input.KeyCode ~= Enum.KeyCode.E or not nearbyMachine then
-            return
-        end
-
-        -- Team Check: Do not allow Killers to activate machines.
-        if player.Team and player.Team.Name == "Killers" then
             return
         end
 
