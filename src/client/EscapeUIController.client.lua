@@ -100,22 +100,15 @@ local function updateEscapeUI()
     local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
     if not humanoidRootPart or not camera then return end
 
-    local targetPosition
-    if currentPath and #currentPath > 0 and currentPath[currentWaypointIndex] then
-        local waypoint = currentPath[currentWaypointIndex]
-        targetPosition = waypoint.Position
-        if (humanoidRootPart.Position - waypoint.Position).Magnitude < 8 then
-            currentWaypointIndex = math.min(currentWaypointIndex + 1, #currentPath)
-        end
-    else
-        local nearestGate = findNearestGateFromActive()
-        if nearestGate then targetPosition = nearestGate.Position else return end
-    end
+    -- DIAGNOSTIC: Ignore pathfinding. Point directly at the nearest gate.
+    local nearestGate = findNearestGateFromActive()
+    if not nearestGate then return end -- No gate found, do nothing.
+
+    local targetPosition = nearestGate.Position
 
     local screenPoint, onScreen = camera:WorldToScreenPoint(targetPosition)
-    -- Hide the arrow only if we are close to the FINAL waypoint and it's on screen.
-    if onScreen and currentPath and currentWaypointIndex == #currentPath and (humanoidRootPart.Position - targetPosition).Magnitude < 12 then
-        return -- Hide all arrows
+    if onScreen and (humanoidRootPart.Position - targetPosition).Magnitude < 12 then
+        return -- Hide all arrows if close to the gate and it's on screen
     end
 
     local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
