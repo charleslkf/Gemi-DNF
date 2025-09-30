@@ -85,7 +85,10 @@ local function findNearestGateFromActive()
 end
 
 local function updateEscapeUI()
-    -- DIAGNOSTIC: Force the UP arrow to be visible in the center of the screen.
+    -- DIAGNOSTIC: Keep crumbling effect and force the UP arrow to be visible in the center.
+    flickerCounter = (flickerCounter + 1) % 10
+    screenCrackImage.Visible = (flickerCounter < 5)
+
     arrows.Up.Visible = true
     arrows.Up.Position = UDim2.new(0.5, 0, 0.5, 0)
 end
@@ -107,7 +110,9 @@ GameStateChanged.OnClientEvent:Connect(function(newState)
             escapeConnection:Disconnect()
             escapeConnection = nil
             screenCrackImage.Visible = false
-            arrowImage.Visible = false
+            for _, arrow in pairs(arrows) do
+                arrow.Visible = false
+            end
             activeGates = {}
         end
     end
