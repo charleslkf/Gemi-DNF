@@ -27,15 +27,34 @@ if not screenGui then
     return
 end
 
-local arrowImage = Instance.new("ImageLabel")
-arrowImage.Name = "EscapeArrow"
-arrowImage.Image = "rbxassetid://5989193313"
-arrowImage.Size = UDim2.new(0, 50, 0, 50)
-arrowImage.AnchorPoint = Vector2.new(0.5, 0.5)
-arrowImage.BackgroundTransparency = 1
-arrowImage.Visible = false
-arrowImage.ZIndex = 2 -- Set ZIndex to render on top
-arrowImage.Parent = screenGui
+local currentPath = nil -- This will hold the table of waypoints for the path
+local currentWaypointIndex = 1 -- This tracks which waypoint the player is heading towards
+
+-- Create a container for all the arrow images
+local arrows = {
+    Up = Instance.new("ImageLabel"),
+    Down = Instance.new("ImageLabel"),
+    Left = Instance.new("ImageLabel"),
+    Right = Instance.new("ImageLabel")
+}
+
+local ARROW_ASSETS = {
+    Up = "rbxassetid://9852743601",
+    Down = "rbxassetid://9852746340",
+    Left = "rbxassetid://9852736337",
+    Right = "rbxassetid://9852741341"
+}
+
+for direction, arrow in pairs(arrows) do
+    arrow.Name = "Arrow" .. direction
+    arrow.Image = ARROW_ASSETS[direction]
+    arrow.Size = UDim2.new(0, 50, 0, 50)
+    arrow.AnchorPoint = Vector2.new(0.5, 0.5)
+    arrow.BackgroundTransparency = 1
+    arrow.Visible = false
+    arrow.ZIndex = 2
+    arrow.Parent = screenGui
+end
 
 local screenCrackImage = Instance.new("ImageLabel")
 screenCrackImage.Name = "ScreenCrackEffect"
@@ -49,34 +68,6 @@ screenCrackImage.Parent = screenGui
 local escapeConnection = nil
 local flickerCounter = 0
 local activeGates = {}
-local currentPath = nil -- This will hold the table of waypoints for the path
-local currentWaypointIndex = 1 -- This tracks which waypoint the player is heading towards
-
--- Create a container for all the arrow images
-local arrows = {
-    Up = Instance.new("ImageLabel"),
-    Down = Instance.new("ImageLabel"),
-    Left = Instance.new("ImageLabel"),
-    Right = Instance.new("ImageLabel")
-}
-
-local ARROW_ASSETS = {
-    Up = "rbxassetid://13199053545",
-    Down = "rbxassetid://13199052729",
-    Left = "rbxassetid://144259825",
-    Right = "rbxassetid://288507828"
-}
-
-for direction, arrow in pairs(arrows) do
-    arrow.Name = "Arrow" .. direction
-    arrow.Image = ARROW_ASSETS[direction]
-    arrow.Size = UDim2.new(0, 50, 0, 50)
-    arrow.AnchorPoint = Vector2.new(0.5, 0.5)
-    arrow.BackgroundTransparency = 1
-    arrow.Visible = false
-    arrow.ZIndex = 2
-    arrow.Parent = screenGui
-end
 
 local function findNearestGateFromActive()
     local playerChar = player.Character
