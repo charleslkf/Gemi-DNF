@@ -29,6 +29,7 @@ end
 
 local currentPath = nil -- This will hold the table of waypoints for the path
 local currentWaypointIndex = 1 -- This tracks which waypoint the player is heading towards
+local lastPathCalculationTime = 0 -- Timer to track when the path was last calculated
 
 -- Create a container for all the arrow images
 local arrows = {
@@ -92,14 +93,29 @@ local function updateEscapeUI()
     flickerCounter = (flickerCounter + 1) % 10
     screenCrackImage.Visible = (flickerCounter < 5)
 
-    -- Hide all arrows by default each frame
-    for _, arrow in pairs(arrows) do
-        arrow.Visible = false
-    end
+    for _, arrow in pairs(arrows) do arrow.Visible = false end
 
     local character = player.Character
     local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
-    if not humanoidRootPart or not camera then return end
+    if not humanoidRootPart or not camera or #activeGates == 0 then return end
+
+    -- Recalculate the path every second
+    local currentTime = tick()
+    if currentTime - lastPathCalculationTime > 1 then
+        lastPathCalculationTime = currentTime
+        local nearestGate = findNearestGateFromActive()
+        if nearestGate then
+            local path = PathfindingService:CreatePath()
+            path:ComputeAsync(humanoidRootPart.Position, nearestGate.Position)
+            if path.Status == Enum.PathStatus.Success then
+                currentPath = path:GetWaypoints()
+                -- If we have a fresh path, reset the waypoint index, targeting the second waypoint if possible
+                currentWaypointIndex = (#currentPath > 1) and 2 or 1
+            else
+                currentPath = nil -- Invalidate the path if it fails
+            end
+        end
+    end
 
     local targetPosition
     if currentPath and #currentPath > 0 and currentPath[currentWaypointIndex] then
@@ -114,29 +130,22 @@ local function updateEscapeUI()
     end
 
     local screenPoint, onScreen = camera:WorldToScreenPoint(targetPosition)
-    -- Hide the arrow only if we are close to the FINAL waypoint and it's on screen.
     if onScreen and currentPath and currentWaypointIndex == #currentPath and (humanoidRootPart.Position - targetPosition).Magnitude < 12 then
-        return -- Hide all arrows
+        return -- Hide all arrows if close to the final destination
     end
 
     local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
     local direction = (Vector2.new(screenPoint.X, screenPoint.Y) - screenCenter).Unit
 
-    -- Determine which arrow to show based on the angle of the direction vector
     local angle = math.deg(math.atan2(direction.Y, direction.X))
     local arrowToShow
 
-    if angle >= -45 and angle < 45 then
-        arrowToShow = arrows.Right
-    elseif angle >= 45 and angle < 135 then
-        arrowToShow = arrows.Down
-    elseif angle >= 135 or angle < -135 then
-        arrowToShow = arrows.Left
-    else -- angle is between -135 and -45
-        arrowToShow = arrows.Up
+    if angle >= -45 and angle < 45 then arrowToShow = arrows.Right
+    elseif angle >= 45 and angle < 135 then arrowToShow = arrows.Down
+    elseif angle >= 135 or angle < -135 then arrowToShow = arrows.Left
+    else arrowToShow = arrows.Up
     end
 
-    -- Position the chosen arrow
     local boundX = math.clamp(screenCenter.X + direction.X * (screenCenter.X * 0.8), 50, camera.ViewportSize.X - 50)
     local boundY = math.clamp(screenCenter.Y + direction.Y * (screenCenter.Y * 0.8), 50, camera.ViewportSize.Y - 50)
 
@@ -161,28 +170,7 @@ EscapeSequenceStarted.OnClientEvent:Connect(function(gateNames)
 
     currentPath = nil
     currentWaypointIndex = 1
-
-    local character = player.Character
-    local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
-    if not humanoidRootPart or #activeGates == 0 then return end
-
-    local nearestGate = findNearestGateFromActive()
-    if not nearestGate then return end
-
-    -- Create and compute the path
-    local path = PathfindingService:CreatePath()
-    path:ComputeAsync(humanoidRootPart.Position, nearestGate.Position)
-
-    if path.Status == Enum.PathStatus.Success then
-        print("[EscapeUIController] Path to nearest gate computed successfully.")
-        currentPath = path:GetWaypoints()
-        -- CRITICAL FIX: If the path has waypoints, start by targeting the second one.
-        if #currentPath > 1 then
-            currentWaypointIndex = 2
-        end
-    else
-        warn("[EscapeUIController] Could not compute path to the nearest gate. Arrow will point directly at the gate.")
-    end
+    lastPathCalculationTime = 0 -- Reset timer
 
     if not escapeConnection then
         print("[EscapeUIController] Escape sequence started. Activating UI.")
