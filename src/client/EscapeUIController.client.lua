@@ -26,31 +26,14 @@ if not screenGui then
     return
 end
 
--- Create a container for all the arrow images
-local arrows = {
-    Up = Instance.new("ImageLabel"),
-    Down = Instance.new("ImageLabel"),
-    Left = Instance.new("ImageLabel"),
-    Right = Instance.new("ImageLabel")
-}
-
-local ARROW_ASSETS = {
-    Up = "rbxassetid://9852743620",
-    Down = "rbxassetid://9852746355",
-    Left = "rbxassetid://9852736351",
-    Right = "rbxassetid://9852741348"
-}
-
-for direction, arrow in pairs(arrows) do
-    arrow.Name = "Arrow" .. direction
-    arrow.Image = ARROW_ASSETS[direction]
-    arrow.Size = UDim2.new(0, 50, 0, 50)
-    arrow.AnchorPoint = Vector2.new(0.5, 0.5)
-    arrow.BackgroundTransparency = 1
-    arrow.Visible = false
-    arrow.ZIndex = 2
-    arrow.Parent = screenGui
-end
+local redSquare = Instance.new("Frame")
+redSquare.Name = "RedSquareDiagnostic"
+redSquare.Size = UDim2.new(0, 100, 0, 100)
+redSquare.AnchorPoint = Vector2.new(0.5, 0.5)
+redSquare.BackgroundColor3 = Color3.new(1, 0, 0)
+redSquare.Visible = false
+redSquare.ZIndex = 2
+redSquare.Parent = screenGui
 
 local screenCrackImage = Instance.new("ImageLabel")
 screenCrackImage.Name = "ScreenCrackEffect"
@@ -85,12 +68,12 @@ local function findNearestGateFromActive()
 end
 
 local function updateEscapeUI()
-    -- DIAGNOSTIC: Keep crumbling effect and force the UP arrow to be visible in the center.
+    -- DIAGNOSTIC: Keep crumbling effect and force the red square to be visible.
     flickerCounter = (flickerCounter + 1) % 10
     screenCrackImage.Visible = (flickerCounter < 5)
 
-    arrows.Up.Visible = true
-    arrows.Up.Position = UDim2.new(0.5, 0, 0.5, 0)
+    redSquare.Visible = true
+    redSquare.Position = UDim2.new(0.5, 0, 0.5, 0)
 end
 
 -- Listen for the dedicated escape event to start the UI
@@ -110,9 +93,7 @@ GameStateChanged.OnClientEvent:Connect(function(newState)
             escapeConnection:Disconnect()
             escapeConnection = nil
             screenCrackImage.Visible = false
-            for _, arrow in pairs(arrows) do
-                arrow.Visible = false
-            end
+            redSquare.Visible = false
             activeGates = {}
         end
     end
