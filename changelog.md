@@ -2,6 +2,19 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 3.4.2
+- **Feature: Dynamic Pathfinding Arrow:**
+  - Implemented a smart directional arrow in `EscapeUIController.client.lua` to guide Survivors to the nearest Victory Gate.
+  - The system uses `PathfindingService` to compute a path that avoids obstacles.
+  - The path is dynamically recalculated every second in a non-blocking thread (`task.spawn()`) to provide accurate, real-time directions as the player moves.
+  - Replaced the single rotating arrow with a more robust four-arrow system, which uses verified Texture IDs and stable screen-edge positioning to prevent visual bugs.
+- **Bug Fix: Killer Machine Interaction:**
+  - Added team checks to `MiniGameManager.lua` to prevent players on the "Killers" team from seeing interaction prompts on or activating mini-game machines.
+- **Bug Fix: UI Not Persisting After Round:**
+  - Fixed a bug where the directional arrow would remain on screen after the escape sequence ended. The `GameStateChanged` event handler now correctly cleans up all arrow UI elements.
+- **Quality of Life: Removed UI Delay:**
+  - Removed a 2-second `task.wait()` from `GameManager.server.lua` to ensure the escape sequence UI effects (like the screen crumbling) begin immediately when the last machine is fixed.
+
 ## Version 2.3.0
 - **Feature: World Management System**
   - Created a new `WorldManager.server.lua` script to handle loading and unloading pre-made map assets from `ServerStorage`.
