@@ -40,10 +40,10 @@ local arrows = {
 }
 
 local ARROW_ASSETS = {
-    Up = "rbxassetid://9852743601",
-    Down = "rbxassetid://9852746340",
-    Left = "rbxassetid://9852736337",
-    Right = "rbxassetid://9852741341"
+    Up = "rbxassetid://13199053545",
+    Down = "rbxassetid://13199052729",
+    Left = "rbxassetid://144259825",
+    Right = "rbxassetid://288507828"
 }
 
 for direction, arrow in pairs(arrows) do
@@ -130,8 +130,9 @@ local function updateEscapeUI()
     end
 
     local screenPoint, onScreen = camera:WorldToScreenPoint(targetPosition)
+    -- Hide the arrow only if we are close to the FINAL waypoint and it's on screen.
     if onScreen and currentPath and currentWaypointIndex == #currentPath and (humanoidRootPart.Position - targetPosition).Magnitude < 12 then
-        return -- Hide all arrows if close to the final destination
+        return -- Hide all arrows
     end
 
     local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
@@ -140,16 +141,20 @@ local function updateEscapeUI()
     local angle = math.deg(math.atan2(direction.Y, direction.X))
     local arrowToShow
 
-    if angle >= -45 and angle < 45 then arrowToShow = arrows.Right
-    elseif angle >= 45 and angle < 135 then arrowToShow = arrows.Down
-    elseif angle >= 135 or angle < -135 then arrowToShow = arrows.Left
-    else arrowToShow = arrows.Up
+    if angle >= -45 and angle < 45 then
+        arrowToShow = arrows.Right
+        arrowToShow.Position = UDim2.new(1, -50, 0.5, 0)
+    elseif angle >= 45 and angle < 135 then
+        arrowToShow = arrows.Down
+        arrowToShow.Position = UDim2.new(0.5, 0, 1, -50)
+    elseif angle >= 135 or angle < -135 then
+        arrowToShow = arrows.Left
+        arrowToShow.Position = UDim2.new(0, 50, 0.5, 0)
+    else -- angle is between -135 and -45
+        arrowToShow = arrows.Up
+        arrowToShow.Position = UDim2.new(0.5, 0, 0, 50)
     end
 
-    local boundX = math.clamp(screenCenter.X + direction.X * (screenCenter.X * 0.8), 50, camera.ViewportSize.X - 50)
-    local boundY = math.clamp(screenCenter.Y + direction.Y * (screenCenter.Y * 0.8), 50, camera.ViewportSize.Y - 50)
-
-    arrowToShow.Position = UDim2.new(0, boundX, 0, boundY)
     arrowToShow.Visible = true
 end
 
