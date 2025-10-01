@@ -40,10 +40,10 @@ local arrows = {
 }
 
 local ARROW_ASSETS = {
-    Up = "rbxassetid://13199053545",
-    Down = "rbxassetid://13199052729",
-    Left = "rbxassetid://144259825",
-    Right = "rbxassetid://288507828"
+    Up = "rbxassetid://9852743601",
+    Down = "rbxassetid://9852746340",
+    Left = "rbxassetid://9852736337",
+    Right = "rbxassetid://9852741341"
 }
 
 for direction, arrow in pairs(arrows) do
@@ -99,22 +99,23 @@ local function updateEscapeUI()
     local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
     if not humanoidRootPart or not camera or #activeGates == 0 then return end
 
-    -- Recalculate the path every second
+    -- Dynamic Path Recalculation in a non-blocking thread
     local currentTime = tick()
     if currentTime - lastPathCalculationTime > 1 then
         lastPathCalculationTime = currentTime
-        local nearestGate = findNearestGateFromActive()
-        if nearestGate then
-            local path = PathfindingService:CreatePath()
-            path:ComputeAsync(humanoidRootPart.Position, nearestGate.Position)
-            if path.Status == Enum.PathStatus.Success then
-                currentPath = path:GetWaypoints()
-                -- If we have a fresh path, reset the waypoint index, targeting the second waypoint if possible
-                currentWaypointIndex = (#currentPath > 1) and 2 or 1
-            else
-                currentPath = nil -- Invalidate the path if it fails
+        task.spawn(function()
+            local nearestGate = findNearestGateFromActive()
+            if nearestGate then
+                local path = PathfindingService:CreatePath()
+                path:ComputeAsync(humanoidRootPart.Position, nearestGate.Position)
+                if path.Status == Enum.PathStatus.Success then
+                    currentPath = path:GetWaypoints()
+                    currentWaypointIndex = (#currentPath > 1) and 2 or 1
+                else
+                    currentPath = nil
+                end
             end
-        end
+        end)
     end
 
     local targetPosition
@@ -130,9 +131,8 @@ local function updateEscapeUI()
     end
 
     local screenPoint, onScreen = camera:WorldToScreenPoint(targetPosition)
-    -- Hide the arrow only if we are close to the FINAL waypoint and it's on screen.
     if onScreen and currentPath and currentWaypointIndex == #currentPath and (humanoidRootPart.Position - targetPosition).Magnitude < 12 then
-        return -- Hide all arrows
+        return -- Hide all arrows if close to the final destination
     end
 
     local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
