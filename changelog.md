@@ -2,6 +2,13 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 3.4.4
+- **Feature: Map Boundary Walls:**
+  - The `MapGenerator.server.lua` script now programmatically creates four large boundary walls to fully enclose the map, preventing players from falling off the edge.
+- **Feature: Safe Spawning System:**
+  - Introduced a new shared module, `SafeSpawnUtil.lua`, to provide a robust, collision-aware method for finding valid spawn locations.
+  - Integrated the safe spawning utility into the `GameManager`, `CoinStashManager`, and `StoreKeeperManager` to ensure all dynamic objects (machines, gates, coin stashes, and the store NPC) are placed in playable areas, avoiding walls and other obstacles.
+
 ## Version 3.4.2
 - **Feature: Dynamic Pathfinding Arrow:**
   - Implemented a smart directional arrow in `EscapeUIController.client.lua` to guide Survivors to the nearest Victory Gate.
