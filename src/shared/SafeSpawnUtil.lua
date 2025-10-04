@@ -45,7 +45,8 @@ function SafeSpawnUtil.findSafeSpawnPoint(objectToSpawn, mapBounds)
     local spawnY = mapPosition.Y + mapBounds.Size.Y / 2 + objectSize.Y / 2 -- Place it on top of the floor
 
     local overlapParams = OverlapParams.new()
-    overlapParams.FilterDescendantsInstances = {objectToSpawn} -- Ignore the object itself
+    -- Ignore the object itself and the map's floor to prevent false collisions.
+    overlapParams.FilterDescendantsInstances = {objectToSpawn, mapBounds}
     overlapParams.FilterType = Enum.RaycastFilterType.Exclude
 
     for i = 1, MAX_ATTEMPTS do

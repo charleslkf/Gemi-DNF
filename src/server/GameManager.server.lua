@@ -279,24 +279,33 @@ function spawnMachines(mapModel)
 
     print(string.format("[GameManager] Spawned %d machines.", CONFIG.MACHINES_TO_SPAWN))
 
-    -- Also spawn the inactive Victory Gates using the safe spawn utility
-    for i = 1, 2 do
+    -- Spawn the inactive Victory Gates at fixed, opposite ends of the map.
+    local gateSize = Vector3.new(12, 15, 2)
+    local gateY = mapBounds.Position.Y + (mapBounds.Size.Y / 2) + (gateSize.Y / 2)
+    local halfMapZ = mapBounds.Size.Z / 2
+    local buffer = 5 -- Buffer space from the edge wall
+
+    local gatePositions = {
+        North = Vector3.new(mapBounds.Position.X, gateY, mapBounds.Position.Z - halfMapZ + (gateSize.Z / 2) + buffer),
+        South = Vector3.new(mapBounds.Position.X, gateY, mapBounds.Position.Z + halfMapZ - (gateSize.Z / 2) - buffer)
+    }
+
+    local gateIndex = 1
+    for _, pos in pairs(gatePositions) do
         local gate = Instance.new("Part")
-        gate.Name = "VictoryGate" .. i
-        gate.Size = Vector3.new(12, 15, 2)
+        gate.Name = "VictoryGate" .. gateIndex
+        gate.Size = gateSize
         gate.Anchored = true
         gate.CanCollide = false
         gate.Transparency = 1 -- Initially invisible
         gate.Material = Enum.Material.Plastic
         gate.BrickColor = BrickColor.new("Black")
-
-        -- Use the safe spawn utility to find a collision-free position
-        local safeCFrame = SafeSpawnUtil.findSafeSpawnPoint(gate, mapBounds)
-        gate.CFrame = safeCFrame
-
+        gate.Position = pos
         gate.Parent = Workspace
+        gateIndex = gateIndex + 1
     end
-    print("[GameManager] Spawned 2 inactive Victory Gates.")
+
+    print("[GameManager] Spawned 2 inactive Victory Gates at opposite ends of the map.")
 end
 
 -- #############################
@@ -395,17 +404,23 @@ function enterEscape()
     stateTimer = CONFIG.VICTORY_GATE_TIMER
     GameStateManager:SetTimer(stateTimer) -- Update the HUD timer
 
-    -- DIAGNOSTIC: Wait 2 seconds to test race condition
-    task.wait(2)
+    -- The 2-second diagnostic wait has been removed as per user request.
 
-    -- Fire the new event to all survivors with the gate references
+    -- Fire the new event to all survivors with the gate NAMES
     local remotes = ReplicatedStorage:WaitForChild("Remotes")
     local escapeEvent = remotes:WaitForChild("EscapeSequenceStarted")
+
+    -- Create a new table containing only the names of the gates for replication
+    local gateNames = {}
+    for _, gate in ipairs(gates) do
+        table.insert(gateNames, gate.Name)
+    end
+
     for _, player in ipairs(Players:GetPlayers()) do
         if player.Team == survivorsTeam then
-            print("[GameManager-DEBUG] Firing event for: " .. player.Name)
-            -- Pass the gates as a table to handle any number of them
-            escapeEvent:FireClient(player, gates)
+            print("[GameManager-DEBUG] Firing EscapeSequenceStarted event for: " .. player.Name)
+            -- Pass the table of gate names, which replicates correctly
+            escapeEvent:FireClient(player, gateNames)
         end
     end
 end

@@ -2,6 +2,14 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 3.4.6
+- **Critical Bug Fix: Client Crash on Escape:**
+  - Fixed a crash in the `EscapeUIController` by modifying `GameManager` to send a table of gate *names* (strings) to the client instead of gate *instances*.
+- **Critical Bug Fix: Spawning Failures:**
+  - Resolved an issue where `SafeSpawnUtil` would always fail to find a spawn location. The collision check now correctly ignores the map's floor, preventing false positives.
+- **Bug Fix: Victory Gate Placement:**
+  - The Victory Gates are no longer spawned randomly. They are now deterministically placed on opposite (North and South) edges of the map to meet the design requirement.
+
 ## Version 3.4.5
 - **Critical Bug Fix: Spawning Crash:**
   - Fixed a crash in `SafeSpawnUtil.lua` that occurred when trying to spawn simple `Part` objects like the Victory Gate. The collision check was updated to use `GetPartBoundsInBox`, which is more robust and does not require a `PrimaryPart`.
