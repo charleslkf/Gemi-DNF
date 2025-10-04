@@ -2,6 +2,12 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 3.4.5
+- **Critical Bug Fix: Spawning Crash:**
+  - Fixed a crash in `SafeSpawnUtil.lua` that occurred when trying to spawn simple `Part` objects like the Victory Gate. The collision check was updated to use `GetPartBoundsInBox`, which is more robust and does not require a `PrimaryPart`.
+- **Critical Bug Fix: Incorrect Map Loading:**
+  - Corrected a regression in `GameManager.server.lua` that caused the old "Map1" to be loaded instead of the new procedural map. The logic to filter out "Map1" has been restored.
+
 ## Version 3.4.4
 - **Feature: Map Boundary Walls:**
   - The `MapGenerator.server.lua` script now programmatically creates four large boundary walls to fully enclose the map, preventing players from falling off the edge.

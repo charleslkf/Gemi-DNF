@@ -53,8 +53,9 @@ function SafeSpawnUtil.findSafeSpawnPoint(objectToSpawn, mapBounds)
         local randomZ = mapPosition.Z + math.random(-halfMapZ, halfMapZ)
         local potentialCFrame = CFrame.new(randomX, spawnY, randomZ)
 
-        -- Use GetPartsInPart to check for collisions at the potential spawn point
-        local collidingParts = Workspace:GetPartsInPart(objectToSpawn.PrimaryPart or objectToSpawn, overlapParams)
+        -- Use GetPartBoundsInBox which checks a volume without needing a specific part instance.
+        -- This is more robust and avoids the PrimaryPart error.
+        local collidingParts = Workspace:GetPartBoundsInBox(potentialCFrame, objectSize, overlapParams)
 
         if #collidingParts == 0 then
             -- No collisions detected, this is a safe spot.

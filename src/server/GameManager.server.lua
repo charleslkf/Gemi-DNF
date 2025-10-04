@@ -88,14 +88,23 @@ function loadRandomLevel()
     local allMaps = mapsFolder:GetChildren()
     local availableMaps = {}
     for _, map in ipairs(allMaps) do
-        if map.Name ~= "LMS_Arena" then
+        -- Explicitly ignore the old default map to ensure the new one is loaded.
+        if map.Name ~= "LMS_Arena" and map.Name ~= "Map1" then
             table.insert(availableMaps, map)
         end
     end
 
     if #availableMaps == 0 then
-        warn("[GameManager] No non-LMS maps found in ServerStorage/Maps folder!")
-        return nil
+        warn("[GameManager] No valid custom maps found (excluding Map1). Checking for fallback.")
+        -- If no other maps exist, fall back to the original Map1 to prevent crashing.
+        local fallbackMap = mapsFolder:FindFirstChild("Map1")
+        if fallbackMap then
+            table.insert(availableMaps, fallbackMap)
+            warn("[GameManager] Fallback: Loading original Map1 as no other maps were found.")
+        else
+            warn("[GameManager] CRITICAL: No maps found in ServerStorage/Maps folder!")
+            return nil
+        end
     end
 
     local randomIndex = math.random(#availableMaps)
