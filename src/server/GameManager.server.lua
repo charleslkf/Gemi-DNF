@@ -21,6 +21,7 @@ local HealthManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitFo
 local CagingManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("CagingManager"))
 local InventoryManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("InventoryManager"))
 local SimulatedPlayerManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("SimulatedPlayerManager"))
+local SafeSpawnUtil = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("SafeSpawnUtil"))
 local StoreKeeperManager = require(ServerScriptService:WaitForChild("StoreKeeperManager"))
 local CoinStashManager = require(ServerScriptService:WaitForChild("CoinStashManager"))
 local GameStateManager = require(ServerScriptService:WaitForChild("GameStateManager"))
@@ -260,16 +261,16 @@ function spawnMachines(mapModel)
         local randomType = gameTypes[math.random(#gameTypes)]
         machine:SetAttribute("GameType", randomType)
 
-        local randomX = mapBounds.Position.X + math.random(-mapBounds.Size.X / 2, mapBounds.Size.X / 2)
-        local randomZ = mapBounds.Position.Z + math.random(-mapBounds.Size.Z / 2, mapBounds.Size.Z / 2)
-        machine:SetPrimaryPartCFrame(CFrame.new(randomX, mapBounds.Position.Y + machine.PrimaryPart.Size.Y / 2, randomZ))
+        -- Use the safe spawn utility to find a collision-free position
+        local safeCFrame = SafeSpawnUtil.findSafeSpawnPoint(machine, mapBounds)
+        machine:SetPrimaryPartCFrame(safeCFrame)
 
         machine.Parent = machineFolder
     end
 
     print(string.format("[GameManager] Spawned %d machines.", CONFIG.MACHINES_TO_SPAWN))
 
-    -- Also spawn the inactive Victory Gates
+    -- Also spawn the inactive Victory Gates using the safe spawn utility
     for i = 1, 2 do
         local gate = Instance.new("Part")
         gate.Name = "VictoryGate" .. i
@@ -280,9 +281,9 @@ function spawnMachines(mapModel)
         gate.Material = Enum.Material.Plastic
         gate.BrickColor = BrickColor.new("Black")
 
-        local randomX = mapBounds.Position.X + math.random(-mapBounds.Size.X / 2, mapBounds.Size.X / 2)
-        local randomZ = mapBounds.Position.Z + math.random(-mapBounds.Size.Z / 2, mapBounds.Size.Z / 2)
-        gate.Position = Vector3.new(randomX, mapBounds.Position.Y + gate.Size.Y / 2, randomZ)
+        -- Use the safe spawn utility to find a collision-free position
+        local safeCFrame = SafeSpawnUtil.findSafeSpawnPoint(gate, mapBounds)
+        gate.CFrame = safeCFrame
 
         gate.Parent = Workspace
     end
@@ -326,8 +327,8 @@ function enterPlaying()
         return
     end
     spawnMachines(loadedMap)
-    StoreKeeperManager.startManaging(currentLevel)
-    CoinStashManager.spawnStashes()
+    StoreKeeperManager.startManaging(currentLevel, loadedMap)
+    CoinStashManager.spawnStashes(loadedMap)
     CagingManager.resetAllCageCounts()
 
     local realPlayers = Players:GetPlayers()

@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Modules
 local InventoryManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("InventoryManager"))
+local SafeSpawnUtil = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("SafeSpawnUtil"))
 
 -- Remotes
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -23,11 +24,6 @@ local StoreKeeperManager = {}
 -- Configuration
 local NPC_CONFIG = {
     Name = "StoreKeeper",
-    SpawnPosition = Vector3.new(10, 5, 10),
-    SpawnArea = {
-        Min = Vector3.new(-50, 5, -50),
-        Max = Vector3.new(50, 5, 50)
-    },
     VISIBLE_DURATION = 30,
     HIDDEN_DURATION = 10
 }
@@ -54,8 +50,12 @@ local function shuffle(tbl)
 end
 
 -- Private helper to spawn the NPC model at a random location
-local function _spawnNPCRandomly()
+local function _spawnNPCRandomly(mapBounds)
     if activeNPC then return end
+    if not mapBounds then
+        warn("[StoreKeeperManager] Cannot spawn NPC without mapBounds.")
+        return
+    end
 
     print("StoreKeeperManager: Spawning NPC.")
     activeNPC = Instance.new("Model")
@@ -72,10 +72,15 @@ local function _spawnNPCRandomly()
     hrp.Parent = activeNPC
     activeNPC.PrimaryPart = hrp
 
-    local x = math.random(NPC_CONFIG.SpawnArea.Min.X, NPC_CONFIG.SpawnArea.Max.X)
-    local z = math.random(NPC_CONFIG.SpawnArea.Min.Z, NPC_CONFIG.SpawnArea.Max.Z)
-    local y = NPC_CONFIG.SpawnArea.Min.Y
-    activeNPC:SetPrimaryPartCFrame(CFrame.new(x, y, z))
+    -- Use the safe spawn utility to find a collision-free position
+    local safeCFrame = SafeSpawnUtil.findSafeSpawnPoint(activeNPC, mapBounds)
+    if not safeCFrame then
+        warn("[StoreKeeperManager] Could not find a safe spawn point for the NPC. It will not be spawned.")
+        activeNPC:Destroy()
+        activeNPC = nil
+        return
+    end
+    activeNPC:SetPrimaryPartCFrame(safeCFrame)
 
     -- Select and store the random items for this spawn
     local allItemNames = {}
@@ -98,7 +103,7 @@ local function _cleanupNPC()
 end
 
 -- Public Functions
-function StoreKeeperManager.startManaging(level)
+function StoreKeeperManager.startManaging(level, mapModel)
     print("StoreKeeperManager: Received start signal for level", level)
 
     -- Stop any previous loop if it exists
@@ -110,11 +115,17 @@ function StoreKeeperManager.startManaging(level)
         return
     end
 
+    if not mapModel or not mapModel.PrimaryPart then
+        warn("[StoreKeeperManager] Invalid map model provided. Cannot start management loop.")
+        return
+    end
+    local mapBounds = mapModel.PrimaryPart
+
     -- Start the management loop in a new coroutine
     managementCoroutine = task.spawn(function()
         print("StoreKeeperManager: Starting management loop.")
         while true do
-            _spawnNPCRandomly()
+            _spawnNPCRandomly(mapBounds)
             task.wait(NPC_CONFIG.VISIBLE_DURATION)
 
             _cleanupNPC()

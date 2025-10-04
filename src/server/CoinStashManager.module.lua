@@ -8,6 +8,10 @@
 
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- Modules
+local SafeSpawnUtil = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("SafeSpawnUtil"))
 
 local CoinStashManager = {}
 
@@ -15,10 +19,6 @@ local CoinStashManager = {}
 local CONFIG = {
     NumberOfStashes = 5,
     StashFolderName = "CoinStashes",
-    SpawnArea = {
-        Min = Vector3.new(-50, 2, -50),
-        Max = Vector3.new(50, 2, 50)
-    }
 }
 
 -- Variable to hold the folder reference
@@ -92,11 +92,17 @@ local function _createChestModel()
     return chestModel
 end
 
-function CoinStashManager.spawnStashes()
+function CoinStashManager.spawnStashes(mapModel)
     if stashContainer then
         warn("CoinStashManager: Stashes already exist.")
         return
     end
+
+    if not mapModel or not mapModel.PrimaryPart then
+        warn("[CoinStashManager] Invalid map model provided. Cannot spawn stashes.")
+        return
+    end
+    local mapBounds = mapModel.PrimaryPart
 
     print("CoinStashManager: Spawning stashes.")
     stashContainer = Instance.new("Folder")
@@ -105,11 +111,15 @@ function CoinStashManager.spawnStashes()
 
     for i = 1, CONFIG.NumberOfStashes do
         local chest = _createChestModel()
-        local x = math.random(CONFIG.SpawnArea.Min.X, CONFIG.SpawnArea.Max.X)
-        local z = math.random(CONFIG.SpawnArea.Min.Z, CONFIG.SpawnArea.Max.Z)
-        local y = CONFIG.SpawnArea.Min.Y -- Keep Y fixed for simplicity
-        chest:SetPrimaryPartCFrame(CFrame.new(x, y, z))
-        chest.Parent = stashContainer
+
+        local safeCFrame = SafeSpawnUtil.findSafeSpawnPoint(chest, mapBounds)
+        if safeCFrame then
+            chest:SetPrimaryPartCFrame(safeCFrame)
+            chest.Parent = stashContainer
+        else
+            warn("[CoinStashManager] Could not find a safe spawn point for a stash, so it was not created.")
+            chest:Destroy()
+        end
     end
 end
 

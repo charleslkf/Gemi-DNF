@@ -91,7 +91,43 @@ local function buildAndPlaceMap()
         wall.Parent = mapModel
     end
 
-    -- 6. Parent the finished model to the Maps folder
+    -- 6. Create Boundary Walls to enclose the map
+    local halfX = MAP_CONFIG.Size.X / 2
+    local halfZ = MAP_CONFIG.Size.Z / 2
+    local wallHeight = MAP_CONFIG.WallHeight
+    local wallThickness = MAP_CONFIG.WallThickness
+
+    local wallProperties = {
+        North = {
+            Size = Vector3.new(MAP_CONFIG.Size.X + wallThickness, wallHeight, wallThickness),
+            Position = Vector3.new(0, wallHeight / 2, -halfZ)
+        },
+        South = {
+            Size = Vector3.new(MAP_CONFIG.Size.X + wallThickness, wallHeight, wallThickness),
+            Position = Vector3.new(0, wallHeight / 2, halfZ)
+        },
+        East = {
+            Size = Vector3.new(wallThickness, wallHeight, MAP_CONFIG.Size.Z),
+            Position = Vector3.new(halfX, wallHeight / 2, 0)
+        },
+        West = {
+            Size = Vector3.new(wallThickness, wallHeight, MAP_CONFIG.Size.Z),
+            Position = Vector3.new(-halfX, wallHeight / 2, 0)
+        }
+    }
+
+    for name, props in pairs(wallProperties) do
+        local wall = Instance.new("Part")
+        wall.Name = "BoundaryWall_" .. name
+        wall.Size = props.Size
+        wall.Position = props.Position
+        wall.Anchored = true
+        wall.BrickColor = BrickColor.new("Dark stone grey")
+        wall.Material = Enum.Material.Concrete
+        wall.Parent = mapModel
+    end
+
+    -- 7. Parent the finished model to the Maps folder
     mapModel.Parent = mapsFolder
     print("[MapGenerator] Successfully generated and stored map: '" .. MAP_CONFIG.Name .. "'.")
 end

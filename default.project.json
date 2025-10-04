@@ -43,6 +43,9 @@
         },
         "SimulatedPlayerManager": {
           "$path": "src/shared/SimulatedPlayerManager.lua"
+        },
+        "SafeSpawnUtil": {
+          "$path": "src/shared/SafeSpawnUtil.lua"
         }
       },
       "Remotes": {
