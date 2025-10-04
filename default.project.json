@@ -4,6 +4,9 @@
   "tree": {
     "$className": "DataModel",
     "ServerScriptService": {
+      "MapGenerator": {
+        "$path": "src/server/MapGenerator.server.lua"
+      },
       "KillerInteractionManager": {
         "$path": "src/server/KillerInteractionManager.server.lua"
       },
