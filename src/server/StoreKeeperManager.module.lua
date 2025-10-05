@@ -8,10 +8,11 @@
 
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 
 -- Modules
 local InventoryManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("InventoryManager"))
-local SafeSpawnUtil = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("SafeSpawnUtil"))
+local SpawnPointManager = require(ServerScriptService:WaitForChild("SpawnPointManager"))
 
 -- Remotes
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -50,12 +51,8 @@ local function shuffle(tbl)
 end
 
 -- Private helper to spawn the NPC model at a random location
-local function _spawnNPCRandomly(mapBounds)
+local function _spawnNPCRandomly()
     if activeNPC then return end
-    if not mapBounds then
-        warn("[StoreKeeperManager] Cannot spawn NPC without mapBounds.")
-        return
-    end
 
     print("StoreKeeperManager: Spawning NPC.")
     activeNPC = Instance.new("Model")
@@ -72,15 +69,16 @@ local function _spawnNPCRandomly(mapBounds)
     hrp.Parent = activeNPC
     activeNPC.PrimaryPart = hrp
 
-    -- Use the safe spawn utility to find a collision-free position
-    local safeCFrame = SafeSpawnUtil.findSafeSpawnPoint(activeNPC, mapBounds)
-    if not safeCFrame then
-        warn("[StoreKeeperManager] Could not find a safe spawn point for the NPC. It will not be spawned.")
+    -- Get a guaranteed safe spawn point from the manager, passing the specific object.
+    local safePos = SpawnPointManager.getSafeSpawnPoint(activeNPC)
+    if safePos then
+        activeNPC:SetPrimaryPartCFrame(CFrame.new(safePos))
+    else
+        warn("[StoreKeeperManager] Could not get a safe spawn point for the NPC. It will not be spawned.")
         activeNPC:Destroy()
         activeNPC = nil
         return
     end
-    activeNPC:SetPrimaryPartCFrame(safeCFrame)
 
     -- Select and store the random items for this spawn
     local allItemNames = {}
@@ -103,7 +101,7 @@ local function _cleanupNPC()
 end
 
 -- Public Functions
-function StoreKeeperManager.startManaging(level, mapModel)
+function StoreKeeperManager.startManaging(level)
     print("StoreKeeperManager: Received start signal for level", level)
 
     -- Stop any previous loop if it exists
@@ -115,17 +113,11 @@ function StoreKeeperManager.startManaging(level, mapModel)
         return
     end
 
-    if not mapModel or not mapModel.PrimaryPart then
-        warn("[StoreKeeperManager] Invalid map model provided. Cannot start management loop.")
-        return
-    end
-    local mapBounds = mapModel.PrimaryPart
-
     -- Start the management loop in a new coroutine
     managementCoroutine = task.spawn(function()
         print("StoreKeeperManager: Starting management loop.")
         while true do
-            _spawnNPCRandomly(mapBounds)
+            _spawnNPCRandomly()
             task.wait(NPC_CONFIG.VISIBLE_DURATION)
 
             _cleanupNPC()

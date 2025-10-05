@@ -21,6 +21,9 @@
       },
       "GameManager": {
         "$path": "src/server/GameManager.server.lua"
+      },
+      "SpawnPointManager": {
+        "$path": "src/server/SpawnPointManager.module.lua"
       }
     },
     "ReplicatedStorage": {
@@ -43,9 +46,6 @@
         },
         "SimulatedPlayerManager": {
           "$path": "src/shared/SimulatedPlayerManager.lua"
-        },
-        "SafeSpawnUtil": {
-          "$path": "src/shared/SafeSpawnUtil.lua"
         }
       },
       "Remotes": {

@@ -21,10 +21,10 @@ local HealthManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitFo
 local CagingManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("CagingManager"))
 local InventoryManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("InventoryManager"))
 local SimulatedPlayerManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("SimulatedPlayerManager"))
-local SafeSpawnUtil = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("SafeSpawnUtil"))
 local StoreKeeperManager = require(ServerScriptService:WaitForChild("StoreKeeperManager"))
 local CoinStashManager = require(ServerScriptService:WaitForChild("CoinStashManager"))
 local GameStateManager = require(ServerScriptService:WaitForChild("GameStateManager"))
+local SpawnPointManager = require(ServerScriptService:WaitForChild("SpawnPointManager"))
 
 -- Configuration
 local CONFIG = {
@@ -270,11 +270,15 @@ function spawnMachines(mapModel)
         local randomType = gameTypes[math.random(#gameTypes)]
         machine:SetAttribute("GameType", randomType)
 
-        -- Use the safe spawn utility to find a collision-free position
-        local safeCFrame = SafeSpawnUtil.findSafeSpawnPoint(machine, mapBounds)
-        machine:SetPrimaryPartCFrame(safeCFrame)
-
-        machine.Parent = machineFolder
+        -- Get a guaranteed safe spawn point from the manager, passing the specific object.
+        local safePos = SpawnPointManager.getSafeSpawnPoint(machine)
+        if safePos then
+            machine:SetPrimaryPartCFrame(CFrame.new(safePos))
+            machine.Parent = machineFolder
+        else
+            warn("[GameManager] Could not get a safe spawn point for a machine. It was not spawned.")
+            machine:Destroy()
+        end
     end
 
     print(string.format("[GameManager] Spawned %d machines.", CONFIG.MACHINES_TO_SPAWN))
@@ -320,6 +324,7 @@ function enterWaiting()
     cleanupVictoryGates()
     StoreKeeperManager.stopManaging()
     CoinStashManager.cleanupStashes()
+    SpawnPointManager.cleanupSpawnPoints()
     table.clear(currentKillers)
     table.clear(currentSurvivors)
     for _, player in ipairs(Players:GetPlayers()) do
@@ -344,9 +349,13 @@ function enterPlaying()
         enterWaiting()
         return
     end
+
+    -- Build the list of safe spawn points for the new map.
+    SpawnPointManager.buildSpawnPoints(loadedMap)
+
     spawnMachines(loadedMap)
-    StoreKeeperManager.startManaging(currentLevel, loadedMap)
-    CoinStashManager.spawnStashes(loadedMap)
+    StoreKeeperManager.startManaging(currentLevel)
+    CoinStashManager.spawnStashes()
     CagingManager.resetAllCageCounts()
 
     local realPlayers = Players:GetPlayers()

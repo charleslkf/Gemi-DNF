@@ -8,10 +8,10 @@
 
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 
 -- Modules
-local SafeSpawnUtil = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("SafeSpawnUtil"))
+local SpawnPointManager = require(ServerScriptService:WaitForChild("SpawnPointManager"))
 
 local CoinStashManager = {}
 
@@ -92,17 +92,11 @@ local function _createChestModel()
     return chestModel
 end
 
-function CoinStashManager.spawnStashes(mapModel)
+function CoinStashManager.spawnStashes()
     if stashContainer then
         warn("CoinStashManager: Stashes already exist.")
         return
     end
-
-    if not mapModel or not mapModel.PrimaryPart then
-        warn("[CoinStashManager] Invalid map model provided. Cannot spawn stashes.")
-        return
-    end
-    local mapBounds = mapModel.PrimaryPart
 
     print("CoinStashManager: Spawning stashes.")
     stashContainer = Instance.new("Folder")
@@ -112,12 +106,13 @@ function CoinStashManager.spawnStashes(mapModel)
     for i = 1, CONFIG.NumberOfStashes do
         local chest = _createChestModel()
 
-        local safeCFrame = SafeSpawnUtil.findSafeSpawnPoint(chest, mapBounds)
-        if safeCFrame then
-            chest:SetPrimaryPartCFrame(safeCFrame)
+        -- Get a guaranteed safe spawn point from the manager, passing the specific object.
+        local safePos = SpawnPointManager.getSafeSpawnPoint(chest)
+        if safePos then
+            chest:SetPrimaryPartCFrame(CFrame.new(safePos))
             chest.Parent = stashContainer
         else
-            warn("[CoinStashManager] Could not find a safe spawn point for a stash, so it was not created.")
+            warn("[CoinStashManager] Could not get a safe spawn point for a stash. It was not spawned.")
             chest:Destroy()
         end
     end

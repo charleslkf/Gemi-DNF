@@ -2,6 +2,15 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 3.4.9
+- **Architectural Refactor: Deterministic Spawning System:**
+  - Replaced the old, unreliable random spawning utility with a new, authoritative `SpawnPointManager`.
+  - This new manager scans the map once at the start of each round to generate a list of all possible spawn locations.
+  - When an object needs to be placed, the manager now performs a final, precise collision check using the object's actual size, guaranteeing a perfect fit and preventing clipping into walls.
+  - All relevant managers (`GameManager`, `CoinStashManager`, `StoreKeeperManager`) have been refactored to use this new, robust system.
+- **Cleanup:**
+  - The old `SafeSpawnUtil.lua` has been completely removed from the project.
+
 ## Version 3.4.8
 - **Critical Bug Fix: Spawning Logic Root Cause:**
   - Fixed the true root cause of the spawning failures. The collision check in `SafeSpawnUtil.lua` now correctly ignores both the map's floor and the invisible "PlayableArea" used for bot navigation, which was the final unseen obstacle. All objects should now spawn reliably.
