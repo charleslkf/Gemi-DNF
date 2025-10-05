@@ -2,6 +2,10 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 3.4.10
+- **Critical Bug Fix: Spawn Point Generation:**
+  - Fixed the true root cause of the "Found 0 potential spawn points" error. The initial scan in `SpawnPointManager` was not correctly ignoring the map's floor, causing it to find no valid locations. The logic has been patched to correctly filter out the floor, ensuring a valid list of spawn points is generated.
+
 ## Version 3.4.9
 - **Architectural Refactor: Deterministic Spawning System:**
   - Replaced the old, unreliable random spawning utility with a new, authoritative `SpawnPointManager`.

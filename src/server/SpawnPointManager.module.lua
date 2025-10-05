@@ -59,7 +59,13 @@ function SpawnPointManager.buildSpawnPoints(mapModel)
             local checkPos = Vector3.new(x, spawnY + Y_OFFSET, z)
             local collidingParts = Workspace:GetPartBoundsInBox(CFrame.new(checkPos), CHECK_SIZE, overlapParams)
 
-            -- If no parts are detected in this volume, it's a potential spawn point.
+            -- Manually remove the map's floor from the list of collisions.
+            local floorIndex = table.find(collidingParts, currentMapBounds)
+            if floorIndex then
+                table.remove(collidingParts, floorIndex)
+            end
+
+            -- If no other parts are detected in this volume, it's a potential spawn point.
             if #collidingParts == 0 then
                 table.insert(safeSpawnPoints, Vector3.new(x, spawnY, z))
             end
