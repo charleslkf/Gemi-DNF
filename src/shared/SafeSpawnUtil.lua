@@ -45,8 +45,9 @@ function SafeSpawnUtil.findSafeSpawnPoint(objectToSpawn, mapBounds)
     local spawnY = mapPosition.Y + mapBounds.Size.Y / 2 + objectSize.Y / 2 -- Place it on top of the floor
 
     local overlapParams = OverlapParams.new()
-    -- Ignore the object to be spawned from the collision check.
-    overlapParams.FilterDescendantsInstances = {objectToSpawn}
+    -- Ignore the object to be spawned and the invisible bot navigation area.
+    local playableArea = Workspace:FindFirstChild("PlayableArea")
+    overlapParams.FilterDescendantsInstances = {objectToSpawn, playableArea}
     overlapParams.FilterType = Enum.RaycastFilterType.Exclude
 
     for i = 1, MAX_ATTEMPTS do
@@ -58,8 +59,7 @@ function SafeSpawnUtil.findSafeSpawnPoint(objectToSpawn, mapBounds)
         local collidingParts = Workspace:GetPartBoundsInBox(potentialCFrame, objectSize, overlapParams)
 
         -- Manually remove the map's floor from the list of collisions.
-        -- This is more reliable than using the FilterDescendantsInstances property,
-        -- which was not correctly filtering the floor part.
+        -- This is more reliable than using the FilterDescendantsInstances property.
         local floorIndex = table.find(collidingParts, mapBounds)
         if floorIndex then
             table.remove(collidingParts, floorIndex)

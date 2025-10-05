@@ -2,6 +2,10 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 3.4.8
+- **Critical Bug Fix: Spawning Logic Root Cause:**
+  - Fixed the true root cause of the spawning failures. The collision check in `SafeSpawnUtil.lua` now correctly ignores both the map's floor and the invisible "PlayableArea" used for bot navigation, which was the final unseen obstacle. All objects should now spawn reliably.
+
 ## Version 3.4.7
 - **Critical Bug Fix: Spawning Logic:**
   - Fixed a fundamental flaw in `SafeSpawnUtil.lua` where the collision check was incorrectly detecting the map's floor as an obstacle. The logic now correctly ignores the floor by manually removing it from the detected parts list, allowing all objects to spawn reliably.
