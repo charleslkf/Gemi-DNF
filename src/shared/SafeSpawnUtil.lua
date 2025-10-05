@@ -45,8 +45,8 @@ function SafeSpawnUtil.findSafeSpawnPoint(objectToSpawn, mapBounds)
     local spawnY = mapPosition.Y + mapBounds.Size.Y / 2 + objectSize.Y / 2 -- Place it on top of the floor
 
     local overlapParams = OverlapParams.new()
-    -- Ignore the object itself and the map's floor to prevent false collisions.
-    overlapParams.FilterDescendantsInstances = {objectToSpawn, mapBounds}
+    -- Ignore the object to be spawned from the collision check.
+    overlapParams.FilterDescendantsInstances = {objectToSpawn}
     overlapParams.FilterType = Enum.RaycastFilterType.Exclude
 
     for i = 1, MAX_ATTEMPTS do
@@ -55,11 +55,18 @@ function SafeSpawnUtil.findSafeSpawnPoint(objectToSpawn, mapBounds)
         local potentialCFrame = CFrame.new(randomX, spawnY, randomZ)
 
         -- Use GetPartBoundsInBox which checks a volume without needing a specific part instance.
-        -- This is more robust and avoids the PrimaryPart error.
         local collidingParts = Workspace:GetPartBoundsInBox(potentialCFrame, objectSize, overlapParams)
 
+        -- Manually remove the map's floor from the list of collisions.
+        -- This is more reliable than using the FilterDescendantsInstances property,
+        -- which was not correctly filtering the floor part.
+        local floorIndex = table.find(collidingParts, mapBounds)
+        if floorIndex then
+            table.remove(collidingParts, floorIndex)
+        end
+
         if #collidingParts == 0 then
-            -- No collisions detected, this is a safe spot.
+            -- No other collisions detected, this is a safe spot.
             return potentialCFrame
         end
     end

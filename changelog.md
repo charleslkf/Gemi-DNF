@@ -2,6 +2,10 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 3.4.7
+- **Critical Bug Fix: Spawning Logic:**
+  - Fixed a fundamental flaw in `SafeSpawnUtil.lua` where the collision check was incorrectly detecting the map's floor as an obstacle. The logic now correctly ignores the floor by manually removing it from the detected parts list, allowing all objects to spawn reliably.
+
 ## Version 3.4.6
 - **Critical Bug Fix: Client Crash on Escape:**
   - Fixed a crash in the `EscapeUIController` by modifying `GameManager` to send a table of gate *names* (strings) to the client instead of gate *instances*.
