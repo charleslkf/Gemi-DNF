@@ -12,7 +12,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 -- Modules
 local InventoryManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("InventoryManager"))
-local SpawnDataManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("SpawnDataManager"))
+local IntelligentSpawnManager = require(ServerScriptService:WaitForChild("IntelligentSpawnManager"))
 
 -- Remotes
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -69,13 +69,16 @@ local function _spawnNPCRandomly()
     hrp.Parent = activeNPC
     activeNPC.PrimaryPart = hrp
 
-    -- Get a random spawn point from the pre-defined list.
-    local spawnPoints = SpawnDataManager.StoreKeeperSpawns
-    local spawnPos = spawnPoints[math.random(#spawnPoints)]
-
-    -- Adjust Y position to place the NPC on the floor.
-    local finalPos = spawnPos + Vector3.new(0, activeNPC.PrimaryPart.Size.Y / 2, 0)
-    activeNPC:SetPrimaryPartCFrame(CFrame.new(finalPos))
+    -- Get a guaranteed safe spawn point from the intelligent manager.
+    local spawnPos = IntelligentSpawnManager.getSafeSpawnPoint(activeNPC)
+    if spawnPos then
+        activeNPC:SetPrimaryPartCFrame(CFrame.new(spawnPos))
+    else
+        warn("[StoreKeeperManager] Could not get a safe spawn point for the NPC. It will not be spawned.")
+        activeNPC:Destroy()
+        activeNPC = nil
+        return
+    end
 
     -- Select and store the random items for this spawn
     local allItemNames = {}

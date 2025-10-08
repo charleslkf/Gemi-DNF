@@ -2,18 +2,96 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 3.4.18
+- **Architectural Refactor: Intelligent Spawning System**
+  - Replaced all previous spawning systems with a new, authoritative `IntelligentSpawnManager`.
+  - This new manager works in two phases for maximum reliability:
+    1.  **Broad-phase Scan:** It first scans the map using a fine-grained grid to find all potential empty spaces, correctly ignoring the floor and bot navigation areas.
+    2.  **Narrow-phase Check:** When an object is spawned, it performs a final, precise collision check using the object's actual size plus a "padding" buffer to ensure it fits perfectly and does not spawn too close to walls.
+  - This new system is fully procedural and will automatically adapt to any changes in the map's layout.
+- **Full Integration and Cleanup:**
+  - All relevant managers (`GameManager`, `CoinStashManager`, `StoreKeeperManager`) have been refactored to use this new, intelligent system.
+  - The old `SpawnDataManager` and all other faulty spawning utilities have been completely removed from the project.
+- **Bug Fixes:**
+  - Fixed a critical typo in the `MapGenerator` that was causing it to crash.
+  - Hardened the `GameManager` to exclusively load the procedural map, preventing any future map-loading bugs.
+
 ## Version 3.4.17
-- **Architectural Refactor: Deterministic Spawning System**
-  - Implemented a new, authoritative `SpawnDataManager` module that uses hard-coded lists of `Vector3` coordinates to guarantee all players and objects spawn in valid, developer-approved locations.
-  - All relevant managers (`GameManager`, `CoinStashManager`, `StoreKeeperManager`) were refactored to use this new, reliable system.
+- **Project Cleanup:**
+  - Reset `EscapeUIController.client.lua` and `MiniGameManager.lua` to their original state to create a clean, focused commit for the spawning system fixes.
+- **Critical Bug Fix: Deterministic Map Loading:**
+  - Replaced the random map selection logic in `GameManager` with a new `loadProceduralMap` function.
+  - This function now exclusively loads the "GeneratedProceduralMap", removing all ambiguity and guaranteeing that the correct map with the maze walls is always used. This resolves the persistent issue of the wrong map being loaded.
+
+## Version 3.4.16
+- **Critical Bug Fix: Map Generation Crash:**
+  - Fixed a typo in `MapGenerator.server.lua` that was causing the script to crash and preventing the procedural map from being created. The script now correctly references the `MAP_CONFIG` table, resolving the error.
+
+## Version 3.4.15
+- **Architectural Refactor: Pre-defined Spawning System**
+  - Replaced the previous dynamic spawning system with a new, authoritative `SpawnDataManager` module. This module uses hard-coded lists of `Vector3` coordinates to guarantee that all players and objects spawn in valid, developer-approved locations.
+  - All relevant managers (`GameManager`, `CoinStashManager`, `StoreKeeperManager`) have been refactored to use this new, deterministic system.
 - **Feature: Procedural Map Generation**
-  - The `MapGenerator.server.lua` script now correctly generates a complex map with a maze and four enclosing boundary walls.
-  - The `GameManager` has been updated to exclusively load this new procedural map, removing the old random selection logic to ensure a consistent gameplay experience.
+  - Added a `MapGenerator.server.lua` script that runs on startup to create a new, complex map layout featuring a maze of inner walls and four large, enclosing boundary walls.
+  - The `GameManager` has been updated to exclusively load this new procedural map, ensuring a consistent gameplay experience.
 - **Bug Fixes and Cleanup**
-  - Fixed a client-side crash in the `EscapeUIController` by ensuring the server sends the correct data type (gate names instead of instances).
-  - Fixed a typo in the `MapGenerator` that was causing it to crash.
-  - Removed the old, faulty `SpawnPointManager` and `SafeSpawnUtil` modules from the project.
-  - Reset unrelated files (`EscapeUIController.client.lua`, `MiniGameManager.lua`) to their original state to create a clean, focused commit.
+  - Fixed a client-side crash in the `EscapeUIController` by ensuring the server sends the correct data type.
+  - The old, faulty `SpawnPointManager` has been completely removed from the project.
+
+## Version 3.4.13
+- **Critical Bug Fix: Spawning Race Condition:**
+  - Fixed the definitive root cause of the spawning failures. A race condition was causing the `SpawnPointManager` to look for the "PlayableArea" part before it was created. The logic has been updated to find the "PlayableArea" at the time of use, guaranteeing it exists and resolving the "Found 0 potential spawn points" error.
+
+## Version 3.4.12
+- **Critical Bug Fix: Definitive Spawning Fix:**
+  - The `SpawnPointManager` now correctly ignores the invisible "PlayableArea" used for bot navigation during its initial scan. This was the final root cause of the "Found 0 potential spawn points" error, and all objects should now spawn reliably.
+
+## Version 3.4.11
+- **Critical Bug Fix: Deterministic Map Loading:**
+  - Replaced the random map selection logic in `GameManager` with a new `loadProceduralMap` function.
+  - This function now exclusively loads the "GeneratedProceduralMap", removing all ambiguity and guaranteeing that the correct map with the maze walls is always used. This resolves the persistent issue of the wrong map being loaded.
+
+## Version 3.4.10
+- **Critical Bug Fix: Spawn Point Generation:**
+  - Fixed the true root cause of the "Found 0 potential spawn points" error. The initial scan in `SpawnPointManager` was not correctly ignoring the map's floor, causing it to find no valid locations. The logic has been patched to correctly filter out the floor, ensuring a valid list of spawn points is generated.
+
+## Version 3.4.9
+- **Architectural Refactor: Deterministic Spawning System:**
+  - Replaced the old, unreliable random spawning utility with a new, authoritative `SpawnPointManager`.
+  - This new manager scans the map once at the start of each round to generate a list of all possible spawn locations.
+  - When an object needs to be placed, the manager now performs a final, precise collision check using the object's actual size, guaranteeing a perfect fit and preventing clipping into walls.
+  - All relevant managers (`GameManager`, `CoinStashManager`, `StoreKeeperManager`) have been refactored to use this new, robust system.
+- **Cleanup:**
+  - The old `SafeSpawnUtil.lua` has been completely removed from the project.
+
+## Version 3.4.8
+- **Critical Bug Fix: Spawning Logic Root Cause:**
+  - Fixed the true root cause of the spawning failures. The collision check in `SafeSpawnUtil.lua` now correctly ignores both the map's floor and the invisible "PlayableArea" used for bot navigation, which was the final unseen obstacle. All objects should now spawn reliably.
+
+## Version 3.4.7
+- **Critical Bug Fix: Spawning Logic:**
+  - Fixed a fundamental flaw in `SafeSpawnUtil.lua` where the collision check was incorrectly detecting the map's floor as an obstacle. The logic now correctly ignores the floor by manually removing it from the detected parts list, allowing all objects to spawn reliably.
+
+## Version 3.4.6
+- **Critical Bug Fix: Client Crash on Escape:**
+  - Fixed a crash in the `EscapeUIController` by modifying `GameManager` to send a table of gate *names* (strings) to the client instead of gate *instances*.
+- **Critical Bug Fix: Spawning Failures:**
+  - Resolved an issue where `SafeSpawnUtil` would always fail to find a spawn location. The collision check now correctly ignores the map's floor, preventing false positives.
+- **Bug Fix: Victory Gate Placement:**
+  - The Victory Gates are no longer spawned randomly. They are now deterministically placed on opposite (North and South) edges of the map to meet the design requirement.
+
+## Version 3.4.5
+- **Critical Bug Fix: Spawning Crash:**
+  - Fixed a crash in `SafeSpawnUtil.lua` that occurred when trying to spawn simple `Part` objects like the Victory Gate. The collision check was updated to use `GetPartBoundsInBox`, which is more robust and does not require a `PrimaryPart`.
+- **Critical Bug Fix: Incorrect Map Loading:**
+  - Corrected a regression in `GameManager.server.lua` that caused the old "Map1" to be loaded instead of the new procedural map. The logic to filter out "Map1" has been restored.
+
+## Version 3.4.4
+- **Feature: Map Boundary Walls:**
+  - The `MapGenerator.server.lua` script now programmatically creates four large boundary walls to fully enclose the map, preventing players from falling off the edge.
+- **Feature: Safe Spawning System:**
+  - Introduced a new shared module, `SafeSpawnUtil.lua`, to provide a robust, collision-aware method for finding valid spawn locations.
+  - Integrated the safe spawning utility into the `GameManager`, `CoinStashManager`, and `StoreKeeperManager` to ensure all dynamic objects (machines, gates, coin stashes, and the store NPC) are placed in playable areas, avoiding walls and other obstacles.
 
 ## Version 3.4.2
 - **Feature: Dynamic Pathfinding Arrow:**
