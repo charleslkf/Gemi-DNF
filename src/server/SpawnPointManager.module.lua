@@ -59,10 +59,17 @@ function SpawnPointManager.buildSpawnPoints(mapModel)
             local checkPos = Vector3.new(x, spawnY + Y_OFFSET, z)
             local collidingParts = Workspace:GetPartBoundsInBox(CFrame.new(checkPos), CHECK_SIZE, overlapParams)
 
-            -- Manually remove the map's floor from the list of collisions.
+            -- Manually remove the map's floor and the bot navigation area from the list of collisions.
+            -- This is necessary because the filter only applies to descendants, not the parts themselves.
             local floorIndex = table.find(collidingParts, currentMapBounds)
             if floorIndex then
                 table.remove(collidingParts, floorIndex)
+            end
+            if playableArea then
+                local playableAreaIndex = table.find(collidingParts, playableArea)
+                if playableAreaIndex then
+                    table.remove(collidingParts, playableAreaIndex)
+                end
             end
 
             -- If no other parts are detected in this volume, it's a potential spawn point.

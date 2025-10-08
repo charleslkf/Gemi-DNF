@@ -2,6 +2,10 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 3.4.12
+- **Critical Bug Fix: Definitive Spawning Fix:**
+  - The `SpawnPointManager` now correctly ignores the invisible "PlayableArea" used for bot navigation during its initial scan. This was the final root cause of the "Found 0 potential spawn points" error, and all objects should now spawn reliably.
+
 ## Version 3.4.11
 - **Critical Bug Fix: Deterministic Map Loading:**
   - Replaced the random map selection logic in `GameManager` with a new `loadProceduralMap` function.
