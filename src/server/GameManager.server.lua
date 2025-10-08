@@ -24,7 +24,7 @@ local SimulatedPlayerManager = require(ReplicatedStorage:WaitForChild("MyModules
 local StoreKeeperManager = require(ServerScriptService:WaitForChild("StoreKeeperManager"))
 local CoinStashManager = require(ServerScriptService:WaitForChild("CoinStashManager"))
 local GameStateManager = require(ServerScriptService:WaitForChild("GameStateManager"))
-local SpawnPointManager = require(ServerScriptService:WaitForChild("SpawnPointManager"))
+local SpawnDataManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("SpawnDataManager"))
 
 -- Configuration
 local CONFIG = {
@@ -124,13 +124,13 @@ function teleportToLobby(player)
     print(string.format("[GameManager] Teleported %s to lobby.", player.Name))
 end
 
-function spawnPlayerInMap(player, isKiller)
+function spawnPlayerInMap(player, isKiller, spawnPos)
     local conn
     conn = player.CharacterAdded:Connect(function(character)
         if conn then conn:Disconnect(); conn = nil end
         task.defer(function()
             if not character or not character.Parent then return end
-            local spawnPos = Vector3.new(math.random(-50, 50), 5, math.random(-50, 50))
+            -- Use the provided spawn position instead of a random one.
             character:SetPrimaryPartCFrame(CFrame.new(spawnPos))
             if isKiller then
                 print("[GameManager] Freezing killer: " .. player.Name)
@@ -229,6 +229,9 @@ function spawnMachines(mapModel)
     local mapBounds = mapModel.PrimaryPart
     local gameTypes = {"ButtonMash", "MemoryCheck", "MatchingGame"}
 
+    -- Create a copy of the spawn point list to avoid modifying the original data.
+    local availableMachineSpawns = table.clone(SpawnDataManager.MachineSpawns)
+
     for i = 1, CONFIG.MACHINES_TO_SPAWN do
         local machine = machineTemplate:Clone()
         machine.Name = "Machine" .. i
@@ -252,15 +255,21 @@ function spawnMachines(mapModel)
         local randomType = gameTypes[math.random(#gameTypes)]
         machine:SetAttribute("GameType", randomType)
 
-        -- Get a guaranteed safe spawn point from the manager, passing the specific object.
-        local safePos = SpawnPointManager.getSafeSpawnPoint(machine)
-        if safePos then
-            machine:SetPrimaryPartCFrame(CFrame.new(safePos))
-            machine.Parent = machineFolder
+        -- Get a random spawn point from the pre-defined list.
+        local spawnPos
+        if #availableMachineSpawns > 0 then
+            local randomIndex = math.random(#availableMachineSpawns)
+            spawnPos = availableMachineSpawns[randomIndex]
+            table.remove(availableMachineSpawns, randomIndex)
         else
-            warn("[GameManager] Could not get a safe spawn point for a machine. It was not spawned.")
-            machine:Destroy()
+            warn("[GameManager] Not enough unique machine spawn points! Re-using points.")
+            spawnPos = SpawnDataManager.MachineSpawns[math.random(#SpawnDataManager.MachineSpawns)]
         end
+
+        -- Adjust Y position to place the machine on the floor.
+        local finalPos = spawnPos + Vector3.new(0, machine.PrimaryPart.Size.Y / 2, 0)
+        machine:SetPrimaryPartCFrame(CFrame.new(finalPos))
+        machine.Parent = machineFolder
     end
 
     print(string.format("[GameManager] Spawned %d machines.", CONFIG.MACHINES_TO_SPAWN))
@@ -306,7 +315,6 @@ function enterWaiting()
     cleanupVictoryGates()
     StoreKeeperManager.stopManaging()
     CoinStashManager.cleanupStashes()
-    SpawnPointManager.cleanupSpawnPoints()
     table.clear(currentKillers)
     table.clear(currentSurvivors)
     for _, player in ipairs(Players:GetPlayers()) do
@@ -331,10 +339,6 @@ function enterPlaying()
         enterWaiting()
         return
     end
-
-    -- Build the list of safe spawn points for the new map.
-    SpawnPointManager.buildSpawnPoints(loadedMap)
-
     spawnMachines(loadedMap)
     StoreKeeperManager.startManaging(currentLevel)
     CoinStashManager.spawnStashes()
@@ -371,9 +375,33 @@ function enterPlaying()
     end
     print(string.format("[GameManager] Teams assigned: %d Killer(s), %d Survivor(s) (including %d bots).", #currentKillers, #currentSurvivors, #spawnedBots))
 
+    -- Create copies of the spawn point lists to avoid modifying the original data.
+    local availableKillerSpawns = table.clone(SpawnDataManager.KillerSpawns)
+    local availableSurvivorSpawns = table.clone(SpawnDataManager.SurvivorSpawns)
+
+    -- Helper function to get a random spawn point from a list and remove it.
+    local function getAndRemoveRandomSpawn(spawnList, isKillerSpawn)
+        if #spawnList == 0 then
+            warn("Not enough unique spawn points available! Re-using points.")
+            -- If we run out of unique points, just return a random one from the original master list.
+            local masterList = isKillerSpawn and SpawnDataManager.KillerSpawns or SpawnDataManager.SurvivorSpawns
+            return masterList[math.random(#masterList)]
+        end
+        local randomIndex = math.random(#spawnList)
+        local spawnPoint = spawnList[randomIndex]
+        table.remove(spawnList, randomIndex)
+        return spawnPoint
+    end
+
     for _, player in ipairs(realPlayers) do
         local isKiller = (player.Team == killersTeam)
-        spawnPlayerInMap(player, isKiller)
+        local spawnPos
+        if isKiller then
+            spawnPos = getAndRemoveRandomSpawn(availableKillerSpawns, true)
+        else
+            spawnPos = getAndRemoveRandomSpawn(availableSurvivorSpawns, false)
+        end
+        spawnPlayerInMap(player, isKiller, spawnPos)
         HealthManager.initializeHealth(player)
         InventoryManager.initializeInventory(player)
         local leaderstats = player:FindFirstChild("leaderstats")

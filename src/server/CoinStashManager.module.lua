@@ -8,10 +8,10 @@
 
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
-local ServerScriptService = game:GetService("ServerScriptService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Modules
-local SpawnPointManager = require(ServerScriptService:WaitForChild("SpawnPointManager"))
+local SpawnDataManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("SpawnDataManager"))
 
 local CoinStashManager = {}
 
@@ -103,18 +103,27 @@ function CoinStashManager.spawnStashes()
     stashContainer.Name = CONFIG.StashFolderName
     stashContainer.Parent = Workspace
 
+    -- Create a copy of the spawn point list to avoid modifying the original data.
+    local availableStashSpawns = table.clone(SpawnDataManager.CoinStashSpawns)
+
     for i = 1, CONFIG.NumberOfStashes do
         local chest = _createChestModel()
 
-        -- Get a guaranteed safe spawn point from the manager, passing the specific object.
-        local safePos = SpawnPointManager.getSafeSpawnPoint(chest)
-        if safePos then
-            chest:SetPrimaryPartCFrame(CFrame.new(safePos))
-            chest.Parent = stashContainer
+        -- Get a random spawn point from the pre-defined list.
+        local spawnPos
+        if #availableStashSpawns > 0 then
+            local randomIndex = math.random(#availableStashSpawns)
+            spawnPos = availableStashSpawns[randomIndex]
+            table.remove(availableStashSpawns, randomIndex)
         else
-            warn("[CoinStashManager] Could not get a safe spawn point for a stash. It was not spawned.")
-            chest:Destroy()
+            warn("[CoinStashManager] Not enough unique stash spawn points! Re-using points.")
+            spawnPos = SpawnDataManager.CoinStashSpawns[math.random(#SpawnDataManager.CoinStashSpawns)]
         end
+
+        -- Adjust Y position to place the chest on the floor.
+        local finalPos = spawnPos + Vector3.new(0, chest.PrimaryPart.Size.Y / 2, 0)
+        chest:SetPrimaryPartCFrame(CFrame.new(finalPos))
+        chest.Parent = stashContainer
     end
 end
 

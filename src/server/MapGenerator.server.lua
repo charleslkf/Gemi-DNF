@@ -59,7 +59,7 @@ local function buildAndPlaceMap()
     mapModel.PrimaryPart = floor
 
     -- 5. Create random walls
-    for i = 1, MAP_CONFIG.NumWalls do
+    for i = 1, CONFIG.NumWalls do
         local wall = Instance.new("Part")
         wall.Name = "Wall" .. i
         wall.Anchored = true
@@ -67,24 +67,24 @@ local function buildAndPlaceMap()
         wall.Material = Enum.Material.Brick
 
         local isHorizontal = (math.random() > 0.5)
-        local length = math.random(MAP_CONFIG.MinWallLength, MAP_CONFIG.MaxWallLength)
+        local length = math.random(CONFIG.MinWallLength, CONFIG.MaxWallLength)
 
         if isHorizontal then
-            wall.Size = Vector3.new(length, MAP_CONFIG.WallHeight, MAP_CONFIG.WallThickness)
+            wall.Size = Vector3.new(length, CONFIG.WallHeight, CONFIG.WallThickness)
         else
-            wall.Size = Vector3.new(MAP_CONFIG.WallThickness, MAP_CONFIG.WallHeight, length)
+            wall.Size = Vector3.new(CONFIG.WallThickness, CONFIG.WallHeight, length)
         end
 
         -- Calculate a random position within the map bounds
-        local halfMapX = MAP_CONFIG.Size.X / 2 - length / 2
-        local halfMapZ = MAP_CONFIG.Size.Z / 2 - length / 2
+        local halfMapX = CONFIG.Size.X / 2 - length / 2
+        local halfMapZ = CONFIG.Size.Z / 2 - length / 2
 
         local randomX = math.random(-halfMapX, halfMapX)
         local randomZ = math.random(-halfMapZ, halfMapZ)
 
         wall.Position = Vector3.new(
             randomX,
-            MAP_CONFIG.WallHeight / 2,
+            CONFIG.WallHeight / 2,
             randomZ
         )
 
