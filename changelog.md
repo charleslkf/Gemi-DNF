@@ -2,16 +2,18 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
-## Version 3.4.15
-- **Architectural Refactor: Pre-defined Spawning System**
-  - Replaced the previous dynamic spawning system with a new, authoritative `SpawnDataManager` module. This module uses hard-coded lists of `Vector3` coordinates to guarantee that all players and objects spawn in valid, developer-approved locations.
-  - All relevant managers (`GameManager`, `CoinStashManager`, `StoreKeeperManager`) have been refactored to use this new, deterministic system.
+## Version 3.4.17
+- **Architectural Refactor: Deterministic Spawning System**
+  - Implemented a new, authoritative `SpawnDataManager` module that uses hard-coded lists of `Vector3` coordinates to guarantee all players and objects spawn in valid, developer-approved locations.
+  - All relevant managers (`GameManager`, `CoinStashManager`, `StoreKeeperManager`) were refactored to use this new, reliable system.
 - **Feature: Procedural Map Generation**
-  - Added a `MapGenerator.server.lua` script that runs on startup to create a new, complex map layout featuring a maze of inner walls and four large, enclosing boundary walls.
-  - The `GameManager` has been updated to exclusively load this new procedural map, ensuring a consistent gameplay experience.
+  - The `MapGenerator.server.lua` script now correctly generates a complex map with a maze and four enclosing boundary walls.
+  - The `GameManager` has been updated to exclusively load this new procedural map, removing the old random selection logic to ensure a consistent gameplay experience.
 - **Bug Fixes and Cleanup**
-  - Fixed a client-side crash in the `EscapeUIController` by ensuring the server sends the correct data type.
-  - The old, faulty `SpawnPointManager` has been completely removed from the project.
+  - Fixed a client-side crash in the `EscapeUIController` by ensuring the server sends the correct data type (gate names instead of instances).
+  - Fixed a typo in the `MapGenerator` that was causing it to crash.
+  - Removed the old, faulty `SpawnPointManager` and `SafeSpawnUtil` modules from the project.
+  - Reset unrelated files (`EscapeUIController.client.lua`, `MiniGameManager.lua`) to their original state to create a clean, focused commit.
 
 ## Version 3.4.2
 - **Feature: Dynamic Pathfinding Arrow:**
