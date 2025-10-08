@@ -2,6 +2,10 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 3.4.13
+- **Critical Bug Fix: Spawning Race Condition:**
+  - Fixed the definitive root cause of the spawning failures. A race condition was causing the `SpawnPointManager` to look for the "PlayableArea" part before it was created. The logic has been updated to find the "PlayableArea" at the time of use, guaranteeing it exists and resolving the "Found 0 potential spawn points" error.
+
 ## Version 3.4.12
 - **Critical Bug Fix: Definitive Spawning Fix:**
   - The `SpawnPointManager` now correctly ignores the invisible "PlayableArea" used for bot navigation during its initial scan. This was the final root cause of the "Found 0 potential spawn points" error, and all objects should now spawn reliably.

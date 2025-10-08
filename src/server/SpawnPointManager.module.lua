@@ -22,7 +22,6 @@ local Y_OFFSET = 3 -- How high above the floor to center the check volume.
 -- Module State
 local safeSpawnPoints = {}
 local currentMapBounds = nil -- Store the map bounds for use in the final check
-local playableArea = Workspace:FindFirstChild("PlayableArea")
 
 --[[
     Scans the provided map model and populates the list of potential safe spawn points.
@@ -49,6 +48,7 @@ function SpawnPointManager.buildSpawnPoints(mapModel)
     local spawnY = mapPos.Y + currentMapBounds.Size.Y / 2
 
     local overlapParams = OverlapParams.new()
+    local playableArea = Workspace:FindFirstChild("PlayableArea")
     -- Ignore the main floor and the bot navigation area during the initial broad-phase scan.
     overlapParams.FilterDescendantsInstances = {currentMapBounds, playableArea}
     overlapParams.FilterType = Enum.RaycastFilterType.Exclude
@@ -101,6 +101,7 @@ function SpawnPointManager.getSafeSpawnPoint(objectToSpawn)
     local objectYOffset = objectToSpawn.PrimaryPart and objectToSpawn.PrimaryPart.Size.Y / 2 or objectToSpawn.Size.Y / 2
 
     local finalCheckParams = OverlapParams.new()
+    local playableArea = Workspace:FindFirstChild("PlayableArea")
     -- Ignore the object to be spawned and the bot area. The floor is checked manually.
     finalCheckParams.FilterDescendantsInstances = {objectToSpawn, playableArea}
     finalCheckParams.FilterType = Enum.RaycastFilterType.Exclude
