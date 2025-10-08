@@ -68,7 +68,7 @@ local currentMap = nil
 -- Forward declarations
 local enterWaiting, enterIntermission, enterPlaying, enterPostRound, enterEscape, checkWinConditions
 local teleportToLobby, spawnPlayerInMap
-local loadRandomLevel, cleanupCurrentLevel, spawnMachines, cleanupMachines, cleanupVictoryGates, activateVictoryGates
+local loadProceduralMap, cleanupCurrentLevel, spawnMachines, cleanupMachines, cleanupVictoryGates, activateVictoryGates
 
 -- #############################
 -- ## World & Object Helpers  ##
@@ -82,36 +82,18 @@ function cleanupCurrentLevel()
     currentMap = nil
 end
 
-function loadRandomLevel()
+function loadProceduralMap()
     cleanupCurrentLevel()
 
-    local allMaps = mapsFolder:GetChildren()
-    local availableMaps = {}
-    for _, map in ipairs(allMaps) do
-        -- Explicitly ignore the old default map to ensure the new one is loaded.
-        if map.Name ~= "LMS_Arena" and map.Name ~= "Map1" then
-            table.insert(availableMaps, map)
-        end
+    local proceduralMapTemplate = mapsFolder:WaitForChild("GeneratedProceduralMap", 10)
+
+    if not proceduralMapTemplate then
+        warn("[GameManager] CRITICAL: Could not find 'GeneratedProceduralMap' in ServerStorage/Maps. Halting round start.")
+        return nil
     end
 
-    if #availableMaps == 0 then
-        warn("[GameManager] No valid custom maps found (excluding Map1). Checking for fallback.")
-        -- If no other maps exist, fall back to the original Map1 to prevent crashing.
-        local fallbackMap = mapsFolder:FindFirstChild("Map1")
-        if fallbackMap then
-            table.insert(availableMaps, fallbackMap)
-            warn("[GameManager] Fallback: Loading original Map1 as no other maps were found.")
-        else
-            warn("[GameManager] CRITICAL: No maps found in ServerStorage/Maps folder!")
-            return nil
-        end
-    end
-
-    local randomIndex = math.random(#availableMaps)
-    local selectedMapTemplate = availableMaps[randomIndex]
-
-    print(string.format("[GameManager] Loading map: %s", selectedMapTemplate.Name))
-    currentMap = selectedMapTemplate:Clone()
+    print(string.format("[GameManager] Loading map: %s", proceduralMapTemplate.Name))
+    currentMap = proceduralMapTemplate:Clone()
 
     if not currentMap.PrimaryPart then
         local largestPart, largestSize = nil, 0
@@ -342,7 +324,7 @@ function enterPlaying()
     currentLevel = currentLevel + 1
     GameStateManager:SetNewRoundState(CONFIG.ROUND_DURATION, CONFIG.MACHINES_TO_SPAWN)
     stateTimer = CONFIG.ROUND_DURATION
-    local loadedMap = loadRandomLevel()
+    local loadedMap = loadProceduralMap()
     if not loadedMap then
         warn("[GameManager] CRITICAL: No map could be loaded. Returning to Waiting state.")
         gameState = "Waiting"

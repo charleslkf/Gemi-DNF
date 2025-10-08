@@ -2,6 +2,11 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 3.4.11
+- **Critical Bug Fix: Deterministic Map Loading:**
+  - Replaced the random map selection logic in `GameManager` with a new `loadProceduralMap` function.
+  - This function now exclusively loads the "GeneratedProceduralMap", removing all ambiguity and guaranteeing that the correct map with the maze walls is always used. This resolves the persistent issue of the wrong map being loaded.
+
 ## Version 3.4.10
 - **Critical Bug Fix: Spawn Point Generation:**
   - Fixed the true root cause of the "Found 0 potential spawn points" error. The initial scan in `SpawnPointManager` was not correctly ignoring the map's floor, causing it to find no valid locations. The logic has been patched to correctly filter out the floor, ensuring a valid list of spawn points is generated.
