@@ -15,6 +15,7 @@ This document tracks the major features and bug fixes implemented in the Gemi-DN
 - **Bug Fixes:**
   - Fixed a critical typo in the `MapGenerator` that was causing it to crash.
   - Hardened the `GameManager` to exclusively load the procedural map, preventing any future map-loading bugs.
+  - Fixed a race condition in the spawning system that was causing it to fail intermittently.
 
 ## Version 3.4.17
 - **Project Cleanup:**
@@ -85,13 +86,6 @@ This document tracks the major features and bug fixes implemented in the Gemi-DN
   - Fixed a crash in `SafeSpawnUtil.lua` that occurred when trying to spawn simple `Part` objects like the Victory Gate. The collision check was updated to use `GetPartBoundsInBox`, which is more robust and does not require a `PrimaryPart`.
 - **Critical Bug Fix: Incorrect Map Loading:**
   - Corrected a regression in `GameManager.server.lua` that caused the old "Map1" to be loaded instead of the new procedural map. The logic to filter out "Map1" has been restored.
-
-## Version 3.4.4
-- **Feature: Map Boundary Walls:**
-  - The `MapGenerator.server.lua` script now programmatically creates four large boundary walls to fully enclose the map, preventing players from falling off the edge.
-- **Feature: Safe Spawning System:**
-  - Introduced a new shared module, `SafeSpawnUtil.lua`, to provide a robust, collision-aware method for finding valid spawn locations.
-  - Integrated the safe spawning utility into the `GameManager`, `CoinStashManager`, and `StoreKeeperManager` to ensure all dynamic objects (machines, gates, coin stashes, and the store NPC) are placed in playable areas, avoiding walls and other obstacles.
 
 ## Version 3.4.2
 - **Feature: Dynamic Pathfinding Arrow:**

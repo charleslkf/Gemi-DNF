@@ -58,9 +58,21 @@ function IntelligentSpawnManager.buildSpawnPoints(mapModel)
             local checkPos = Vector3.new(x, spawnY + Y_OFFSET, z)
 
             -- Set the filter list inside the loop to include the most up-to-date parts.
-            overlapParams.FilterDescendantsInstances = {currentMapBounds, playableArea}
+            overlapParams.FilterDescendantsInstances = {}
 
             local collidingParts = Workspace:GetPartBoundsInBox(CFrame.new(checkPos), CHECK_SIZE, overlapParams)
+
+            -- Manually remove the map's floor and the bot navigation area from the list of collisions.
+            local floorIndex = table.find(collidingParts, currentMapBounds)
+            if floorIndex then
+                table.remove(collidingParts, floorIndex)
+            end
+            if playableArea then
+                local playableAreaIndex = table.find(collidingParts, playableArea)
+                if playableAreaIndex then
+                    table.remove(collidingParts, playableAreaIndex)
+                end
+            end
 
             if #collidingParts == 0 then
                 table.insert(potentialSpawnPoints, Vector3.new(x, spawnY, z))
