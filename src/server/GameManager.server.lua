@@ -270,7 +270,9 @@ function spawnMachines(mapModel)
     print(string.format("[GameManager] Spawned %d machines.", CONFIG.MACHINES_TO_SPAWN))
 
     -- Also spawn the inactive Victory Gates
-    local function spawnGate(index, x, z)
+    local mapCFrame, mapSize = mapModel:GetBoundingBox()
+
+    local function spawnGate(index, position)
         local gate = Instance.new("Part")
         gate.Name = "VictoryGate" .. index
         gate.Size = Vector3.new(12, 15, 2)
@@ -279,18 +281,31 @@ function spawnMachines(mapModel)
         gate.Transparency = 1 -- Initially invisible
         gate.Material = Enum.Material.Plastic
         gate.BrickColor = BrickColor.new("Black")
-        gate.Position = Vector3.new(x, mapBounds.Position.Y + gate.Size.Y / 2, z)
+        -- Use the Y position from the center of the bounding box, then adjust for the gate's height
+        gate.Position = Vector3.new(position.X, mapCFrame.Position.Y, position.Z)
         gate.Parent = Workspace
     end
 
-    local halfX = mapBounds.Size.X / 2
-    local halfZ = mapBounds.Size.Z / 2
+    local edge1, edge2
+    -- Determine the longest axis to place the gates on
+    if mapSize.X > mapSize.Z then
+        -- Place on the left and right (X axis)
+        local halfX = mapSize.X / 2
+        local center = mapCFrame.Position
+        edge1 = Vector3.new(center.X + halfX, center.Y, center.Z)
+        edge2 = Vector3.new(center.X - halfX, center.Y, center.Z)
+    else
+        -- Place on the front and back (Z axis)
+        local halfZ = mapSize.Z / 2
+        local center = mapCFrame.Position
+        edge1 = Vector3.new(center.X, center.Y, center.Z + halfZ)
+        edge2 = Vector3.new(center.X, center.Y, center.Z - halfZ)
+    end
 
-    -- Spawn two gates at opposite ends of the map
-    spawnGate(1, mapBounds.Position.X + halfX, mapBounds.Position.Z)
-    spawnGate(2, mapBounds.Position.X - halfX, mapBounds.Position.Z)
+    spawnGate(1, edge1)
+    spawnGate(2, edge2)
 
-    print("[GameManager] Spawned 2 inactive Victory Gates at opposite ends of the map.")
+    print("[GameManager] Spawned 2 inactive Victory Gates at opposite ends of the map's bounding box.")
 end
 
 -- #############################

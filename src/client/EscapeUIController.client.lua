@@ -77,12 +77,23 @@ local function updateEscapeUI()
         arrowImage.Visible = true
         local gatePos = nearestGate.Position
         local screenPoint, onScreen = camera:WorldToScreenPoint(gatePos)
+
         if onScreen then
             arrowImage.Position = UDim2.new(0, screenPoint.X, 0, screenPoint.Y)
             arrowImage.Rotation = 0
         else
             local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
-            local direction = (Vector2.new(screenPoint.X, screenPoint.Y) - screenCenter).Unit
+            local screenPointVec = Vector2.new(screenPoint.X, screenPoint.Y)
+
+            -- Check if the point is behind the camera. The dot product will be negative if the angle is > 90 degrees.
+            local vectorToGate = gatePos - camera.CFrame.Position
+            if camera.CFrame.LookVector:Dot(vectorToGate) < 0 then
+                -- If it's behind, the screen projection is inverted. We flip it back across the center to get the correct direction.
+                screenPointVec = screenCenter - (screenPointVec - screenCenter)
+            end
+
+            local direction = (screenPointVec - screenCenter).Unit
+            -- Clamp the arrow to the edges of the screen with a 50 pixel margin
             local boundX = math.clamp(screenCenter.X + direction.X * 1000, 50, camera.ViewportSize.X - 50)
             local boundY = math.clamp(screenCenter.Y + direction.Y * 1000, 50, camera.ViewportSize.Y - 50)
             arrowImage.Position = UDim2.new(0, boundX, 0, boundY)
