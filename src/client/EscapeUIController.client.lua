@@ -97,8 +97,10 @@ local function findNearestGate()
         if gate and gate.Parent then
             local path = PathfindingService:CreatePath()
             path:ComputeAsync(playerPos, gate.Position)
-            if path.Status == Enum.PathStatus.Success then
-                local currentLength = calculatePathLength(path)
+            local success = path.Status == Enum.PathStatus.Success
+            local currentLength = success and calculatePathLength(path) or -1
+            print(string.format("[DIAGNOSTIC] Gate: %s, Path Success: %s, Length: %.2f, MinDistance: %.2f", gate.Name, tostring(success), currentLength, minDistance))
+            if success then
                 if currentLength < minDistance then
                     minDistance = currentLength
                     shortestPath = path
