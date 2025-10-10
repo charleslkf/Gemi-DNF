@@ -40,6 +40,17 @@ local flickerCounter = 0
 -- ## UI Creation & Teardown  ##
 -- #############################
 
+local function destroyArrows()
+    for _, arrow in pairs(arrows) do
+        arrow:Destroy()
+    end
+    table.clear(arrows)
+    if screenCrackImage then
+        screenCrackImage:Destroy()
+        screenCrackImage = nil
+    end
+end
+
 local function createArrows()
     destroyArrows() -- Clear any existing arrows first
 
@@ -82,17 +93,6 @@ local function createArrows()
         screenCrackImage.Visible = false
         screenCrackImage.ZIndex = 1 -- Keep crack effect behind the arrows
         screenCrackImage.Parent = screenGui
-    end
-end
-
-local function destroyArrows()
-    for _, arrow in pairs(arrows) do
-        arrow:Destroy()
-    end
-    table.clear(arrows)
-    if screenCrackImage then
-        screenCrackImage:Destroy()
-        screenCrackImage = nil
     end
 end
 
