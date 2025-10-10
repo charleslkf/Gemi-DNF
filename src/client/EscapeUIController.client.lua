@@ -157,7 +157,7 @@ local function updateUI()
         screenCrackImage.Visible = (flickerCounter < 5)
     end
 
-    -- 1. Hide all arrows by default each frame
+    -- Hide all arrows by default each frame
     for _, arrow in pairs(arrows) do
         arrow.Visible = false
     end
@@ -168,39 +168,53 @@ local function updateUI()
     local waypoints = currentPath:GetWaypoints()
     if #waypoints < 2 then return end
 
-    -- 2. Target the *second* waypoint to avoid looking at the player's feet
-    local targetWaypoint = waypoints[2]
-    local playerPos = playerChar.HumanoidRootPart.Position
+    local hrp = playerChar.HumanoidRootPart
+    local targetPos = waypoints[2].Position
 
-    -- 3. Hide the arrow if the player is very close to the *final* destination
-    local finalDestination = waypoints[#waypoints].Position
-    if (playerPos - finalDestination).Magnitude < 15 then
+    -- Hide arrow if player is very close to the final destination
+    if (hrp.Position - waypoints[#waypoints].Position).Magnitude < 15 then
         return
     end
 
-    -- 4. Calculate the direction vector in world space
-    local directionVector = (targetWaypoint.Position - playerPos)
+    -- Get the camera's forward direction, but only on the horizontal plane (X, Z)
+    local cameraLookVector = camera.CFrame.LookVector * Vector3.new(1, 0, 1)
 
-    -- 5. Convert the world space direction to be relative to the camera's orientation
-    local cameraRelativeVector = camera.CFrame:VectorToObjectSpace(directionVector)
+    -- Get the direction to the target, also only on the horizontal plane
+    local targetDirection = (targetPos - hrp.Position) * Vector3.new(1, 0, 1)
 
-    -- 6. Determine which direction has the greatest magnitude
-    local absX, absY = math.abs(cameraRelativeVector.X), math.abs(cameraRelativeVector.Y)
+    -- If the vectors are very small, we can't get a reliable direction, so exit.
+    if targetDirection.Magnitude < 0.1 or cameraLookVector.Magnitude < 0.1 then
+        arrows.Up.Visible = true -- Default to 'Up' if we're on top of the waypoint
+        return
+    end
 
-    if absX > absY then
-        -- Left or Right
-        if cameraRelativeVector.X > 0 then
-            if arrows.Right then arrows.Right.Visible = true end
+    cameraLookVector = cameraLookVector.Unit
+    targetDirection = targetDirection.Unit
+
+    -- The dot product tells us if the target is in front of or behind the camera.
+    local dotProduct = cameraLookVector:Dot(targetDirection)
+
+    if dotProduct < -0.3 then
+        -- Target is mostly behind the player, so tell them to turn around.
+        arrows.Down.Visible = true
+        return
+    end
+
+    -- The cross product's Y value tells us if the target is to the left or right.
+    local crossProduct = cameraLookVector:Cross(targetDirection)
+
+    -- Use a threshold to decide if the direction is "forward" or "sideways"
+    if math.abs(crossProduct.Y) > 0.4 then
+        if crossProduct.Y > 0 then
+            -- Target is to the left
+            arrows.Left.Visible = true
         else
-            if arrows.Left then arrows.Left.Visible = true end
+            -- Target is to the right
+            arrows.Right.Visible = true
         end
     else
-        -- Up or Down
-        if cameraRelativeVector.Y > 0 then
-            if arrows.Up then arrows.Up.Visible = true end
-        else
-            if arrows.Down then arrows.Down.Visible = true end
-        end
+        -- Target is mostly in front of the player, so "go forward."
+        arrows.Up.Visible = true
     end
 end
 
