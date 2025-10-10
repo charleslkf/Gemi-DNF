@@ -8,10 +8,6 @@
 
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
-local ServerScriptService = game:GetService("ServerScriptService")
-
--- Modules
-local IntelligentSpawnManager = require(ServerScriptService:WaitForChild("IntelligentSpawnManager"))
 
 local CoinStashManager = {}
 
@@ -19,6 +15,10 @@ local CoinStashManager = {}
 local CONFIG = {
     NumberOfStashes = 5,
     StashFolderName = "CoinStashes",
+    SpawnArea = {
+        Min = Vector3.new(-50, 2, -50),
+        Max = Vector3.new(50, 2, 50)
+    }
 }
 
 -- Variable to hold the folder reference
@@ -105,16 +105,11 @@ function CoinStashManager.spawnStashes()
 
     for i = 1, CONFIG.NumberOfStashes do
         local chest = _createChestModel()
-
-        -- Get a guaranteed safe spawn point from the intelligent manager.
-        local spawnPos = IntelligentSpawnManager.getSafeSpawnPoint(chest)
-        if spawnPos then
-            chest:SetPrimaryPartCFrame(CFrame.new(spawnPos))
-            chest.Parent = stashContainer
-        else
-            warn("[CoinStashManager] Could not get a safe spawn point for a stash. It was not spawned.")
-            chest:Destroy()
-        end
+        local x = math.random(CONFIG.SpawnArea.Min.X, CONFIG.SpawnArea.Max.X)
+        local z = math.random(CONFIG.SpawnArea.Min.Z, CONFIG.SpawnArea.Max.Z)
+        local y = CONFIG.SpawnArea.Min.Y -- Keep Y fixed for simplicity
+        chest:SetPrimaryPartCFrame(CFrame.new(x, y, z))
+        chest.Parent = stashContainer
     end
 end
 

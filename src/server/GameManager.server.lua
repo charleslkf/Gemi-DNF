@@ -24,7 +24,6 @@ local SimulatedPlayerManager = require(ReplicatedStorage:WaitForChild("MyModules
 local StoreKeeperManager = require(ServerScriptService:WaitForChild("StoreKeeperManager"))
 local CoinStashManager = require(ServerScriptService:WaitForChild("CoinStashManager"))
 local GameStateManager = require(ServerScriptService:WaitForChild("GameStateManager"))
-local IntelligentSpawnManager = require(ServerScriptService:WaitForChild("IntelligentSpawnManager"))
 
 -- Configuration
 local CONFIG = {
@@ -68,7 +67,7 @@ local currentMap = nil
 -- Forward declarations
 local enterWaiting, enterIntermission, enterPlaying, enterPostRound, enterEscape, checkWinConditions
 local teleportToLobby, spawnPlayerInMap
-local loadProceduralMap, cleanupCurrentLevel, spawnMachines, cleanupMachines, cleanupVictoryGates, activateVictoryGates
+local loadRandomLevel, cleanupCurrentLevel, spawnMachines, cleanupMachines, cleanupVictoryGates, activateVictoryGates
 
 -- #############################
 -- ## World & Object Helpers  ##
@@ -82,18 +81,27 @@ function cleanupCurrentLevel()
     currentMap = nil
 end
 
-function loadProceduralMap()
+function loadRandomLevel()
     cleanupCurrentLevel()
 
-    local proceduralMapTemplate = mapsFolder:WaitForChild("GeneratedProceduralMap", 10)
+    local allMaps = mapsFolder:GetChildren()
+    local availableMaps = {}
+    for _, map in ipairs(allMaps) do
+        if map.Name ~= "LMS_Arena" then
+            table.insert(availableMaps, map)
+        end
+    end
 
-    if not proceduralMapTemplate then
-        warn("[GameManager] CRITICAL: Could not find 'GeneratedProceduralMap' in ServerStorage/Maps. Halting round start.")
+    if #availableMaps == 0 then
+        warn("[GameManager] No non-LMS maps found in ServerStorage/Maps folder!")
         return nil
     end
 
-    print(string.format("[GameManager] Loading map: %s", proceduralMapTemplate.Name))
-    currentMap = proceduralMapTemplate:Clone()
+    local randomIndex = math.random(#availableMaps)
+    local selectedMapTemplate = availableMaps[randomIndex]
+
+    print(string.format("[GameManager] Loading map: %s", selectedMapTemplate.Name))
+    currentMap = selectedMapTemplate:Clone()
 
     if not currentMap.PrimaryPart then
         local largestPart, largestSize = nil, 0
@@ -124,13 +132,13 @@ function teleportToLobby(player)
     print(string.format("[GameManager] Teleported %s to lobby.", player.Name))
 end
 
-function spawnPlayerInMap(player, isKiller, spawnPos)
+function spawnPlayerInMap(player, isKiller)
     local conn
     conn = player.CharacterAdded:Connect(function(character)
         if conn then conn:Disconnect(); conn = nil end
         task.defer(function()
             if not character or not character.Parent then return end
-            -- Use the provided spawn position instead of a random one.
+            local spawnPos = Vector3.new(math.random(-50, 50), 5, math.random(-50, 50))
             character:SetPrimaryPartCFrame(CFrame.new(spawnPos))
             if isKiller then
                 print("[GameManager] Freezing killer: " .. player.Name)
@@ -252,46 +260,33 @@ function spawnMachines(mapModel)
         local randomType = gameTypes[math.random(#gameTypes)]
         machine:SetAttribute("GameType", randomType)
 
-        -- Get a guaranteed safe spawn point from the intelligent manager.
-        local spawnPos = IntelligentSpawnManager.getSafeSpawnPoint(machine)
-        if spawnPos then
-            machine:SetPrimaryPartCFrame(CFrame.new(spawnPos))
-            machine.Parent = machineFolder
-        else
-            warn("[GameManager] Could not find a safe spawn point for a machine. It was not spawned.")
-            machine:Destroy()
-        end
+        local randomX = mapBounds.Position.X + math.random(-mapBounds.Size.X / 2, mapBounds.Size.X / 2)
+        local randomZ = mapBounds.Position.Z + math.random(-mapBounds.Size.Z / 2, mapBounds.Size.Z / 2)
+        machine:SetPrimaryPartCFrame(CFrame.new(randomX, mapBounds.Position.Y + machine.PrimaryPart.Size.Y / 2, randomZ))
+
+        machine.Parent = machineFolder
     end
 
     print(string.format("[GameManager] Spawned %d machines.", CONFIG.MACHINES_TO_SPAWN))
 
-    -- Spawn the inactive Victory Gates at fixed, opposite ends of the map.
-    local gateSize = Vector3.new(12, 15, 2)
-    local gateY = mapBounds.Position.Y + (mapBounds.Size.Y / 2) + (gateSize.Y / 2)
-    local halfMapZ = mapBounds.Size.Z / 2
-    local buffer = 5 -- Buffer space from the edge wall
-
-    local gatePositions = {
-        North = Vector3.new(mapBounds.Position.X, gateY, mapBounds.Position.Z - halfMapZ + (gateSize.Z / 2) + buffer),
-        South = Vector3.new(mapBounds.Position.X, gateY, mapBounds.Position.Z + halfMapZ - (gateSize.Z / 2) - buffer)
-    }
-
-    local gateIndex = 1
-    for _, pos in pairs(gatePositions) do
+    -- Also spawn the inactive Victory Gates
+    for i = 1, 2 do
         local gate = Instance.new("Part")
-        gate.Name = "VictoryGate" .. gateIndex
-        gate.Size = gateSize
+        gate.Name = "VictoryGate" .. i
+        gate.Size = Vector3.new(12, 15, 2)
         gate.Anchored = true
         gate.CanCollide = false
         gate.Transparency = 1 -- Initially invisible
         gate.Material = Enum.Material.Plastic
         gate.BrickColor = BrickColor.new("Black")
-        gate.Position = pos
-        gate.Parent = Workspace
-        gateIndex = gateIndex + 1
-    end
 
-    print("[GameManager] Spawned 2 inactive Victory Gates at opposite ends of the map.")
+        local randomX = mapBounds.Position.X + math.random(-mapBounds.Size.X / 2, mapBounds.Size.X / 2)
+        local randomZ = mapBounds.Position.Z + math.random(-mapBounds.Size.Z / 2, mapBounds.Size.Z / 2)
+        gate.Position = Vector3.new(randomX, mapBounds.Position.Y + gate.Size.Y / 2, randomZ)
+
+        gate.Parent = Workspace
+    end
+    print("[GameManager] Spawned 2 inactive Victory Gates.")
 end
 
 -- #############################
@@ -306,7 +301,6 @@ function enterWaiting()
     cleanupVictoryGates()
     StoreKeeperManager.stopManaging()
     CoinStashManager.cleanupStashes()
-    IntelligentSpawnManager.cleanupSpawnPoints()
     table.clear(currentKillers)
     table.clear(currentSurvivors)
     for _, player in ipairs(Players:GetPlayers()) do
@@ -324,17 +318,13 @@ function enterPlaying()
     currentLevel = currentLevel + 1
     GameStateManager:SetNewRoundState(CONFIG.ROUND_DURATION, CONFIG.MACHINES_TO_SPAWN)
     stateTimer = CONFIG.ROUND_DURATION
-    local loadedMap = loadProceduralMap()
+    local loadedMap = loadRandomLevel()
     if not loadedMap then
         warn("[GameManager] CRITICAL: No map could be loaded. Returning to Waiting state.")
         gameState = "Waiting"
         enterWaiting()
         return
     end
-
-    -- Build the list of safe spawn points for the new map.
-    IntelligentSpawnManager.buildSpawnPoints(loadedMap)
-
     spawnMachines(loadedMap)
     StoreKeeperManager.startManaging(currentLevel)
     CoinStashManager.spawnStashes()
@@ -371,23 +361,9 @@ function enterPlaying()
     end
     print(string.format("[GameManager] Teams assigned: %d Killer(s), %d Survivor(s) (including %d bots).", #currentKillers, #currentSurvivors, #spawnedBots))
 
-    -- Spawn players in safe locations using the intelligent spawner.
-    local playerPlaceholder = Instance.new("Part")
-    playerPlaceholder.Size = Vector3.new(4, 6, 4) -- A generous size for a player character.
-    playerPlaceholder.Anchored = true
-    playerPlaceholder.CanCollide = false
-
     for _, player in ipairs(realPlayers) do
         local isKiller = (player.Team == killersTeam)
-
-        -- Get a guaranteed safe spawn point from the intelligent manager.
-        local spawnPos = IntelligentSpawnManager.getSafeSpawnPoint(playerPlaceholder)
-        if not spawnPos then
-            warn("[GameManager] Could not find a safe spawn point for player " .. player.Name .. ". Placing at default.")
-            spawnPos = Vector3.new(0, 5, 0) -- Fallback position
-        end
-
-        spawnPlayerInMap(player, isKiller, spawnPos)
+        spawnPlayerInMap(player, isKiller)
         HealthManager.initializeHealth(player)
         InventoryManager.initializeInventory(player)
         local leaderstats = player:FindFirstChild("leaderstats")
@@ -395,7 +371,6 @@ function enterPlaying()
             leaderstats.LevelCoins.Value = 0
         end
     end
-    playerPlaceholder:Destroy()
 
 end
 
@@ -410,23 +385,17 @@ function enterEscape()
     stateTimer = CONFIG.VICTORY_GATE_TIMER
     GameStateManager:SetTimer(stateTimer) -- Update the HUD timer
 
-    -- The 2-second diagnostic wait has been removed as per user request.
+    -- DIAGNOSTIC: Wait 2 seconds to test race condition
+    task.wait(2)
 
-    -- Fire the new event to all survivors with the gate NAMES
+    -- Fire the new event to all survivors with the gate references
     local remotes = ReplicatedStorage:WaitForChild("Remotes")
     local escapeEvent = remotes:WaitForChild("EscapeSequenceStarted")
-
-    -- Create a new table containing only the names of the gates for replication
-    local gateNames = {}
-    for _, gate in ipairs(gates) do
-        table.insert(gateNames, gate.Name)
-    end
-
     for _, player in ipairs(Players:GetPlayers()) do
         if player.Team == survivorsTeam then
-            print("[GameManager-DEBUG] Firing EscapeSequenceStarted event for: " .. player.Name)
-            -- Pass the table of gate names, which replicates correctly
-            escapeEvent:FireClient(player, gateNames)
+            print("[GameManager-DEBUG] Firing event for: " .. player.Name)
+            -- Pass the gates as a table to handle any number of them
+            escapeEvent:FireClient(player, gates)
         end
     end
 end

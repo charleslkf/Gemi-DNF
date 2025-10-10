@@ -8,11 +8,9 @@
 
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ServerScriptService = game:GetService("ServerScriptService")
 
 -- Modules
 local InventoryManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("InventoryManager"))
-local IntelligentSpawnManager = require(ServerScriptService:WaitForChild("IntelligentSpawnManager"))
 
 -- Remotes
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -25,6 +23,11 @@ local StoreKeeperManager = {}
 -- Configuration
 local NPC_CONFIG = {
     Name = "StoreKeeper",
+    SpawnPosition = Vector3.new(10, 5, 10),
+    SpawnArea = {
+        Min = Vector3.new(-50, 5, -50),
+        Max = Vector3.new(50, 5, 50)
+    },
     VISIBLE_DURATION = 30,
     HIDDEN_DURATION = 10
 }
@@ -69,16 +72,10 @@ local function _spawnNPCRandomly()
     hrp.Parent = activeNPC
     activeNPC.PrimaryPart = hrp
 
-    -- Get a guaranteed safe spawn point from the intelligent manager.
-    local spawnPos = IntelligentSpawnManager.getSafeSpawnPoint(activeNPC)
-    if spawnPos then
-        activeNPC:SetPrimaryPartCFrame(CFrame.new(spawnPos))
-    else
-        warn("[StoreKeeperManager] Could not get a safe spawn point for the NPC. It will not be spawned.")
-        activeNPC:Destroy()
-        activeNPC = nil
-        return
-    end
+    local x = math.random(NPC_CONFIG.SpawnArea.Min.X, NPC_CONFIG.SpawnArea.Max.X)
+    local z = math.random(NPC_CONFIG.SpawnArea.Min.Z, NPC_CONFIG.SpawnArea.Max.Z)
+    local y = NPC_CONFIG.SpawnArea.Min.Y
+    activeNPC:SetPrimaryPartCFrame(CFrame.new(x, y, z))
 
     -- Select and store the random items for this spawn
     local allItemNames = {}

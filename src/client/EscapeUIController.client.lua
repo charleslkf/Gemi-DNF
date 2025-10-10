@@ -99,11 +99,13 @@ EscapeSequenceStarted.OnClientEvent:Connect(function(gateNames)
         -- The server sends gate names, so we need to find the actual parts in the Workspace.
         table.clear(activeGates)
         for _, name in ipairs(gateNames) do
-            local gatePart = Workspace:FindFirstChild(name)
+            -- Wait up to 10 seconds for the gate to exist on the client.
+            -- This prevents a race condition where the remote event arrives before the part has replicated.
+            local gatePart = Workspace:WaitForChild(name, 10)
             if gatePart then
                 table.insert(activeGates, gatePart)
             else
-                warn("[EscapeUIController] Could not find gate part named: " .. name)
+                warn("[EscapeUIController] Timed out waiting for gate part named: " .. name)
             end
         end
 
