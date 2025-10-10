@@ -270,23 +270,27 @@ function spawnMachines(mapModel)
     print(string.format("[GameManager] Spawned %d machines.", CONFIG.MACHINES_TO_SPAWN))
 
     -- Also spawn the inactive Victory Gates
-    for i = 1, 2 do
+    local function spawnGate(index, x, z)
         local gate = Instance.new("Part")
-        gate.Name = "VictoryGate" .. i
+        gate.Name = "VictoryGate" .. index
         gate.Size = Vector3.new(12, 15, 2)
         gate.Anchored = true
         gate.CanCollide = false
         gate.Transparency = 1 -- Initially invisible
         gate.Material = Enum.Material.Plastic
         gate.BrickColor = BrickColor.new("Black")
-
-        local randomX = mapBounds.Position.X + math.random(-mapBounds.Size.X / 2, mapBounds.Size.X / 2)
-        local randomZ = mapBounds.Position.Z + math.random(-mapBounds.Size.Z / 2, mapBounds.Size.Z / 2)
-        gate.Position = Vector3.new(randomX, mapBounds.Position.Y + gate.Size.Y / 2, randomZ)
-
+        gate.Position = Vector3.new(x, mapBounds.Position.Y + gate.Size.Y / 2, z)
         gate.Parent = Workspace
     end
-    print("[GameManager] Spawned 2 inactive Victory Gates.")
+
+    local halfX = mapBounds.Size.X / 2
+    local halfZ = mapBounds.Size.Z / 2
+
+    -- Spawn two gates at opposite ends of the map
+    spawnGate(1, mapBounds.Position.X + halfX, mapBounds.Position.Z)
+    spawnGate(2, mapBounds.Position.X - halfX, mapBounds.Position.Z)
+
+    print("[GameManager] Spawned 2 inactive Victory Gates at opposite ends of the map.")
 end
 
 -- #############################

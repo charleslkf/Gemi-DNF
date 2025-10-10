@@ -105,7 +105,7 @@ EscapeSequenceStarted.OnClientEvent:Connect(function(gateNames)
             if gatePart then
                 table.insert(activeGates, gatePart)
             else
-                warn("[EscapeUIController] Timed out waiting for gate part named: " .. name)
+                warn("[EscapeUIController] Timed out waiting for gate part named: " .. tostring(name))
             end
         end
 
