@@ -2,13 +2,15 @@
     EscapeUIController.client.lua
 
     This script is solely responsible for managing the UI effects during
-    the escape sequence (the screen crack and the directional arrow).
+    the escape sequence, including the screen crack effect and the directional
+    arrow that guides players to the nearest Victory Gate.
 ]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+local PathfindingService = game:GetService("PathfindingService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -22,19 +24,36 @@ local EscapeSequenceStarted = Remotes:WaitForChild("EscapeSequenceStarted")
 -- Use WaitForChild to ensure the UIManager has created the MainHUD
 local screenGui = playerGui:WaitForChild("MainHUD", 10)
 if not screenGui then
-    print("[EscapeUIController] FATAL: MainHUD not found after 10 seconds. Aborting.")
+    warn("[EscapeUIController] FATAL: MainHUD not found after 10 seconds. Aborting.")
     return
 end
 
-local arrowImage = Instance.new("ImageLabel")
-arrowImage.Name = "EscapeArrow"
-arrowImage.Image = "rbxassetid://5989193313"
-arrowImage.Size = UDim2.new(0, 50, 0, 50)
-arrowImage.AnchorPoint = Vector2.new(0.5, 0.5)
-arrowImage.BackgroundTransparency = 1
-arrowImage.Visible = false
-arrowImage.ZIndex = 2 -- Set ZIndex to render on top
-arrowImage.Parent = screenGui
+-- Arrow UI Setup
+local arrowAssets = {
+    Up = "rbxassetid://12486915223",
+    Down = "rbxassetid://12486914838",
+    Left = "rbxassetid://12486914495",
+    Right = "rbxassetid://12486914094"
+}
+
+local arrows = {}
+for name, id in pairs(arrowAssets) do
+    local arrowImage = Instance.new("ImageLabel")
+    arrowImage.Name = "EscapeArrow" .. name
+    arrowImage.Image = id
+    arrowImage.Size = UDim2.new(0, 100, 0, 100)
+    arrowImage.AnchorPoint = Vector2.new(0.5, 0.5)
+    arrowImage.BackgroundTransparency = 1
+    arrowImage.Visible = false
+    arrowImage.ZIndex = 2
+    arrowImage.Parent = screenGui
+    arrows[name] = arrowImage
+end
+
+arrows["Up"].Position = UDim2.new(0.5, 0, 0, 50)
+arrows["Down"].Position = UDim2.new(0.5, 0, 1, -50)
+arrows["Left"].Position = UDim2.new(0, 50, 0.5, 0)
+arrows["Right"].Position = UDim2.new(1, -50, 0.5, 0)
 
 local screenCrackImage = Instance.new("ImageLabel")
 screenCrackImage.Name = "ScreenCrackEffect"
@@ -42,77 +61,128 @@ screenCrackImage.Image = "rbxassetid://268393522"
 screenCrackImage.ImageTransparency = 0.8
 screenCrackImage.Size = UDim2.new(1, 0, 1, 0)
 screenCrackImage.Visible = false
-screenCrackImage.ZIndex = 1 -- Keep crack effect behind the arrow
+screenCrackImage.ZIndex = 1
 screenCrackImage.Parent = screenGui
 
+-- State Variables
 local escapeConnection = nil
-local flickerCounter = 0
+local pathfindingCoroutine = nil
 local activeGates = {}
+local currentPath = nil
+local isEscapeActive = false
 
-local function findNearestGateFromActive()
+-- Helper function to find the nearest gate by pathfinding distance
+local function findNearestGate()
     local playerChar = player.Character
     if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") or #activeGates == 0 then return nil end
 
     local playerPos = playerChar.HumanoidRootPart.Position
-    local nearestGate, minDistance = nil, math.huge
+    local nearestGate, shortestPath = nil, nil
 
-    for _, part in ipairs(activeGates) do
-        if part and part.Parent then -- Check if gate is valid
-            local distance = (playerPos - part.Position).Magnitude
-            if distance < minDistance then
-                minDistance = distance
-                nearestGate = part
+    for _, gate in ipairs(activeGates) do
+        if gate and gate.Parent then
+            local path = PathfindingService:CreatePath()
+            path:ComputeAsync(playerPos, gate.Position)
+            if path.Status == Enum.PathStatus.Success then
+                if not shortestPath or path:GetLenth() < shortestPath:GetLenth() then
+                    shortestPath = path
+                    nearestGate = gate
+                end
             end
         end
     end
-    return nearestGate
+    return nearestGate, shortestPath
 end
 
-local function updateEscapeUI()
-    flickerCounter = (flickerCounter + 1) % 10
-    screenCrackImage.Visible = (flickerCounter < 5)
-
-    local nearestGate = findNearestGateFromActive()
-    if nearestGate and camera then
-        arrowImage.Visible = true
-        local gatePos = nearestGate.Position
-        local screenPoint, onScreen = camera:WorldToScreenPoint(gatePos)
-        if onScreen then
-            arrowImage.Position = UDim2.new(0, screenPoint.X, 0, screenPoint.Y)
-            arrowImage.Rotation = 0
-        else
-            local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
-            local direction = (Vector2.new(screenPoint.X, screenPoint.Y) - screenCenter).Unit
-            local boundX = math.clamp(screenCenter.X + direction.X * 1000, 50, camera.ViewportSize.X - 50)
-            local boundY = math.clamp(screenCenter.Y + direction.Y * 1000, 50, camera.ViewportSize.Y - 50)
-            arrowImage.Position = UDim2.new(0, boundX, 0, boundY)
-            arrowImage.Rotation = math.deg(math.atan2(direction.Y, direction.X)) + 90
-        end
-    else
-        arrowImage.Visible = false
+-- Non-blocking coroutine to handle path recalculation
+local function managePathfinding()
+    while isEscapeActive do
+        local _, path = findNearestGate()
+        currentPath = path
+        task.wait(1) -- Recalculate path every second
     end
 end
 
--- Listen for the dedicated escape event to start the UI
-EscapeSequenceStarted.OnClientEvent:Connect(function(gates)
+-- Main UI update loop
+local function updateEscapeUI()
+    local playerChar = player.Character
+    if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") then
+        for _, arrow in pairs(arrows) do arrow.Visible = false end
+        return
+    end
+
+    local playerPos = playerChar.HumanoidRootPart.Position
+    local nextWaypoint = nil
+
+    if currentPath and #currentPath:GetWaypoints() > 1 then
+        nextWaypoint = currentPath:GetWaypoints()[2].Position
+    end
+
+    for _, arrow in pairs(arrows) do arrow.Visible = false end
+
+    if nextWaypoint then
+        local direction = (nextWaypoint - playerPos).Unit
+        local cameraDirection = camera.CFrame.LookVector
+        local angle = math.atan2(direction.X, direction.Z) - math.atan2(cameraDirection.X, cameraDirection.Z)
+
+        if angle > math.pi then angle = angle - 2 * math.pi end
+        if angle < -math.pi then angle = angle + 2 * math.pi end
+
+        if math.abs(angle) < math.pi / 4 then
+            arrows["Up"].Visible = true
+        elseif math.abs(angle) > 3 * math.pi / 4 then
+            arrows["Down"].Visible = true
+        elseif angle > 0 then
+            arrows["Right"].Visible = true
+        else
+            arrows["Left"].Visible = true
+        end
+    end
+
+    -- Flicker the screen crack effect
+    screenCrackImage.Visible = (os.clock() % 0.2 < 0.1)
+end
+
+-- Event Handlers
+EscapeSequenceStarted.OnClientEvent:Connect(function(gateNames)
     if player.Team and player.Team.Name == "Survivors" then
-        activeGates = gates
+        -- The server sends gate names, so we need to find the actual parts in the Workspace.
+        table.clear(activeGates)
+        for _, name in ipairs(gateNames) do
+            local gatePart = Workspace:FindFirstChild(name)
+            if gatePart then
+                table.insert(activeGates, gatePart)
+            else
+                warn("[EscapeUIController] Could not find gate part named: " .. name)
+            end
+        end
+
+        isEscapeActive = true
+        if not pathfindingCoroutine then
+            pathfindingCoroutine = task.spawn(managePathfinding)
+        end
         if not escapeConnection then
             escapeConnection = RunService.Heartbeat:Connect(updateEscapeUI)
         end
     end
 end)
 
--- Listen for general game state changes to know when to stop
 GameStateChanged.OnClientEvent:Connect(function(newState)
     if newState.Name ~= "Escape" then
+        isEscapeActive = false
+        if pathfindingCoroutine then
+            -- Let the coroutine finish naturally
+            pathfindingCoroutine = nil
+        end
         if escapeConnection then
             escapeConnection:Disconnect()
             escapeConnection = nil
-            screenCrackImage.Visible = false
-            arrowImage.Visible = false
-            activeGates = {}
         end
+        screenCrackImage.Visible = false
+        for _, arrow in pairs(arrows) do
+            arrow.Visible = false
+        end
+        table.clear(activeGates)
     end
 end)
 

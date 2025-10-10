@@ -2,6 +2,11 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 3.4.20
+- **Critical Bug Fix: Directional Arrow Not Appearing:**
+  - Fixed a bug where the escape sequence directional arrow was not appearing. The client-side `EscapeUIController` was reset in a previous step and was not correctly handling the gate name data being sent from the server.
+  - The script has been updated to correctly look up the gate parts by name and re-implements the full pathfinding and four-arrow UI logic.
+
 ## Version 3.4.19
 - **Architectural Refactor: Intelligent Spawning System**
   - Replaced all previous spawning systems with a new, authoritative `IntelligentSpawnManager`.
