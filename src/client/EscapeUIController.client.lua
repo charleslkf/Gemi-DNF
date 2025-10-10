@@ -71,20 +71,36 @@ local activeGates = {}
 local currentPath = nil
 local isEscapeActive = false
 
+-- Helper function to calculate the total length of a path by summing the magnitude between its waypoints.
+local function calculatePathLength(path)
+    local waypoints = path:GetWaypoints()
+    if #waypoints < 2 then
+        return 0
+    end
+
+    local totalLength = 0
+    for i = 1, #waypoints - 1 do
+        totalLength = totalLength + (waypoints[i+1].Position - waypoints[i].Position).Magnitude
+    end
+    return totalLength
+end
+
 -- Helper function to find the nearest gate by pathfinding distance
 local function findNearestGate()
     local playerChar = player.Character
     if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") or #activeGates == 0 then return nil end
 
     local playerPos = playerChar.HumanoidRootPart.Position
-    local nearestGate, shortestPath = nil, nil
+    local nearestGate, shortestPath, minDistance = nil, nil, math.huge
 
     for _, gate in ipairs(activeGates) do
         if gate and gate.Parent then
             local path = PathfindingService:CreatePath()
             path:ComputeAsync(playerPos, gate.Position)
             if path.Status == Enum.PathStatus.Success then
-                if not shortestPath or path:GetLength() < shortestPath:GetLength() then
+                local currentLength = calculatePathLength(path)
+                if currentLength < minDistance then
+                    minDistance = currentLength
                     shortestPath = path
                     nearestGate = gate
                 end

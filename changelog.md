@@ -2,6 +2,11 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 3.4.24
+- **Critical Bug Fix: Definitive Fix for Client Crash:**
+  - Fixed a crash in `EscapeUIController.client.lua` caused by calling a non-existent `path:GetLength()` function.
+  - Implemented a new helper function, `calculatePathLength`, to correctly calculate the total length of a path by summing the distances between its waypoints. This resolves the final crash and makes the directional arrow fully functional.
+
 ## Version 3.4.23
 - **Critical Bug Fix: Definitive Fix for Client Crash:**
   - Fixed a persistent typo (`GetLenth` -> `GetLength`) in `EscapeUIController.client.lua` by deleting and re-creating the file to ensure the fix was applied correctly. This resolves the client-side crash during the escape sequence.
