@@ -104,9 +104,16 @@ function IntelligentSpawnManager.getSafeSpawnPoint(objectToSpawn)
         return nil
     end
 
-    local objectSize = objectToSpawn.PrimaryPart and objectToSpawn.PrimaryPart.Size or objectToSpawn.Size
+    local objectSize
+    local objectYOffset
+    if objectToSpawn:IsA("Model") then
+        objectSize = objectToSpawn.PrimaryPart.Size
+        objectYOffset = objectToSpawn.PrimaryPart.Size.Y / 2
+    else -- It must be a BasePart, as validated by the check at the top of the function.
+        objectSize = objectToSpawn.Size
+        objectYOffset = objectToSpawn.Size.Y / 2
+    end
     local paddedSize = objectSize + Vector3.new(PADDING * 2, 0, PADDING * 2) -- Add padding to the X and Z axes.
-    local objectYOffset = objectToSpawn.PrimaryPart and objectToSpawn.PrimaryPart.Size.Y / 2 or objectToSpawn.Size.Y / 2
 
     local playableArea = Workspace:FindFirstChild("PlayableArea")
     local baseplate = Workspace:FindFirstChild("Baseplate")

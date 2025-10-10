@@ -3,23 +3,19 @@
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
 ## Version 3.4.19
-- **Critical Bug Fix: Definitive Spawning Fix:**
-  - The `IntelligentSpawnManager` now correctly ignores the global `Baseplate` during its collision checks. This was the final root cause of the "Found 0 potential spawn points" error, and all objects should now spawn reliably.
-
-## Version 3.4.18
 - **Architectural Refactor: Intelligent Spawning System**
   - Replaced all previous spawning systems with a new, authoritative `IntelligentSpawnManager`.
   - This new manager works in two phases for maximum reliability:
-    1.  **Broad-phase Scan:** It first scans the map using a fine-grained grid to find all potential empty spaces, correctly ignoring the floor and bot navigation areas.
+    1.  **Broad-phase Scan:** It first scans the map using a fine-grained grid to find all potential empty spaces, correctly ignoring the floor, baseplate, and bot navigation areas.
     2.  **Narrow-phase Check:** When an object is spawned, it performs a final, precise collision check using the object's actual size plus a "padding" buffer to ensure it fits perfectly and does not spawn too close to walls.
-  - This new system is fully procedural and will automatically adapt to any changes in the map's layout.
 - **Full Integration and Cleanup:**
   - All relevant managers (`GameManager`, `CoinStashManager`, `StoreKeeperManager`) have been refactored to use this new, intelligent system.
-  - The old `SpawnDataManager` and all other faulty spawning utilities have been completely removed from the project.
+  - All old, faulty spawning modules have been completely removed from the project.
 - **Bug Fixes:**
   - Fixed a critical typo in the `MapGenerator` that was causing it to crash.
   - Hardened the `GameManager` to exclusively load the procedural map, preventing any future map-loading bugs.
   - Fixed a race condition in the spawning system that was causing it to fail intermittently.
+  - Fixed a crash that occurred when spawning players due to incorrect handling of `Part` objects.
 
 ## Version 3.4.17
 - **Project Cleanup:**
