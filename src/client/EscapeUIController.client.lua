@@ -96,13 +96,12 @@ end
 -- Listen for the dedicated escape event to start the UI
 EscapeSequenceStarted.OnClientEvent:Connect(function(gateNames)
     if player.Team and player.Team.Name == "Survivors" then
-        -- The server sends gate names, so we need to find the actual parts in the Workspace.
         table.clear(activeGates)
+        print("[EscapeUIController] Received gate names: ", table.concat(gateNames, ", "))
         for _, name in ipairs(gateNames) do
-            -- Wait up to 10 seconds for the gate to exist on the client.
-            -- This prevents a race condition where the remote event arrives before the part has replicated.
             local gatePart = Workspace:WaitForChild(name, 10)
             if gatePart then
+                print("[EscapeUIController] Found gate part: " .. gatePart.Name)
                 table.insert(activeGates, gatePart)
             else
                 warn("[EscapeUIController] Timed out waiting for gate part named: " .. tostring(name))
