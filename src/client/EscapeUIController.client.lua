@@ -97,7 +97,6 @@ local function findNearestGate()
         if gate and gate.Parent then
             local path = PathfindingService:CreatePath()
             path:ComputeAsync(playerPos, gate.Position)
-            print("[DIAGNOSTIC] Pathfinding status to " .. gate.Name .. ": " .. tostring(path.Status))
             if path.Status == Enum.PathStatus.Success then
                 local currentLength = calculatePathLength(path)
                 if currentLength < minDistance then
@@ -131,8 +130,10 @@ local function updateEscapeUI()
     local playerPos = playerChar.HumanoidRootPart.Position
     local nextWaypoint = nil
 
-    if currentPath and #currentPath:GetWaypoints() > 1 then
-        nextWaypoint = currentPath:GetWaypoints()[2].Position
+    local waypoints = currentPath and currentPath:GetWaypoints()
+    if waypoints and #waypoints > 0 then
+        -- If there's only one waypoint, it's the destination. Otherwise, aim for the next one.
+        nextWaypoint = waypoints[#waypoints > 1 and 2 or 1].Position
     end
 
     for _, arrow in pairs(arrows) do arrow.Visible = false end

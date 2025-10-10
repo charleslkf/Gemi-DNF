@@ -2,6 +2,10 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 3.4.25
+- **Critical Bug Fix: Directional Arrow Logic:**
+  - Fixed a logic error in `EscapeUIController.client.lua` that prevented the directional arrow from appearing if the path to the gate was very short (i.e., only one waypoint). The code now correctly handles this case, ensuring the arrow is always visible when a valid path exists. This was the definitive fix for the UI issue.
+
 ## Version 3.4.24
 - **Critical Bug Fix: Definitive Fix for Client Crash:**
   - Fixed a crash in `EscapeUIController.client.lua` caused by calling a non-existent `path:GetLength()` function.
