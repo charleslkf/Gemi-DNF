@@ -271,8 +271,30 @@ function spawnMachines(mapModel)
 
     -- Also spawn the inactive Victory Gates
     local mapCFrame, mapSize = mapModel:GetBoundingBox()
+    local INSET_DISTANCE = 10 -- How many studs to move inward from the edge
+    local RAYCAST_HEIGHT = 200 -- How high above the spawn point to start the raycast
 
-    local function spawnGate(index, position)
+    local function spawnGate(index, horizontalPosition)
+        -- 1. Start raycast high above the inset point
+        local rayOrigin = horizontalPosition + Vector3.new(0, RAYCAST_HEIGHT, 0)
+        local rayDirection = Vector3.new(0, -1, 0) * (RAYCAST_HEIGHT * 2)
+
+        -- 2. Perform the raycast to find the ground
+        local raycastParams = RaycastParams.new()
+        raycastParams.FilterDescendantsInstances = {mapModel}
+        raycastParams.FilterType = Enum.RaycastFilterType.Include
+        local raycastResult = Workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+
+        local groundPosition
+        if raycastResult and raycastResult.Position then
+            groundPosition = raycastResult.Position
+            print(string.format("[GameManager] Raycast for Gate %d hit ground at: %s", index, tostring(groundPosition)))
+        else
+            -- Fallback: If raycast fails, use the center of the map's Y position
+            groundPosition = Vector3.new(horizontalPosition.X, mapCFrame.Position.Y, horizontalPosition.Z)
+            warn(string.format("[GameManager] Raycast failed for Gate %d. Using fallback Y position.", index))
+        end
+
         local gate = Instance.new("Part")
         gate.Name = "VictoryGate" .. index
         gate.Size = Vector3.new(12, 15, 2)
@@ -281,23 +303,22 @@ function spawnMachines(mapModel)
         gate.Transparency = 1 -- Initially invisible
         gate.Material = Enum.Material.Plastic
         gate.BrickColor = BrickColor.new("Black")
-        -- Use the Y position from the center of the bounding box, then adjust for the gate's height
-        gate.Position = Vector3.new(position.X, mapCFrame.Position.Y, position.Z)
+        -- Position the gate on the ground, adjusting for its own height
+        gate.Position = groundPosition + Vector3.new(0, gate.Size.Y / 2, 0)
         gate.Parent = Workspace
     end
 
     local edge1, edge2
+    local center = mapCFrame.Position
     -- Determine the longest axis to place the gates on
     if mapSize.X > mapSize.Z then
-        -- Place on the left and right (X axis)
-        local halfX = mapSize.X / 2
-        local center = mapCFrame.Position
+        -- Place on the left and right (X axis), inset by the specified distance
+        local halfX = mapSize.X / 2 - INSET_DISTANCE
         edge1 = Vector3.new(center.X + halfX, center.Y, center.Z)
         edge2 = Vector3.new(center.X - halfX, center.Y, center.Z)
     else
-        -- Place on the front and back (Z axis)
-        local halfZ = mapSize.Z / 2
-        local center = mapCFrame.Position
+        -- Place on the front and back (Z axis), inset by the specified distance
+        local halfZ = mapSize.Z / 2 - INSET_DISTANCE
         edge1 = Vector3.new(center.X, center.Y, center.Z + halfZ)
         edge2 = Vector3.new(center.X, center.Y, center.Z - halfZ)
     end
@@ -305,7 +326,7 @@ function spawnMachines(mapModel)
     spawnGate(1, edge1)
     spawnGate(2, edge2)
 
-    print("[GameManager] Spawned 2 inactive Victory Gates at opposite ends of the map's bounding box.")
+    print("[GameManager] Spawned 2 inactive Victory Gates using inset and raycasting.")
 end
 
 -- #############################
