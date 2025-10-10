@@ -39,6 +39,7 @@ function IntelligentSpawnManager.buildSpawnPoints(mapModel)
     table.clear(potentialSpawnPoints)
     currentMapBounds = mapModel.PrimaryPart
     local playableArea = Workspace:FindFirstChild("PlayableArea")
+    local baseplate = Workspace:FindFirstChild("Baseplate")
     print("[IntelligentSpawnManager] Building spawn point list...")
 
     local mapSize = currentMapBounds.Size
@@ -57,12 +58,12 @@ function IntelligentSpawnManager.buildSpawnPoints(mapModel)
         for z = startZ, endZ, GRID_STEP do
             local checkPos = Vector3.new(x, spawnY + Y_OFFSET, z)
 
-            -- Set the filter list inside the loop to include the most up-to-date parts.
+            -- Set the filter list inside the loop.
             overlapParams.FilterDescendantsInstances = {}
 
             local collidingParts = Workspace:GetPartBoundsInBox(CFrame.new(checkPos), CHECK_SIZE, overlapParams)
 
-            -- Manually remove the map's floor and the bot navigation area from the list of collisions.
+            -- Manually remove the parts we want to ignore from the collision list.
             local floorIndex = table.find(collidingParts, currentMapBounds)
             if floorIndex then
                 table.remove(collidingParts, floorIndex)
@@ -73,13 +74,11 @@ function IntelligentSpawnManager.buildSpawnPoints(mapModel)
                     table.remove(collidingParts, playableAreaIndex)
                 end
             end
-
-            if #collidingParts > 0 and (x < startX + (GRID_STEP * 5)) then -- Limit logging to first few checks
-                local collidedPartNames = {}
-                for _, part in ipairs(collidingParts) do
-                    table.insert(collidedPartNames, part.Name)
+            if baseplate then
+                local baseplateIndex = table.find(collidingParts, baseplate)
+                if baseplateIndex then
+                    table.remove(collidingParts, baseplateIndex)
                 end
-                print("[DIAGNOSTIC] Collided with: " .. table.concat(collidedPartNames, ", "))
             end
 
             if #collidingParts == 0 then
@@ -110,6 +109,7 @@ function IntelligentSpawnManager.getSafeSpawnPoint(objectToSpawn)
     local objectYOffset = objectToSpawn.PrimaryPart and objectToSpawn.PrimaryPart.Size.Y / 2 or objectToSpawn.Size.Y / 2
 
     local playableArea = Workspace:FindFirstChild("PlayableArea")
+    local baseplate = Workspace:FindFirstChild("Baseplate")
     local finalCheckParams = OverlapParams.new()
     finalCheckParams.FilterType = Enum.RaycastFilterType.Exclude
 
@@ -126,7 +126,7 @@ function IntelligentSpawnManager.getSafeSpawnPoint(objectToSpawn)
         local checkCFrame = CFrame.new(checkPos)
 
         -- Set the filter list inside the loop.
-        finalCheckParams.FilterDescendantsInstances = {objectToSpawn, currentMapBounds, playableArea}
+        finalCheckParams.FilterDescendantsInstances = {objectToSpawn, currentMapBounds, playableArea, baseplate}
 
         local collidingParts = Workspace:GetPartBoundsInBox(checkCFrame, paddedSize, finalCheckParams)
 

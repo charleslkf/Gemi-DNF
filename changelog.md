@@ -2,6 +2,10 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 3.4.19
+- **Critical Bug Fix: Definitive Spawning Fix:**
+  - The `IntelligentSpawnManager` now correctly ignores the global `Baseplate` during its collision checks. This was the final root cause of the "Found 0 potential spawn points" error, and all objects should now spawn reliably.
+
 ## Version 3.4.18
 - **Architectural Refactor: Intelligent Spawning System**
   - Replaced all previous spawning systems with a new, authoritative `IntelligentSpawnManager`.
