@@ -84,7 +84,7 @@ local function findNearestGate()
             local path = PathfindingService:CreatePath()
             path:ComputeAsync(playerPos, gate.Position)
             if path.Status == Enum.PathStatus.Success then
-                if not shortestPath or path:GetLenth() < shortestPath:GetLenth() then
+                if not shortestPath or path:GetLength() < shortestPath:GetLength() then
                     shortestPath = path
                     nearestGate = gate
                 end
