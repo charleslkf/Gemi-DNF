@@ -2,6 +2,10 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 3.4.22
+- **Critical Bug Fix: Client Crash on Escape:**
+  - Fixed a typo (`GetLenth` -> `GetLength`) in `EscapeUIController.client.lua` that was causing the script to crash when calculating the path to the nearest victory gate. The directional arrow now functions correctly. This was the definitive fix for the UI issue.
+
 ## Version 3.4.21
 - **Critical Bug Fix: Client Crash on Escape:**
   - Fixed a typo (`GetLenth` -> `GetLength`) in `EscapeUIController.client.lua` that was causing the script to crash when calculating the path to the nearest victory gate. The directional arrow now functions correctly.
