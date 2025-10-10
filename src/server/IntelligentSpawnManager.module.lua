@@ -74,6 +74,14 @@ function IntelligentSpawnManager.buildSpawnPoints(mapModel)
                 end
             end
 
+            if #collidingParts > 0 and (x < startX + (GRID_STEP * 5)) then -- Limit logging to first few checks
+                local collidedPartNames = {}
+                for _, part in ipairs(collidingParts) do
+                    table.insert(collidedPartNames, part.Name)
+                end
+                print("[DIAGNOSTIC] Collided with: " .. table.concat(collidedPartNames, ", "))
+            end
+
             if #collidingParts == 0 then
                 table.insert(potentialSpawnPoints, Vector3.new(x, spawnY, z))
             end
