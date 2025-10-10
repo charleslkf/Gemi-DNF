@@ -101,48 +101,47 @@ end
 -- ## Pathfinding Logic       ##
 -- #############################
 
-local function findNearestGate()
-    local playerChar = player.Character
-    if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") or #activeGates == 0 then return nil end
-
-    local playerPos = playerChar.HumanoidRootPart.Position
-    local nearestGate, minDistance = nil, math.huge
-
-    for _, part in ipairs(activeGates) do
-        if part and part.Parent then
-            local distance = (playerPos - part.Position).Magnitude
-            if distance < minDistance then
-                minDistance = distance
-                nearestGate = part
-            end
-        end
+local function getPathDistance(path)
+    local distance = 0
+    local waypoints = path:GetWaypoints()
+    for i = 1, #waypoints - 1 do
+        distance = distance + (waypoints[i+1].Position - waypoints[i].Position).Magnitude
     end
-    return nearestGate
+    return distance
 end
 
 local function updatePath()
     local playerChar = player.Character
-    local nearestGate = findNearestGate()
-
-    if not playerChar or not nearestGate or not playerChar:FindFirstChild("HumanoidRootPart") then
+    if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") or #activeGates == 0 then
         currentPath = nil
         return
     end
 
     local humanoidRootPart = playerChar.HumanoidRootPart
-    local path = PathfindingService:CreatePath()
+    local shortestPath, minDistance = nil, math.huge
 
-    -- Compute the path asynchronously to avoid yielding
-    local success, errorMessage = pcall(function()
-        path:ComputeAsync(humanoidRootPart.Position, nearestGate.Position)
-    end)
+    -- Iterate through all active gates to find the one with the shortest *path*
+    for _, gate in ipairs(activeGates) do
+        local path = PathfindingService:CreatePath()
+        local success, _ = pcall(function()
+            path:ComputeAsync(humanoidRootPart.Position, gate.Position)
+        end)
 
-    if success and path.Status == Enum.PathStatus.Success then
-        currentPath = path
-        -- print("[Pathfinding] Successfully computed new path.")
+        if success and path.Status == Enum.PathStatus.Success then
+            local distance = getPathDistance(path)
+            if distance < minDistance then
+                minDistance = distance
+                shortestPath = path
+            end
+        end
+    end
+
+    if shortestPath then
+        currentPath = shortestPath
+        -- print("[Pathfinding] Found shortest path with distance:", minDistance)
     else
         currentPath = nil
-        -- warn("[Pathfinding] Failed to compute path: ", errorMessage or path.Status)
+        -- warn("[Pathfinding] Could not compute a valid path to any gate.")
     end
 end
 
