@@ -68,7 +68,7 @@ screenCrackImage.Parent = screenGui
 local escapeConnection = nil
 local pathfindingCoroutine = nil
 local activeGates = {}
-local currentPath = nil
+local currentWaypoints = nil
 local isEscapeActive = false
 
 -- Helper function to calculate the total length of a path by summing the magnitude between its waypoints.
@@ -88,7 +88,7 @@ end
 -- Helper function to find the nearest gate by pathfinding distance
 local function findNearestGate()
     local playerChar = player.Character
-    if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") or #activeGates == 0 then return nil end
+    if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") or #activeGates == 0 then return nil, nil end
 
     local playerPos = playerChar.HumanoidRootPart.Position
     local nearestGate, shortestPath, minDistance = nil, nil, math.huge
@@ -97,10 +97,9 @@ local function findNearestGate()
         if gate and gate.Parent then
             local path = PathfindingService:CreatePath()
             path:ComputeAsync(playerPos, gate.Position)
-            local success = path.Status == Enum.PathStatus.Success
-            local currentLength = success and calculatePathLength(path) or -1
-            print(string.format("[DIAGNOSTIC] Gate: %s, Path Success: %s, Length: %.2f, MinDistance: %.2f", gate.Name, tostring(success), currentLength, minDistance))
-            if success then
+
+            if path.Status == Enum.PathStatus.Success then
+                local currentLength = calculatePathLength(path)
                 if currentLength < minDistance then
                     minDistance = currentLength
                     shortestPath = path
@@ -116,7 +115,12 @@ end
 local function managePathfinding()
     while isEscapeActive do
         local _, path = findNearestGate()
-        currentPath = path
+        if path and path.Status == Enum.PathStatus.Success then
+            -- Store the waypoints table, which is safe to pass between threads
+            currentWaypoints = path:GetWaypoints()
+        else
+            currentWaypoints = nil
+        end
         task.wait(1) -- Recalculate path every second
     end
 end
@@ -132,7 +136,8 @@ local function updateEscapeUI()
     local playerPos = playerChar.HumanoidRootPart.Position
     local nextWaypoint = nil
 
-    local waypoints = currentPath and currentPath:GetWaypoints()
+    -- Use the pre-calculated waypoints table
+    local waypoints = currentWaypoints
     if waypoints and #waypoints > 0 then
         -- If there's only one waypoint, it's the destination. Otherwise, aim for the next one.
         nextWaypoint = waypoints[#waypoints > 1 and 2 or 1].Position
