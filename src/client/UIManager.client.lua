@@ -119,35 +119,27 @@ local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local GameStateChanged = Remotes:WaitForChild("GameStateChanged")
 
 GameStateChanged.OnClientEvent:Connect(function(newState)
-    -- Update Timer
+    -- Update standard HUD elements
     local minutes = math.floor(newState.Timer / 60)
     local seconds = newState.Timer % 60
     timerLabel.Text = string.format("%d:%02d", minutes, seconds)
-
-    -- Update Machine Count
     machineLabel.Text = string.format("Machines: %d/%d", newState.MachinesCompleted, newState.MachinesTotal)
-
-    -- Update Kills Count
     killsLabel.Text = string.format("Kills: %d", newState.Kills)
 end)
 
 -- Listen for local player stat changes
 local leaderstats = player:WaitForChild("leaderstats")
 local levelCoins = leaderstats:WaitForChild("LevelCoins")
-
 levelCoins.Changed:Connect(function(newCoins)
     coinLabel.Text = string.format("Coins: %d", newCoins)
 end)
 
--- Listen for health updates directly from the HealthManager
--- Listen for health updates for all players and delegate to HealthManager
+-- Listen for health updates
 local MyModules = ReplicatedStorage:WaitForChild("MyModules")
 local HealthManager = require(MyModules:WaitForChild("HealthManager"))
 local healthChangedEvent = Remotes:WaitForChild("HealthChanged")
-
 healthChangedEvent.OnClientEvent:Connect(function(player, currentHealth, maxHealth)
     HealthManager.createOrUpdateHealthBar(player, currentHealth, maxHealth)
 end)
-
 
 print("UIManager.client.lua loaded and created base frames.")

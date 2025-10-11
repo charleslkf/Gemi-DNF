@@ -34,7 +34,7 @@ local CONFIG = {
     MIN_PLAYERS = 5,
     LOBBY_SPAWN_POSITION = Vector3.new(0, 50, 0),
     MACHINES_TO_SPAWN = 3,
-    VICTORY_GATE_TIMER = 15,
+    VICTORY_GATE_TIMER = 30,
 }
 
 -- Teams
@@ -67,7 +67,7 @@ local currentMap = nil
 -- Forward declarations
 local enterWaiting, enterIntermission, enterPlaying, enterPostRound, enterEscape, checkWinConditions
 local teleportToLobby, spawnPlayerInMap
-local loadRandomLevel, cleanupCurrentLevel, spawnMachines, cleanupMachines
+local loadRandomLevel, cleanupCurrentLevel, spawnMachines, cleanupMachines, cleanupVictoryGates, activateVictoryGates
 
 -- #############################
 -- ## World & Object Helpers  ##
@@ -156,49 +156,51 @@ function spawnPlayerInMap(player, isKiller)
     player:LoadCharacter()
 end
 
-function spawnVictoryGates()
-    print("[GameManager] Spawning Victory Gates.")
-    if not currentMap or not currentMap.PrimaryPart then
-        warn("[GameManager] Cannot spawn Victory Gates without a valid map model with a PrimaryPart.")
-        return
+function cleanupVictoryGates()
+    for _, part in ipairs(Workspace:GetChildren()) do
+        if part.Name:match("VictoryGate") then
+            part:Destroy()
+        end
     end
-    local mapBounds = currentMap.PrimaryPart
+    print("[GameManager] Cleaned up Victory Gates.")
+end
 
-    for i = 1, 2 do
-        local gate = Instance.new("Part")
-        gate.Name = "VictoryGate" .. i
-        gate.Size = Vector3.new(12, 15, 2)
-        gate.Anchored = true
-        gate.CanCollide = false
-        gate.BrickColor = BrickColor.new("Bright yellow")
-        gate.Material = Enum.Material.Neon
+function activateVictoryGates()
+    print("[GameManager] Activating Victory Gates.")
+    local activatedGates = {}
+    for _, part in ipairs(Workspace:GetChildren()) do
+        if part.Name:match("VictoryGate") then
+            table.insert(activatedGates, part)
+            part.Transparency = 0
+            part.Material = Enum.Material.Neon
+            part.BrickColor = BrickColor.new("Bright yellow")
 
-        local randomX = mapBounds.Position.X + math.random(-mapBounds.Size.X / 2, mapBounds.Size.X / 2)
-        local randomZ = mapBounds.Position.Z + math.random(-mapBounds.Size.Z / 2, mapBounds.Size.Z / 2)
-        gate.Position = Vector3.new(randomX, mapBounds.Position.Y + gate.Size.Y / 2, randomZ)
+            part.Touched:Connect(function(otherPart)
+                local character = otherPart.Parent
+                if not character then return end
 
-        gate.Parent = Workspace
+                local player = Players:GetPlayerFromCharacter(character)
+                if player and player.Team == survivorsTeam then
+                    -- Mark the player as escaped
+                    player.Team = nil
+                    print(string.format("[GameManager] Survivor %s has escaped!", player.Name))
 
-        gate.Touched:Connect(function(otherPart)
-            local character = otherPart.Parent
-            if not character then return end
-
-            local player = Players:GetPlayerFromCharacter(character)
-            if player and player.Team == survivorsTeam then
-                -- Mark the player as escaped
-                player.Team = nil
-                print(string.format("[GameManager] Survivor %s has escaped!", player.Name))
-
-                -- Make character invisible and non-collidable
-                for _, part in ipairs(character:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.Transparency = 1
-                        part.CanCollide = false
+                    -- Make character invisible, non-collidable, and immobile
+                    local hrp = character:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        hrp.Anchored = true
+                    end
+                    for _, p in ipairs(character:GetDescendants()) do
+                        if p:IsA("BasePart") then
+                            p.Transparency = 1
+                            p.CanCollide = false
+                        end
                     end
                 end
-            end
-        end)
+            end)
+        end
     end
+    return activatedGates
 end
 
 function cleanupMachines()
@@ -266,6 +268,65 @@ function spawnMachines(mapModel)
     end
 
     print(string.format("[GameManager] Spawned %d machines.", CONFIG.MACHINES_TO_SPAWN))
+
+    -- Also spawn the inactive Victory Gates
+    local mapCFrame, mapSize = mapModel:GetBoundingBox()
+    local INSET_DISTANCE = 10 -- How many studs to move inward from the edge
+    local RAYCAST_HEIGHT = 200 -- How high above the spawn point to start the raycast
+
+    local function spawnGate(index, horizontalPosition)
+        -- 1. Start raycast high above the inset point
+        local rayOrigin = horizontalPosition + Vector3.new(0, RAYCAST_HEIGHT, 0)
+        local rayDirection = Vector3.new(0, -1, 0) * (RAYCAST_HEIGHT * 2)
+
+        -- 2. Perform the raycast to find the ground
+        local raycastParams = RaycastParams.new()
+        raycastParams.FilterDescendantsInstances = {mapModel}
+        raycastParams.FilterType = Enum.RaycastFilterType.Include
+        local raycastResult = Workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+
+        local groundPosition
+        if raycastResult and raycastResult.Position then
+            groundPosition = raycastResult.Position
+            print(string.format("[GameManager] Raycast for Gate %d hit ground at: %s", index, tostring(groundPosition)))
+        else
+            -- Fallback: If raycast fails, use the center of the map's Y position
+            groundPosition = Vector3.new(horizontalPosition.X, mapCFrame.Position.Y, horizontalPosition.Z)
+            warn(string.format("[GameManager] Raycast failed for Gate %d. Using fallback Y position.", index))
+        end
+
+        local gate = Instance.new("Part")
+        gate.Name = "VictoryGate" .. index
+        gate.Size = Vector3.new(12, 15, 2)
+        gate.Anchored = true
+        gate.CanCollide = false
+        gate.Transparency = 1 -- Initially invisible
+        gate.Material = Enum.Material.Plastic
+        gate.BrickColor = BrickColor.new("Black")
+        -- Position the gate on the ground, adjusting for its own height
+        gate.Position = groundPosition + Vector3.new(0, gate.Size.Y / 2, 0)
+        gate.Parent = Workspace
+    end
+
+    local edge1, edge2
+    local center = mapCFrame.Position
+    -- Determine the longest axis to place the gates on
+    if mapSize.X > mapSize.Z then
+        -- Place on the left and right (X axis), inset by the specified distance
+        local halfX = mapSize.X / 2 - INSET_DISTANCE
+        edge1 = Vector3.new(center.X + halfX, center.Y, center.Z)
+        edge2 = Vector3.new(center.X - halfX, center.Y, center.Z)
+    else
+        -- Place on the front and back (Z axis), inset by the specified distance
+        local halfZ = mapSize.Z / 2 - INSET_DISTANCE
+        edge1 = Vector3.new(center.X, center.Y, center.Z + halfZ)
+        edge2 = Vector3.new(center.X, center.Y, center.Z - halfZ)
+    end
+
+    spawnGate(1, edge1)
+    spawnGate(2, edge2)
+
+    print("[GameManager] Spawned 2 inactive Victory Gates using inset and raycasting.")
 end
 
 -- #############################
@@ -277,6 +338,7 @@ function enterWaiting()
     SimulatedPlayerManager.despawnSimulatedPlayers()
     cleanupCurrentLevel()
     cleanupMachines()
+    cleanupVictoryGates()
     StoreKeeperManager.stopManaging()
     CoinStashManager.cleanupStashes()
     table.clear(currentKillers)
@@ -349,6 +411,7 @@ function enterPlaying()
             leaderstats.LevelCoins.Value = 0
         end
     end
+
 end
 
 function enterPostRound()
@@ -358,9 +421,27 @@ end
 
 function enterEscape()
     print("[GameManager] State -> ESCAPE")
-    spawnVictoryGates()
+    local gates = activateVictoryGates()
     stateTimer = CONFIG.VICTORY_GATE_TIMER
     GameStateManager:SetTimer(stateTimer) -- Update the HUD timer
+
+    -- DIAGNOSTIC: Wait 2 seconds to test race condition
+    task.wait(2)
+
+    -- Fire the new event to all survivors with the gate names
+    local gateNames = {}
+    for _, gate in ipairs(gates) do
+        table.insert(gateNames, gate.Name)
+    end
+
+    local remotes = ReplicatedStorage:WaitForChild("Remotes")
+    local escapeEvent = remotes:WaitForChild("EscapeSequenceStarted")
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Team == survivorsTeam then
+            print("[GameManager-DEBUG] Firing EscapeSequenceStarted event for: " .. player.Name)
+            escapeEvent:FireClient(player, gateNames)
+        end
+    end
 end
 
 function checkWinConditions()
@@ -394,23 +475,24 @@ function checkWinConditions()
 end
 
 task.spawn(function()
+    GameStateManager:SetStateName(gameState)
     enterWaiting()
     while true do
         task.wait(1)
         if gameState == "Waiting" then
             if not manualStart and #Players:GetPlayers() >= CONFIG.MIN_PLAYERS then
-                gameState = "Intermission"; enterIntermission()
+                gameState = "Intermission"; GameStateManager:SetStateName("Intermission"); enterIntermission()
             end
         elseif gameState == "Intermission" then
             if not manualStart and #Players:GetPlayers() < CONFIG.MIN_PLAYERS then
                 print("[GameManager] Player count dropped below minimum. Returning to Waiting state.")
-                gameState = "Waiting"; enterWaiting()
+                gameState = "Waiting"; GameStateManager:SetStateName("Waiting"); enterWaiting()
             else
                 stateTimer = stateTimer - 1
                 GameStateManager:SetTimer(stateTimer)
                 if stateTimer <= 0 then
                     manualStart = false
-                    gameState = "Playing"; enterPlaying()
+                    gameState = "Playing"; GameStateManager:SetStateName("Playing"); enterPlaying()
                 end
             end
         elseif gameState == "Playing" then
@@ -418,20 +500,20 @@ task.spawn(function()
             GameStateManager:SetTimer(stateTimer)
             local winStatus = checkWinConditions()
             if winStatus == "SurvivorsWin_Escape" then
-                gameState = "Escape"; enterEscape()
+                gameState = "Escape"; GameStateManager:SetStateName("Escape"); enterEscape()
             elseif winStatus or stateTimer <= 0 then
-                gameState = "PostRound"; enterPostRound()
+                gameState = "PostRound"; GameStateManager:SetStateName("PostRound"); enterPostRound()
             end
         elseif gameState == "Escape" then
             stateTimer = stateTimer - 1
             GameStateManager:SetTimer(stateTimer)
             if stateTimer <= 0 then
-                gameState = "PostRound"; enterPostRound()
+                gameState = "PostRound"; GameStateManager:SetStateName("PostRound"); enterPostRound()
             end
         elseif gameState == "PostRound" then
             stateTimer = stateTimer - 1
             if stateTimer <= 0 then
-                gameState = "Waiting"; enterWaiting()
+                gameState = "Waiting"; GameStateManager:SetStateName("Waiting"); enterWaiting()
             end
         end
     end
@@ -460,6 +542,7 @@ local startRoundEvent = remotes:WaitForChild("StartRoundRequest")
 resetRoundEvent.OnServerEvent:Connect(function(player)
     print(string.format("[GameManager] Soft reset requested by %s. Forcing return to Waiting state.", player.Name))
     gameState = "Waiting"
+    GameStateManager:SetStateName("Waiting")
     enterWaiting()
 end)
 
@@ -468,6 +551,7 @@ startRoundEvent.OnServerEvent:Connect(function(player)
     if gameState == "Waiting" then
         manualStart = true
         gameState = "Intermission"
+        GameStateManager:SetStateName("Intermission")
         enterIntermission()
     end
 end)

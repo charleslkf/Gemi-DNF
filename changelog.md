@@ -2,6 +2,18 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 3.5.0
+- **Feature: Restored and Enhanced Escape Sequence**
+  - **Restored Pathfinding Arrow:** Completely rewrote the `EscapeUIController` to remove a non-functional single-arrow system and restore the original, superior four-arrow `PathfindingService` implementation.
+  - **Intelligent Gate Selection:** The arrow system is now "intelligent," meaning it calculates the path to all active gates and directs the player along the route with the shortest *walkable distance*, not just the shortest straight-line distance.
+  - **Intuitive Arrow Direction:** The arrow logic was rewritten to be intuitive from the player's perspective. The arrows now correctly guide the player "forward" (Up), "backward/turn around" (Down), "left," and "right" relative to the camera's view on a horizontal plane.
+  - **Dynamic Waypoint Targeting:** Fixed a critical bug where the arrow would point in the opposite direction when moving. The system now dynamically targets the *next* waypoint in the path as the player progresses, ensuring the guidance is always accurate.
+  - **Robust Gate Spawning:** Replaced the Victory Gate spawning logic with a robust system that uses map bounding boxes, insetting, and downward raycasting. This ensures gates are always placed in reachable locations on the ground and away from the outer walls.
+- **Bug Fix: Client Crash**
+  - Resolved a client-side crash in the `EscapeUIController` caused by a function being called before it was defined.
+- **Quality of Life: Increased Escape Time**
+  - Increased the `VICTORY_GATE_TIMER` from 15 to 30 seconds to allow for easier testing and balancing.
+
 ## Version 2.3.0
 - **Feature: World Management System**
   - Created a new `WorldManager.server.lua` script to handle loading and unloading pre-made map assets from `ServerStorage`.

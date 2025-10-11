@@ -15,6 +15,7 @@ local GameStateManager = {}
 
 -- The central table holding the current state of the game
 local gameState = {
+    Name = "Waiting",
     Timer = 0,
     MachinesTotal = 3, -- Default value, can be updated
     MachinesCompleted = 0,
@@ -35,13 +36,24 @@ function GameStateManager:SetTimer(newTime)
     end
 end
 
-function GameStateManager:SetNewRoundState(roundDuration)
+function GameStateManager:SetStateName(newStateName)
+    if gameState.Name ~= newStateName then
+        gameState.Name = newStateName
+        _broadcastState()
+    end
+end
+
+function GameStateManager:SetNewRoundState(roundDuration, machinesTotal)
     gameState.Timer = roundDuration
-    -- In the future, we can get the real machine count from MapManager
+    gameState.MachinesTotal = machinesTotal or 3 -- Use provided total, or default
     gameState.MachinesCompleted = 0
     gameState.Kills = 0
     _broadcastState()
     print("GameStateManager: Set new round state.")
+end
+
+function GameStateManager:AreAllMachinesRepaired()
+    return gameState.MachinesCompleted >= gameState.MachinesTotal
 end
 
 function GameStateManager:IncrementMachinesCompleted()

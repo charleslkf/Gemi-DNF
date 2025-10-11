@@ -71,6 +71,9 @@
         },
         "UIManager": {
             "$path": "src/client/UIManager.client.lua"
+        },
+        "EscapeUIController": {
+            "$path": "src/client/EscapeUIController.client.lua"
         }
       }
     }
