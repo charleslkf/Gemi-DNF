@@ -18,6 +18,9 @@
       },
       "GameManager": {
         "$path": "src/server/GameManager.server.lua"
+      },
+      "MapGenerator": {
+        "$path": "src/server/MapGenerator.module.lua"
       }
     },
     "ReplicatedStorage": {

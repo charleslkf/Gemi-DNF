@@ -24,7 +24,7 @@ local SimulatedPlayerManager = require(ReplicatedStorage:WaitForChild("MyModules
 local StoreKeeperManager = require(ServerScriptService:WaitForChild("StoreKeeperManager"))
 local CoinStashManager = require(ServerScriptService:WaitForChild("CoinStashManager"))
 local GameStateManager = require(ServerScriptService:WaitForChild("GameStateManager"))
-local MapGenerator = require(script.Parent:WaitForChild("MapGenerator"))
+local MapGenerator = require(ServerScriptService:WaitForChild("MapGenerator"))
 
 -- Generate the procedural map on server startup
 MapGenerator.Generate()
