@@ -135,11 +135,13 @@ local function createRoomPart(roomInfo, allRoomsLayout)
 
 	-- Calculate angles for corridor openings
 	local openingAngles = {}
-	for _, targetId in ipairs(roomInfo.Connections) do
-		for _, room in ipairs(allRoomsLayout) do
-			if room.Id == targetId then
-				local angle = math.atan2(room.Position.Z - roomInfo.Position.Z, room.Position.X - roomInfo.Position.X)
-				table.insert(openingAngles, math.deg(angle))
+	if roomInfo.Connections then
+		for _, targetId in ipairs(roomInfo.Connections) do
+			for _, room in ipairs(allRoomsLayout) do
+				if room.Id == targetId then
+					local angle = math.atan2(room.Position.Z - roomInfo.Position.Z, room.Position.X - roomInfo.Position.X)
+					table.insert(openingAngles, math.deg(angle))
+				end
 			end
 		end
 	end
@@ -154,7 +156,10 @@ local function createRoomPart(roomInfo, allRoomsLayout)
 		local isOpening = false
 		for _, openingAngle in ipairs(openingAngles) do
 			local angleDifference = math.abs(currentAngle - openingAngle)
-			if math.min(angleDifference, 360 - angleDifference) < openingWidthInDegrees / 2 then
+			if angleDifference > 180 then
+				angleDifference = 360 - angleDifference
+			end
+			if angleDifference < (openingWidthInDegrees / 2) then
 				isOpening = true
 				break
 			end
@@ -276,19 +281,21 @@ function MapGenerator.Generate()
 	-- Step 3: Create corridors to connect the rooms
 	local connectedPairs = {}
 	for _, roomInfo in ipairs(LAYOUT) do
-		for _, targetId in ipairs(roomInfo.Connections) do
-			local pairKey = table.concat({roomInfo.Id, targetId}, "-")
-			local reversePairKey = table.concat({targetId, roomInfo.Id}, "-")
+		if roomInfo.Connections then
+			for _, targetId in ipairs(roomInfo.Connections) do
+				local pairKey = table.concat({roomInfo.Id, targetId}, "-")
+				local reversePairKey = table.concat({targetId, roomInfo.Id}, "-")
 
-			if not connectedPairs[pairKey] and not connectedPairs[reversePairKey] then
-				local roomA = generatedRooms[roomInfo.Id]
-				local roomB = generatedRooms[targetId]
-				if roomA and roomB then
-					local corridorPart = createCorridorPart(roomA.Info, roomB.Info)
-					if corridorPart then
-						corridorPart.Parent = mapModel
+				if not connectedPairs[pairKey] and not connectedPairs[reversePairKey] then
+					local roomA = generatedRooms[roomInfo.Id]
+					local roomB = generatedRooms[targetId]
+					if roomA and roomB then
+						local corridorPart = createCorridorPart(roomA.Info, roomB.Info)
+						if corridorPart then
+							corridorPart.Parent = mapModel
+						end
+						connectedPairs[pairKey] = true
 					end
-					connectedPairs[pairKey] = true
 				end
 			end
 		end

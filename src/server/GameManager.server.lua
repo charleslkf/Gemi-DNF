@@ -88,17 +88,14 @@ end
 function loadRandomLevel()
     cleanupCurrentLevel()
 
-    local availableMaps = mapsFolder:GetChildren()
+    local selectedMapTemplate = mapsFolder:FindFirstChild("MurkyWaterFishbowl")
 
-    if #availableMaps == 0 then
-        warn("[GameManager] CRITICAL: No maps found in ServerStorage/Maps folder! Cannot load a level.")
+    if not selectedMapTemplate then
+        warn("[GameManager] CRITICAL: Map 'MurkyWaterFishbowl' not found in ServerStorage/Maps folder! Please save your map there.")
         return nil
     end
 
-    local randomIndex = math.random(#availableMaps)
-    local selectedMapTemplate = availableMaps[randomIndex]
-
-    print(string.format("[GameManager] Loading random map: %s", selectedMapTemplate.Name))
+    print(string.format("[GameManager] Loading map: %s", selectedMapTemplate.Name))
     currentMap = selectedMapTemplate:Clone()
 
     if not currentMap.PrimaryPart then
