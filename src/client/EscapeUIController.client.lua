@@ -169,7 +169,21 @@ local function updateUI()
     if #waypoints < 2 then return end
 
     local hrp = playerChar.HumanoidRootPart
-    local targetPos = waypoints[2].Position
+
+    -- Find the closest waypoint and target the next one
+    local closestWaypointIndex = 1
+    local minDistance = math.huge
+    for i, waypoint in ipairs(waypoints) do
+        local distance = (hrp.Position - waypoint.Position).Magnitude
+        if distance < minDistance then
+            minDistance = distance
+            closestWaypointIndex = i
+        end
+    end
+
+    -- Target the next waypoint in the path, unless we are at the end
+    local targetWaypointIndex = math.min(closestWaypointIndex + 1, #waypoints)
+    local targetPos = waypoints[targetWaypointIndex].Position
 
     -- Hide arrow if player is very close to the final destination
     if (hrp.Position - waypoints[#waypoints].Position).Magnitude < 15 then
