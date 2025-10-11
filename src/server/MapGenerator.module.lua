@@ -1,5 +1,5 @@
 --[[
-	MapGenerator.server.lua
+	MapGenerator.module.lua
 
 	Procedurally generates a multi-room map based on a high-level layout configuration.
 	This script is designed to be the single source of truth for the map's structure.
@@ -57,7 +57,7 @@ local LAYOUT = {
 		Id = "CenterRoom",
 		Type = "LargeCircle",
 		Position = Vector3.new(0, 0, 0),
-		Connections = {"TopLeftRoom", "TopRightRoom", "BottomLeftRoom", "BottomRightRoom", "EntranceCorridor"},
+		Connections = {"TopLeftRoom", "TopRightRoom", "BottomLeftRoom", "BottomRightRoom"},
 		Objects = {
 			{ Type = "KillerSpawn", Angle = 0, Distance = 0 },
 			{ Type = "SurvivorSpawn", Angle = 45, Distance = 30 },
