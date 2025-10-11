@@ -48,7 +48,7 @@ local LAYOUT = {
 	},
 	-- Surrounding smaller rooms
 	{
-		Id = "TopLeftRoom", Type = "SmallCircle", Position = Vector3.new(-150, 0, -150), Connections = {"CenterRoom"},
+		Id = "TopLeftRoom", Type = "SmallCircle", Position = Vector3.new(-150, 0, -150), Connections = {"CenterRoom", "TopRightRoom", "BottomLeftRoom"},
 		Objects = {
 			{ Type = "SurvivorSpawn", Angle = 30, Distance = 20 }, { Type = "SurvivorSpawn", Angle = 330, Distance = 20 },
 			{ Type = "Machine", Angle = 180, Distance = 35, RotationY = 90 }, { Type = "Machine", Angle = 90, Distance = 35, RotationY = 0 },
@@ -56,21 +56,21 @@ local LAYOUT = {
 		}
 	},
 	{
-		Id = "TopRightRoom", Type = "SmallCircle", Position = Vector3.new(150, 0, -150), Connections = {"CenterRoom"},
+		Id = "TopRightRoom", Type = "SmallCircle", Position = Vector3.new(150, 0, -150), Connections = {"CenterRoom", "TopLeftRoom", "BottomRightRoom"},
 		Objects = {
 			{ Type = "SurvivorSpawn", Angle = 0, Distance = 0 }, { Type = "Machine", Angle = 270, Distance = 35, RotationY = 180 },
 			{ Type = "Shop", Angle = 45, Distance = 40, RotationY = -45 },
 		}
 	},
 	{
-		Id = "BottomLeftRoom", Type = "SmallCircle", Position = Vector3.new(-150, 0, 150), Connections = {"CenterRoom"},
+		Id = "BottomLeftRoom", Type = "SmallCircle", Position = Vector3.new(-150, 0, 150), Connections = {"CenterRoom", "TopLeftRoom", "BottomRightRoom"},
 		Objects = {
 			{ Type = "SurvivorSpawn", Angle = 150, Distance = 25 }, { Type = "SurvivorSpawn", Angle = 210, Distance = 25 },
 			{ Type = "Machine", Angle = 0, Distance = 35, RotationY = -90 }, { Type = "KillerHanger", Angle = 90, Distance = 40 },
 		}
 	},
 	{
-		Id = "BottomRightRoom", Type = "SmallCircle", Position = Vector3.new(150, 0, 150), Connections = {"CenterRoom"},
+		Id = "BottomRightRoom", Type = "SmallCircle", Position = Vector3.new(150, 0, 150), Connections = {"CenterRoom", "BottomLeftRoom", "TopRightRoom"},
 		Objects = {
 			{ Type = "SurvivorSpawn", Angle = 180, Distance = 0 },
 			{ Type = "Machine", Angle = 45, Distance = 35, RotationY = -45 }, { Type = "Machine", Angle = 315, Distance = 35, RotationY = 45 },
