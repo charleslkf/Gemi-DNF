@@ -77,6 +77,50 @@ local LAYOUT = {
 			{ Type = "KillerHanger", Angle = 270, Distance = 40 }, { Type = "Shop", Angle = 135, Distance = 40, RotationY = -135 },
 		}
 	},
+	{
+		Id = "MurkyWater",
+		Type = "SmallCircle",
+		Position = Vector3.new(-250, 0, -250),
+		Connections = {},
+		Objects = {
+			{ Type = "SurvivorSpawn", Angle = 0, Distance = 0 },
+			{ Type = "Machine", Angle = 90, Distance = 35, RotationY = 0 },
+			{ Type = "Machine", Angle = 270, Distance = 35, RotationY = 180 },
+		}
+	},
+	-- Outer Walls
+	{
+		Id = "TopWall",
+		Type = "Rectangle",
+		Position = Vector3.new(0, 0, -300),
+		Size = Vector3.new(500, CONFIG.ROOM_HEIGHT, CONFIG.WALL_THICKNESS),
+		Connections = {},
+		Objects = {}
+	},
+	{
+		Id = "BottomWall",
+		Type = "Rectangle",
+		Position = Vector3.new(0, 0, 300),
+		Size = Vector3.new(500, CONFIG.ROOM_HEIGHT, CONFIG.WALL_THICKNESS),
+		Connections = {},
+		Objects = {}
+	},
+	{
+		Id = "LeftWall",
+		Type = "Rectangle",
+		Position = Vector3.new(-250, 0, 0),
+		Size = Vector3.new(CONFIG.WALL_THICKNESS, CONFIG.ROOM_HEIGHT, 600),
+		Connections = {},
+		Objects = {}
+	},
+	{
+		Id = "RightWall",
+		Type = "Rectangle",
+		Position = Vector3.new(250, 0, 0),
+		Size = Vector3.new(CONFIG.WALL_THICKNESS, CONFIG.ROOM_HEIGHT, 600),
+		Connections = {},
+		Objects = {}
+	},
 }
 
 --================================================================
@@ -116,7 +160,28 @@ end
 -- GEOMETRY GENERATION (Private)
 --================================================================
 
+local function createRectangleRoomPart(roomInfo)
+	local roomModel = Instance.new("Model")
+	roomModel.Name = roomInfo.Id
+
+	local floor = Instance.new("Part")
+	floor.Name = "Floor"
+	floor.Shape = Enum.PartType.Block
+	floor.Size = roomInfo.Size
+	floor.Position = roomInfo.Position
+	floor.Anchored = true
+	floor.Color = Color3.fromRGB(80, 80, 80)
+	floor.Parent = roomModel
+	roomModel.PrimaryPart = floor
+
+	return roomModel
+end
+
 local function createRoomPart(roomInfo, allRoomsLayout)
+	if roomInfo.Type == "Rectangle" then
+		return createRectangleRoomPart(roomInfo)
+	end
+
 	local roomModel = Instance.new("Model")
 	roomModel.Name = roomInfo.Id
 
