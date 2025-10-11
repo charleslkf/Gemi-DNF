@@ -116,7 +116,7 @@ end
 -- GEOMETRY GENERATION (Private)
 --================================================================
 
-local function createRoomPart(roomInfo)
+local function createRoomPart(roomInfo, allRoomsLayout)
 	local roomModel = Instance.new("Model")
 	roomModel.Name = roomInfo.Id
 
@@ -133,21 +133,47 @@ local function createRoomPart(roomInfo)
 	floor.Parent = roomModel
 	roomModel.PrimaryPart = floor
 
+	-- Calculate angles for corridor openings
+	local openingAngles = {}
+	for _, targetId in ipairs(roomInfo.Connections) do
+		for _, room in ipairs(allRoomsLayout) do
+			if room.Id == targetId then
+				local angle = math.atan2(room.Position.Z - roomInfo.Position.Z, room.Position.X - roomInfo.Position.X)
+				table.insert(openingAngles, math.deg(angle))
+			end
+		end
+	end
+
 	local numWallSegments = 36
 	local segmentAngle = 360 / numWallSegments
-	for i = 1, numWallSegments do
-		local angle = math.rad(i * segmentAngle)
-		local x = roomInfo.Position.X + radius * math.cos(angle)
-		local z = roomInfo.Position.Z + radius * math.sin(angle)
+	local openingWidthInDegrees = math.deg(math.atan2(CONFIG.CORRIDOR_WIDTH / 2, radius)) * 2
 
-		local segment = Instance.new("Part")
-		segment.Name = "WallSegment"
-		segment.Size = Vector3.new(CONFIG.WALL_THICKNESS, CONFIG.ROOM_HEIGHT, (2 * math.pi * radius) / numWallSegments + 1)
-		segment.Position = Vector3.new(x, roomInfo.Position.Y + CONFIG.ROOM_HEIGHT / 2, z)
-		segment.Orientation = Vector3.new(0, -i * segmentAngle, 0)
-		segment.Anchored = true
-		segment.Color = Color3.fromRGB(100, 100, 100)
-		segment.Parent = roomModel
+	for i = 1, numWallSegments do
+		local currentAngle = i * segmentAngle
+
+		local isOpening = false
+		for _, openingAngle in ipairs(openingAngles) do
+			local angleDifference = math.abs(currentAngle - openingAngle)
+			if math.min(angleDifference, 360 - angleDifference) < openingWidthInDegrees / 2 then
+				isOpening = true
+				break
+			end
+		end
+
+		if not isOpening then
+			local angleRad = math.rad(currentAngle)
+			local x = roomInfo.Position.X + radius * math.cos(angleRad)
+			local z = roomInfo.Position.Z + radius * math.sin(angleRad)
+
+			local segment = Instance.new("Part")
+			segment.Name = "WallSegment"
+			segment.Size = Vector3.new(CONFIG.WALL_THICKNESS, CONFIG.ROOM_HEIGHT, (2 * math.pi * radius) / numWallSegments + 1.5) -- Add overlap
+			segment.Position = Vector3.new(x, roomInfo.Position.Y + CONFIG.ROOM_HEIGHT / 2, z)
+			segment.Orientation = Vector3.new(0, -currentAngle, 0)
+			segment.Anchored = true
+			segment.Color = Color3.fromRGB(100, 100, 100)
+			segment.Parent = roomModel
+		end
 	end
 
 	return roomModel
@@ -240,7 +266,7 @@ function MapGenerator.Generate()
 
 	-- Step 2: Create all the rooms
 	for _, roomInfo in ipairs(LAYOUT) do
-		local roomPart = createRoomPart(roomInfo)
+		local roomPart = createRoomPart(roomInfo, LAYOUT)
 		if roomPart then
 			roomPart.Parent = mapModel
 			generatedRooms[roomInfo.Id] = {Info = roomInfo, Part = roomPart}
