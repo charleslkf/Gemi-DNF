@@ -95,8 +95,9 @@ function loadRandomLevel()
         return nil
     end
 
-    local randomIndex = math.random(#availableMaps)
-    local selectedMapTemplate = availableMaps[randomIndex]
+    -- local randomIndex = math.random(#availableMaps)
+    -- local selectedMapTemplate = availableMaps[randomIndex]
+    local selectedMapTemplate = mapsFolder:FindFirstChild("MurkyWaterFishbowl")
 
     print(string.format("[GameManager] Loading random map: %s", selectedMapTemplate.Name))
     currentMap = selectedMapTemplate:Clone()
