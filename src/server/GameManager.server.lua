@@ -24,6 +24,10 @@ local SimulatedPlayerManager = require(ReplicatedStorage:WaitForChild("MyModules
 local StoreKeeperManager = require(ServerScriptService:WaitForChild("StoreKeeperManager"))
 local CoinStashManager = require(ServerScriptService:WaitForChild("CoinStashManager"))
 local GameStateManager = require(ServerScriptService:WaitForChild("GameStateManager"))
+local MapGenerator = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("MapGenerator"))
+
+-- Generate the procedural map on server startup
+MapGenerator.Generate()
 
 -- Configuration
 local CONFIG = {
@@ -84,21 +88,12 @@ end
 function loadRandomLevel()
     cleanupCurrentLevel()
 
-    local allMaps = mapsFolder:GetChildren()
-    local availableMaps = {}
-    for _, map in ipairs(allMaps) do
-        if map.Name ~= "LMS_Arena" then
-            table.insert(availableMaps, map)
-        end
-    end
+    local selectedMapTemplate = mapsFolder:FindFirstChild("MurkyWaterFishbowl")
 
-    if #availableMaps == 0 then
-        warn("[GameManager] No non-LMS maps found in ServerStorage/Maps folder!")
+    if not selectedMapTemplate then
+        warn("[GameManager] CRITICAL: Map 'MurkyWaterFishbowl' not found in ServerStorage/Maps folder! Please save your map there.")
         return nil
     end
-
-    local randomIndex = math.random(#availableMaps)
-    local selectedMapTemplate = availableMaps[randomIndex]
 
     print(string.format("[GameManager] Loading map: %s", selectedMapTemplate.Name))
     currentMap = selectedMapTemplate:Clone()

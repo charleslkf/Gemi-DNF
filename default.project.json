@@ -40,6 +40,9 @@
         },
         "SimulatedPlayerManager": {
           "$path": "src/shared/SimulatedPlayerManager.lua"
+        },
+        "MapGenerator": {
+          "$path": "src/shared/MapGenerator.lua"
         }
       },
       "Remotes": {
