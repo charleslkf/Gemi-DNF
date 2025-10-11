@@ -44,24 +44,30 @@ local function getSpawnPos(row, col)
 end
 
 -- Simplified layout defining only the corner walls
-local WALL_LENGTH = 150
-local WALL_OFFSET = MAP_HALF_SIZE - (WALL_LENGTH / 2)
-local WALL_SIZE_L = Vector3.new(WALL_LENGTH, CONFIG.ROOM_HEIGHT, CONFIG.WALL_THICKNESS)
-local WALL_SIZE_S = Vector3.new(CONFIG.WALL_THICKNESS, CONFIG.ROOM_HEIGHT, WALL_LENGTH)
-
+-- Layout defining every wall segment from the drawing
+-- Layout defining the 12 wall segments from the drawing
+local L_WALL_LENGTH = 150
+local L_WALL_OFFSET = MAP_HALF_SIZE - (L_WALL_LENGTH / 2)
 local WALLS = {
-    -- Top-Left Corner
-    { Position = Vector3.new(-WALL_OFFSET, CONFIG.ROOM_HEIGHT/2, -MAP_HALF_SIZE + WALL_LENGTH), Size = WALL_SIZE_S },
-    { Position = Vector3.new(-MAP_HALF_SIZE + WALL_LENGTH, CONFIG.ROOM_HEIGHT/2, -WALL_OFFSET), Size = WALL_SIZE_L },
-    -- Top-Right Corner
-    { Position = Vector3.new(WALL_OFFSET, CONFIG.ROOM_HEIGHT/2, -MAP_HALF_SIZE + WALL_LENGTH), Size = WALL_SIZE_S },
-    { Position = Vector3.new(MAP_HALF_SIZE - WALL_LENGTH, CONFIG.ROOM_HEIGHT/2, -WALL_OFFSET), Size = WALL_SIZE_L },
-    -- Bottom-Left Corner
-    { Position = Vector3.new(-WALL_OFFSET, CONFIG.ROOM_HEIGHT/2, MAP_HALF_SIZE - WALL_LENGTH), Size = WALL_SIZE_S },
-    { Position = Vector3.new(-MAP_HALF_SIZE + WALL_LENGTH, CONFIG.ROOM_HEIGHT/2, WALL_OFFSET), Size = WALL_SIZE_L },
-    -- Bottom-Right Corner
-    { Position = Vector3.new(WALL_OFFSET, CONFIG.ROOM_HEIGHT/2, MAP_HALF_SIZE - WALL_LENGTH), Size = WALL_SIZE_S },
-    { Position = Vector3.new(MAP_HALF_SIZE - WALL_LENGTH, CONFIG.ROOM_HEIGHT/2, WALL_OFFSET), Size = WALL_SIZE_L },
+    -- Outer Boundary Walls
+    { Position = Vector3.new(0, CONFIG.ROOM_HEIGHT/2, -MAP_HALF_SIZE), Size = Vector3.new(MAP_HALF_SIZE*2, CONFIG.ROOM_HEIGHT, CONFIG.WALL_THICKNESS) }, -- Top
+    { Position = Vector3.new(0, CONFIG.ROOM_HEIGHT/2, MAP_HALF_SIZE), Size = Vector3.new(MAP_HALF_SIZE*2, CONFIG.ROOM_HEIGHT, CONFIG.WALL_THICKNESS) }, -- Bottom
+    { Position = Vector3.new(-MAP_HALF_SIZE, CONFIG.ROOM_HEIGHT/2, 0), Size = Vector3.new(CONFIG.WALL_THICKNESS, CONFIG.ROOM_HEIGHT, MAP_HALF_SIZE*2) }, -- Left
+    { Position = Vector3.new(MAP_HALF_SIZE, CONFIG.ROOM_HEIGHT/2, 0), Size = Vector3.new(CONFIG.WALL_THICKNESS, CONFIG.ROOM_HEIGHT, MAP_HALF_SIZE*2) }, -- Right
+
+    -- Inner L-shaped Walls (8 segments total)
+    -- Top-Left L
+    { Position = Vector3.new(-L_WALL_OFFSET, CONFIG.ROOM_HEIGHT/2, -MAP_HALF_SIZE + L_WALL_LENGTH/2), Size = Vector3.new(L_WALL_LENGTH, CONFIG.ROOM_HEIGHT, CONFIG.WALL_THICKNESS) },
+    { Position = Vector3.new(-MAP_HALF_SIZE + L_WALL_LENGTH/2, CONFIG.ROOM_HEIGHT/2, -L_WALL_OFFSET), Size = Vector3.new(CONFIG.WALL_THICKNESS, CONFIG.ROOM_HEIGHT, L_WALL_LENGTH) },
+    -- Top-Right L
+    { Position = Vector3.new(L_WALL_OFFSET, CONFIG.ROOM_HEIGHT/2, -MAP_HALF_SIZE + L_WALL_LENGTH/2), Size = Vector3.new(L_WALL_LENGTH, CONFIG.ROOM_HEIGHT, CONFIG.WALL_THICKNESS) },
+    { Position = Vector3.new(MAP_HALF_SIZE - L_WALL_LENGTH/2, CONFIG.ROOM_HEIGHT/2, -L_WALL_OFFSET), Size = Vector3.new(CONFIG.WALL_THICKNESS, CONFIG.ROOM_HEIGHT, L_WALL_LENGTH) },
+    -- Bottom-Left L
+    { Position = Vector3.new(-L_WALL_OFFSET, CONFIG.ROOM_HEIGHT/2, MAP_HALF_SIZE - L_WALL_LENGTH/2), Size = Vector3.new(L_WALL_LENGTH, CONFIG.ROOM_HEIGHT, CONFIG.WALL_THICKNESS) },
+    { Position = Vector3.new(-MAP_HALF_SIZE + L_WALL_LENGTH/2, CONFIG.ROOM_HEIGHT/2, L_WALL_OFFSET), Size = Vector3.new(CONFIG.WALL_THICKNESS, CONFIG.ROOM_HEIGHT, L_WALL_LENGTH) },
+    -- Bottom-Right L
+    { Position = Vector3.new(L_WALL_OFFSET, CONFIG.ROOM_HEIGHT/2, MAP_HALF_SIZE - L_WALL_LENGTH/2), Size = Vector3.new(L_WALL_LENGTH, CONFIG.ROOM_HEIGHT, CONFIG.WALL_THICKNESS) },
+    { Position = Vector3.new(MAP_HALF_SIZE - L_WALL_LENGTH/2, CONFIG.ROOM_HEIGHT/2, L_WALL_OFFSET), Size = Vector3.new(CONFIG.WALL_THICKNESS, CONFIG.ROOM_HEIGHT, L_WALL_LENGTH) },
 }
 
 -- Spawn points are now defined globally relative to the map center, as rooms are no longer used for positioning.
