@@ -225,7 +225,7 @@ local function createCorridorPart(roomA, roomB)
 	local corridor = Instance.new("Part")
 	corridor.Name = "Corridor"
 	corridor.Size = Vector3.new(CONFIG.CORRIDOR_WIDTH, CONFIG.CORRIDOR_HEIGHT, distance)
-	corridor.Position = midPoint
+	corridor.Position = Vector3.new(midPoint.X, roomA.Position.Y, midPoint.Z)
 	corridor.Orientation = Vector3.new(0, math.deg(angle), 0)
 	corridor.Anchored = true
 	corridor.Color = Color3.fromRGB(60, 60, 60)
