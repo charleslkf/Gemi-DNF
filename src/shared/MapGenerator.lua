@@ -20,7 +20,7 @@ local CONFIG = {
 	ROOM_HEIGHT = 20,
 	WALL_THICKNESS = 4,
 	CORRIDOR_WIDTH = 20,
-	CORRIDOR_HEIGHT = 2,
+	CORRIDOR_HEIGHT = 5,
 }
 
 --================================================================
