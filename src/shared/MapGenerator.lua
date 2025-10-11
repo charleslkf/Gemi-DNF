@@ -43,44 +43,36 @@ local function getSpawnPos(row, col)
 	return Vector3.new(SPAWN_GRID_OFFSET + col * SPAWN_GRID_STEP, 2, SPAWN_GRID_OFFSET + row * SPAWN_GRID_STEP)
 end
 
-local LAYOUT = {
-	-- The central large room
-	{
-		Id = "CenterRoom", Type = "Rectangle", Position = Vector3.new(0, 0, 0), Size = CENTER_SIZE,
-		Connections = {"TopLeftRoom", "TopRightRoom", "BottomLeftRoom", "BottomRightRoom"},
-		PotentialSpawns = {
-			Survivor = { getSpawnPos(1, 1), getSpawnPos(2, 2) }, -- F, K
-			Killer = { getSpawnPos(2, 1), getSpawnPos(1, 2) }, -- J, G
-			Machine = { getSpawnPos(0, 1), getSpawnPos(0, 2), getSpawnPos(1, 0), getSpawnPos(1, 3), getSpawnPos(2, 0), getSpawnPos(2, 3), getSpawnPos(3, 1), getSpawnPos(3, 2) }, -- B, C, E, H, I, L, N, O
-			Hanger = { Vector3.new(-100, 2, 0), Vector3.new(100, 2, 0), Vector3.new(0, 2, -100), Vector3.new(0, 2, 100) },
-			StoreKeeper = { Vector3.new(0, 2, 0) },
-			CoinStash = { Vector3.new(-30, 2, -30), Vector3.new(30, 2, -30), Vector3.new(-30, 2, 30), Vector3.new(30, 2, 30) }
-		}
-	},
-	-- Surrounding smaller rooms
-	{
-		Id = "TopLeftRoom", Type = "Rectangle", Position = Vector3.new(-CORNER_OFFSET, 0, -CORNER_OFFSET), Size = CORNER_SIZE,
-		Connections = {"CenterRoom"},
-		PotentialSpawns = { Survivor = { Vector3.new(0, 2, 0) } } -- A
-	},
-	{
-		Id = "TopRightRoom", Type = "Rectangle", Position = Vector3.new(CORNER_OFFSET, 0, -CORNER_OFFSET), Size = CORNER_SIZE,
-		Connections = {"CenterRoom"},
-		PotentialSpawns = { Survivor = { Vector3.new(0, 2, 0) } } -- D
-	},
-	{
-		Id = "BottomLeftRoom", Type = "Rectangle", Position = Vector3.new(-CORNER_OFFSET, 0, CORNER_OFFSET), Size = CORNER_SIZE,
-		Connections = {"CenterRoom"},
-		PotentialSpawns = { Survivor = { Vector3.new(0, 2, 0) } } -- M
-	},
-	{
-		Id = "BottomRightRoom", Type = "Rectangle", Position = Vector3.new(CORNER_OFFSET, 0, CORNER_OFFSET), Size = CORNER_SIZE,
-		Connections = {"CenterRoom"},
-		PotentialSpawns = { Survivor = { Vector3.new(0, 2, 0) } } -- P
-	},
-    -- Victory gates are not tied to a room, defined here for generation
-    { Id = "VictoryGate_1", Type="Gate", Position = Vector3.new(0, 2, MAP_HALF_SIZE + 20) },
-    { Id = "VictoryGate_2", Type="Gate", Position = Vector3.new(0, 2, -MAP_HALF_SIZE - 20) }
+-- Simplified layout defining only the corner walls
+local WALL_LENGTH = 150
+local WALL_OFFSET = MAP_HALF_SIZE - (WALL_LENGTH / 2)
+local WALL_SIZE_L = Vector3.new(WALL_LENGTH, CONFIG.ROOM_HEIGHT, CONFIG.WALL_THICKNESS)
+local WALL_SIZE_S = Vector3.new(CONFIG.WALL_THICKNESS, CONFIG.ROOM_HEIGHT, WALL_LENGTH)
+
+local WALLS = {
+    -- Top-Left Corner
+    { Position = Vector3.new(-WALL_OFFSET, CONFIG.ROOM_HEIGHT/2, -MAP_HALF_SIZE + WALL_LENGTH), Size = WALL_SIZE_S },
+    { Position = Vector3.new(-MAP_HALF_SIZE + WALL_LENGTH, CONFIG.ROOM_HEIGHT/2, -WALL_OFFSET), Size = WALL_SIZE_L },
+    -- Top-Right Corner
+    { Position = Vector3.new(WALL_OFFSET, CONFIG.ROOM_HEIGHT/2, -MAP_HALF_SIZE + WALL_LENGTH), Size = WALL_SIZE_S },
+    { Position = Vector3.new(MAP_HALF_SIZE - WALL_LENGTH, CONFIG.ROOM_HEIGHT/2, -WALL_OFFSET), Size = WALL_SIZE_L },
+    -- Bottom-Left Corner
+    { Position = Vector3.new(-WALL_OFFSET, CONFIG.ROOM_HEIGHT/2, MAP_HALF_SIZE - WALL_LENGTH), Size = WALL_SIZE_S },
+    { Position = Vector3.new(-MAP_HALF_SIZE + WALL_LENGTH, CONFIG.ROOM_HEIGHT/2, WALL_OFFSET), Size = WALL_SIZE_L },
+    -- Bottom-Right Corner
+    { Position = Vector3.new(WALL_OFFSET, CONFIG.ROOM_HEIGHT/2, MAP_HALF_SIZE - WALL_LENGTH), Size = WALL_SIZE_S },
+    { Position = Vector3.new(MAP_HALF_SIZE - WALL_LENGTH, CONFIG.ROOM_HEIGHT/2, WALL_OFFSET), Size = WALL_SIZE_L },
+}
+
+-- Spawn points are now defined globally relative to the map center, as rooms are no longer used for positioning.
+local SPAWN_POINTS = {
+    Survivor = { getSpawnPos(0,0), getSpawnPos(0,3), getSpawnPos(3,0), getSpawnPos(3,3), getSpawnPos(1,1), getSpawnPos(2,2) }, -- A, D, M, P, F, K
+    Killer = { getSpawnPos(2, 1), getSpawnPos(1, 2) }, -- J, G
+    Machine = { getSpawnPos(0, 1), getSpawnPos(0, 2), getSpawnPos(1, 0), getSpawnPos(1, 3), getSpawnPos(2, 0), getSpawnPos(2, 3), getSpawnPos(3, 1), getSpawnPos(3, 2) }, -- B, C, E, H, I, L, N, O
+    Hanger = { Vector3.new(-150, 2, 0), Vector3.new(150, 2, 0), Vector3.new(0, 2, -150), Vector3.new(0, 2, 150) },
+    StoreKeeper = { getSpawnPos(1,1) + Vector3.new(30,0,30) },
+    CoinStash = { getSpawnPos(1,1) - Vector3.new(30,0,30), getSpawnPos(1,2) + Vector3.new(30,0,-30), getSpawnPos(2,1) - Vector3.new(30,0,-30), getSpawnPos(2,2) - Vector3.new(-30,0,-30) },
+    VictoryGate = { Vector3.new(0, 2, MAP_HALF_SIZE + 20), Vector3.new(0, 2, -MAP_HALF_SIZE - 20) },
 }
 
 --================================================================
@@ -197,45 +189,23 @@ end
 --================================================================
 -- SPAWN POINT GENERATION (Private)
 --================================================================
-local function createPotentialSpawnPoints(mapModel, allRoomsLayout)
+local function createPotentialSpawnPoints(mapModel)
 	local spawnsRoot = Instance.new("Folder", mapModel)
 	spawnsRoot.Name = "PotentialSpawns"
 
-	-- Handle special case for Victory Gates not in a room
-	for _, itemInfo in ipairs(allRoomsLayout) do
-		if itemInfo.Type == "Gate" then
-			local typeFolder = spawnsRoot:FindFirstChild("VictoryGate") or Instance.new("Folder", spawnsRoot)
-			typeFolder.Name = "VictoryGate"
+	for spawnType, positions in pairs(SPAWN_POINTS) do
+		local typeFolder = Instance.new("Folder", spawnsRoot)
+		typeFolder.Name = spawnType
+
+		for i, pos in ipairs(positions) do
 			local spawnPoint = Instance.new("Part")
-			spawnPoint.Name = itemInfo.Id
+			spawnPoint.Name = spawnType .. "_" .. i
 			spawnPoint.Size = Vector3.new(4, 1, 4)
 			spawnPoint.Anchored = true
 			spawnPoint.CanCollide = false
 			spawnPoint.Transparency = 0.5
-			spawnPoint.Color = Color3.fromRGB(255, 255, 0)
-			spawnPoint.Position = itemInfo.Position
+			spawnPoint.Position = pos
 			spawnPoint.Parent = typeFolder
-		end
-	end
-
-	for _, roomInfo in ipairs(allRoomsLayout) do
-		if roomInfo.PotentialSpawns then
-			for spawnType, positions in pairs(roomInfo.PotentialSpawns) do
-				local typeFolder = spawnsRoot:FindFirstChild(spawnType) or Instance.new("Folder", spawnsRoot)
-				typeFolder.Name = spawnType
-
-				for i, pos in ipairs(positions) do
-					local spawnPoint = Instance.new("Part")
-					spawnPoint.Name = roomInfo.Id .. "_" .. spawnType .. "_" .. i
-					spawnPoint.Size = Vector3.new(4, 1, 4)
-					spawnPoint.Anchored = true
-					spawnPoint.CanCollide = false
-					spawnPoint.Transparency = 0.5
-					-- Position is relative to room center, so add them
-					spawnPoint.Position = roomInfo.Position + pos
-					spawnPoint.Parent = typeFolder
-				end
-			end
 		end
 	end
 end
@@ -253,44 +223,30 @@ function MapGenerator.Generate()
 	local mapModel = Instance.new("Model")
 	mapModel.Name = CONFIG.MAP_NAME
 
-	local generatedRooms = {}
+	-- Step 2: Create a single large floor for the entire map
+	local totalMapSize = MAP_HALF_SIZE * 2
+	local floor = Instance.new("Part")
+	floor.Name = "MainFloor"
+	floor.Size = Vector3.new(totalMapSize, CONFIG.WALL_THICKNESS, totalMapSize)
+	floor.Position = Vector3.new(0, 0, 0)
+	floor.Anchored = true
+	floor.Color = Color3.fromRGB(100, 100, 100)
+	floor.Parent = mapModel
+	mapModel.PrimaryPart = floor
 
-	-- Step 2: Create all the rooms
-	for _, roomInfo in ipairs(LAYOUT) do
-        if roomInfo.Type ~= "Gate" then
-		    local roomPart = createRoomPart(roomInfo, LAYOUT)
-		    if roomPart then
-			    roomPart.Parent = mapModel
-			    generatedRooms[roomInfo.Id] = {Info = roomInfo, Part = roomPart}
-		    end
-        end
-	end
-
-	-- Step 3: Create corridors to connect the rooms
-	local connectedPairs = {}
-	for _, roomInfo in ipairs(LAYOUT) do
-		if roomInfo.Connections then
-			for _, targetId in ipairs(roomInfo.Connections) do
-				local pairKey = table.concat({roomInfo.Id, targetId}, "-")
-				local reversePairKey = table.concat({targetId, roomInfo.Id}, "-")
-
-				if not connectedPairs[pairKey] and not connectedPairs[reversePairKey] then
-					local roomA = generatedRooms[roomInfo.Id]
-					local roomB = generatedRooms[targetId]
-					if roomA and roomB then
-						local corridorPart = createCorridorPart(roomA.Info, roomB.Info)
-						if corridorPart then
-							corridorPart.Parent = mapModel
-						end
-						connectedPairs[pairKey] = true
-					end
-				end
-			end
-		end
+	-- Step 3: Create the walls from the WALLS layout
+	for i, wallInfo in ipairs(WALLS) do
+		local wall = Instance.new("Part")
+		wall.Name = "Wall_" .. i
+		wall.Size = wallInfo.Size
+		wall.Position = wallInfo.Position
+		wall.Anchored = true
+		wall.Color = Color3.fromRGB(120, 120, 120)
+		wall.Parent = mapModel
 	end
 
 	-- Step 4: Create all potential spawn point markers
-	createPotentialSpawnPoints(mapModel, LAYOUT)
+	createPotentialSpawnPoints(mapModel)
 
 	-- Step 5: Finalize and save the map
 	local mapsFolder = ServerStorage:FindFirstChild("Maps")
