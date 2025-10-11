@@ -34,7 +34,7 @@ local CONFIG = {
     MIN_PLAYERS = 5,
     LOBBY_SPAWN_POSITION = Vector3.new(0, 50, 0),
     MACHINES_TO_SPAWN = 3,
-    VICTORY_GATE_TIMER = 15,
+    VICTORY_GATE_TIMER = 30,
 }
 
 -- Teams
