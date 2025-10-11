@@ -84,23 +84,14 @@ end
 function loadRandomLevel()
     cleanupCurrentLevel()
 
-    local allMaps = mapsFolder:GetChildren()
-    local availableMaps = {}
-    for _, map in ipairs(allMaps) do
-        if map.Name ~= "LMS_Arena" then
-            table.insert(availableMaps, map)
-        end
-    end
+    local selectedMapTemplate = mapsFolder:FindFirstChild("CustomMap")
 
-    if #availableMaps == 0 then
-        warn("[GameManager] No non-LMS maps found in ServerStorage/Maps folder!")
+    if not selectedMapTemplate then
+        warn("[GameManager] CRITICAL: Static map 'CustomMap' not found in ServerStorage/Maps folder! Please save your map there.")
         return nil
     end
 
-    local randomIndex = math.random(#availableMaps)
-    local selectedMapTemplate = availableMaps[randomIndex]
-
-    print(string.format("[GameManager] Loading map: %s", selectedMapTemplate.Name))
+    print(string.format("[GameManager] Loading static map: %s", selectedMapTemplate.Name))
     currentMap = selectedMapTemplate:Clone()
 
     if not currentMap.PrimaryPart then
