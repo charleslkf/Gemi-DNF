@@ -54,8 +54,27 @@ local function shuffle(tbl)
 end
 
 -- Private helper to spawn the NPC model at a random location
-local function _spawnNPCRandomly()
+local function _spawnNPCRandomly(mapModel)
     if activeNPC then return end
+    if not mapModel then
+        warn("StoreKeeperManager: Cannot spawn NPC, map model is nil.")
+        return
+    end
+
+    local spawnsRoot = mapModel:FindFirstChild("PotentialSpawns")
+    local spawnFolder = spawnsRoot and spawnsRoot:FindFirstChild("StoreKeeper")
+    if not spawnFolder then
+        warn("StoreKeeperManager: No 'StoreKeeper' spawn folder found in map. Cannot spawn NPC.")
+        return
+    end
+
+    local availableSpawns = spawnFolder:GetChildren()
+    if #availableSpawns == 0 then
+        warn("StoreKeeperManager: No spawn points found in 'StoreKeeper' folder. Cannot spawn NPC.")
+        return
+    end
+
+    local spawnPoint = availableSpawns[math.random(#availableSpawns)]
 
     print("StoreKeeperManager: Spawning NPC.")
     activeNPC = Instance.new("Model")
@@ -72,10 +91,7 @@ local function _spawnNPCRandomly()
     hrp.Parent = activeNPC
     activeNPC.PrimaryPart = hrp
 
-    local x = math.random(NPC_CONFIG.SpawnArea.Min.X, NPC_CONFIG.SpawnArea.Max.X)
-    local z = math.random(NPC_CONFIG.SpawnArea.Min.Z, NPC_CONFIG.SpawnArea.Max.Z)
-    local y = NPC_CONFIG.SpawnArea.Min.Y
-    activeNPC:SetPrimaryPartCFrame(CFrame.new(x, y, z))
+    activeNPC:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position))
 
     -- Select and store the random items for this spawn
     local allItemNames = {}
@@ -98,7 +114,7 @@ local function _cleanupNPC()
 end
 
 -- Public Functions
-function StoreKeeperManager.startManaging(level)
+function StoreKeeperManager.startManaging(level, mapModel)
     print("StoreKeeperManager: Received start signal for level", level)
 
     -- Stop any previous loop if it exists
@@ -114,7 +130,7 @@ function StoreKeeperManager.startManaging(level)
     managementCoroutine = task.spawn(function()
         print("StoreKeeperManager: Starting management loop.")
         while true do
-            _spawnNPCRandomly()
+            _spawnNPCRandomly(mapModel)
             task.wait(NPC_CONFIG.VISIBLE_DURATION)
 
             _cleanupNPC()

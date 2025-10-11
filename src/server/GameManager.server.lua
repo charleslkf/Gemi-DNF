@@ -133,7 +133,34 @@ function spawnPlayerInMap(player, isKiller)
         if conn then conn:Disconnect(); conn = nil end
         task.defer(function()
             if not character or not character.Parent then return end
-            local spawnPos = Vector3.new(math.random(-50, 50), 5, math.random(-50, 50))
+
+            -- NEW LOGIC: Use designated spawn points
+            local spawnPos = Vector3.new(math.random(-50, 50), 5, math.random(-50, 50)) -- Fallback
+            local spawnType = isKiller and "Killer" or "Survivor"
+
+            if currentMap then
+                local spawnsRoot = currentMap:FindFirstChild("PotentialSpawns")
+                if spawnsRoot then
+                    local spawnFolder = spawnsRoot:FindFirstChild(spawnType)
+                    if spawnFolder then
+                        local availableSpawns = spawnFolder:GetChildren()
+                        if #availableSpawns > 0 then
+                            local randomSpawn = availableSpawns[math.random(#availableSpawns)]
+                            spawnPos = randomSpawn.Position
+                            print(string.format("[GameManager] Spawning %s at designated point: %s", player.Name, randomSpawn.Name))
+                        else
+                            warn(string.format("[GameManager] No spawn points of type '%s' found in map! Using fallback.", spawnType))
+                        end
+                    else
+                        warn(string.format("[GameManager] Spawn folder '%s' not found in map! Using fallback.", spawnType))
+                    end
+                else
+                    warn("[GameManager] PotentialSpawns folder not found in map! Using fallback.")
+                end
+            else
+                 warn("[GameManager] currentMap is nil! Using fallback spawn.")
+            end
+
             character:SetPrimaryPartCFrame(CFrame.new(spawnPos))
             if isKiller then
                 print("[GameManager] Freezing killer: " .. player.Name)
@@ -206,8 +233,52 @@ function cleanupMachines()
     end
 end
 
+function cleanupHangers()
+    local hangerFolder = Workspace:FindFirstChild("Hangers")
+    if hangerFolder then
+        hangerFolder:Destroy()
+        print("[GameManager] Cleaned up hangers.")
+    end
+end
+
+function spawnHangers(mapModel)
+    cleanupHangers()
+
+    local assetsFolder = ServerStorage:FindFirstChild("Assets")
+    if not assetsFolder then
+        warn("[GameManager] Assets folder not found in ServerStorage. Cannot spawn hangers.")
+        return
+    end
+
+    local hangerTemplate = assetsFolder:FindFirstChild("KillerHangerTemplate")
+    if not hangerTemplate then
+        warn("[GameManager] KillerHangerTemplate not found in ServerStorage/Assets. Cannot spawn hangers.")
+        return
+    end
+
+    local hangerFolder = Instance.new("Folder")
+    hangerFolder.Name = "Hangers"
+    hangerFolder.Parent = Workspace
+
+    local spawnsRoot = mapModel:FindFirstChild("PotentialSpawns")
+    local hangerSpawnsFolder = spawnsRoot and spawnsRoot:FindFirstChild("Hanger")
+
+    if hangerSpawnsFolder then
+        local availableSpawns = hangerSpawnsFolder:GetChildren()
+        for _, spawnPoint in ipairs(availableSpawns) do
+            local hanger = hangerTemplate:Clone()
+            hanger:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position))
+            hanger.Parent = hangerFolder
+        end
+        print(string.format("[GameManager] Spawned %d hangers at designated locations.", #availableSpawns))
+    else
+        warn("[GameManager] No 'Hanger' spawn folder found in map. Cannot spawn hangers.")
+    end
+end
+
 function spawnMachines(mapModel)
     cleanupMachines()
+    cleanupVictoryGates() -- Gates are now spawned here from designated points
 
     local assetsFolder = ServerStorage:FindFirstChild("Assets")
     if not assetsFolder then
@@ -225,103 +296,78 @@ function spawnMachines(mapModel)
     machineFolder.Name = "MiniGameMachines"
     machineFolder.Parent = Workspace
 
-    if not mapModel or not mapModel.PrimaryPart or not mapModel.PrimaryPart:IsA("BasePart") then
-        warn("[GameManager] Cannot spawn machines: Map model is missing a valid PrimaryPart.")
+    local spawnsRoot = mapModel:FindFirstChild("PotentialSpawns")
+    if not spawnsRoot then
+        warn("[GameManager] CRITICAL: Map model is missing 'PotentialSpawns' folder. Cannot spawn objects.")
         return
     end
-    local mapBounds = mapModel.PrimaryPart
-    local gameTypes = {"ButtonMash", "MemoryCheck", "MatchingGame"}
 
-    for i = 1, CONFIG.MACHINES_TO_SPAWN do
-        local machine = machineTemplate:Clone()
-        machine.Name = "Machine" .. i
+    -- Spawn Machines at designated points
+    local machineSpawnsFolder = spawnsRoot:FindFirstChild("Machine")
+    if machineSpawnsFolder then
+        local availableSpawns = machineSpawnsFolder:GetChildren()
 
-        if not machine.PrimaryPart then
-            local largestPart, largestSize = nil, 0
-            for _, child in ipairs(machine:GetDescendants()) do
-                if child:IsA("BasePart") then
-                    local size = child.Size.X * child.Size.Y * child.Size.Z
-                    if size > largestSize then
-                        largestSize = size
-                        largestPart = child
+        -- Shuffle the available spawns to randomize placement each round
+        for i = #availableSpawns, 2, -1 do
+            local j = math.random(i)
+            availableSpawns[i], availableSpawns[j] = availableSpawns[j], availableSpawns[i]
+        end
+
+        local numToSpawn = math.min(CONFIG.MACHINES_TO_SPAWN, #availableSpawns)
+        local gameTypes = {"ButtonMash", "MemoryCheck", "MatchingGame"}
+
+        for i = 1, numToSpawn do
+            local spawnPoint = availableSpawns[i]
+            local machine = machineTemplate:Clone()
+            machine.Name = "Machine" .. i
+
+            if not machine.PrimaryPart then
+                local largestPart, largestSize = nil, 0
+                for _, child in ipairs(machine:GetDescendants()) do
+                    if child:IsA("BasePart") then
+                        local size = child.Size.X * child.Size.Y * child.Size.Z
+                        if size > largestSize then
+                            largestSize = size
+                            largestPart = child
+                        end
                     end
                 end
+                if largestPart then
+                    machine.PrimaryPart = largestPart
+                end
             end
-            if largestPart then
-                machine.PrimaryPart = largestPart
-            end
+
+            local randomType = gameTypes[math.random(#gameTypes)]
+            machine:SetAttribute("GameType", randomType)
+
+            machine:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position))
+            machine.Parent = machineFolder
         end
-
-        local randomType = gameTypes[math.random(#gameTypes)]
-        machine:SetAttribute("GameType", randomType)
-
-        local randomX = mapBounds.Position.X + math.random(-mapBounds.Size.X / 2, mapBounds.Size.X / 2)
-        local randomZ = mapBounds.Position.Z + math.random(-mapBounds.Size.Z / 2, mapBounds.Size.Z / 2)
-        machine:SetPrimaryPartCFrame(CFrame.new(randomX, mapBounds.Position.Y + machine.PrimaryPart.Size.Y / 2, randomZ))
-
-        machine.Parent = machineFolder
-    end
-
-    print(string.format("[GameManager] Spawned %d machines.", CONFIG.MACHINES_TO_SPAWN))
-
-    -- Also spawn the inactive Victory Gates
-    local mapCFrame, mapSize = mapModel:GetBoundingBox()
-    local INSET_DISTANCE = 10 -- How many studs to move inward from the edge
-    local RAYCAST_HEIGHT = 200 -- How high above the spawn point to start the raycast
-
-    local function spawnGate(index, horizontalPosition)
-        -- 1. Start raycast high above the inset point
-        local rayOrigin = horizontalPosition + Vector3.new(0, RAYCAST_HEIGHT, 0)
-        local rayDirection = Vector3.new(0, -1, 0) * (RAYCAST_HEIGHT * 2)
-
-        -- 2. Perform the raycast to find the ground
-        local raycastParams = RaycastParams.new()
-        raycastParams.FilterDescendantsInstances = {mapModel}
-        raycastParams.FilterType = Enum.RaycastFilterType.Include
-        local raycastResult = Workspace:Raycast(rayOrigin, rayDirection, raycastParams)
-
-        local groundPosition
-        if raycastResult and raycastResult.Position then
-            groundPosition = raycastResult.Position
-            print(string.format("[GameManager] Raycast for Gate %d hit ground at: %s", index, tostring(groundPosition)))
-        else
-            -- Fallback: If raycast fails, use the center of the map's Y position
-            groundPosition = Vector3.new(horizontalPosition.X, mapCFrame.Position.Y, horizontalPosition.Z)
-            warn(string.format("[GameManager] Raycast failed for Gate %d. Using fallback Y position.", index))
-        end
-
-        local gate = Instance.new("Part")
-        gate.Name = "VictoryGate" .. index
-        gate.Size = Vector3.new(12, 15, 2)
-        gate.Anchored = true
-        gate.CanCollide = false
-        gate.Transparency = 1 -- Initially invisible
-        gate.Material = Enum.Material.Plastic
-        gate.BrickColor = BrickColor.new("Black")
-        -- Position the gate on the ground, adjusting for its own height
-        gate.Position = groundPosition + Vector3.new(0, gate.Size.Y / 2, 0)
-        gate.Parent = Workspace
-    end
-
-    local edge1, edge2
-    local center = mapCFrame.Position
-    -- Determine the longest axis to place the gates on
-    if mapSize.X > mapSize.Z then
-        -- Place on the left and right (X axis), inset by the specified distance
-        local halfX = mapSize.X / 2 - INSET_DISTANCE
-        edge1 = Vector3.new(center.X + halfX, center.Y, center.Z)
-        edge2 = Vector3.new(center.X - halfX, center.Y, center.Z)
+        print(string.format("[GameManager] Spawned %d machines at designated locations.", numToSpawn))
     else
-        -- Place on the front and back (Z axis), inset by the specified distance
-        local halfZ = mapSize.Z / 2 - INSET_DISTANCE
-        edge1 = Vector3.new(center.X, center.Y, center.Z + halfZ)
-        edge2 = Vector3.new(center.X, center.Y, center.Z - halfZ)
+        warn("[GameManager] No 'Machine' spawn folder found in map. Cannot spawn machines.")
     end
 
-    spawnGate(1, edge1)
-    spawnGate(2, edge2)
-
-    print("[GameManager] Spawned 2 inactive Victory Gates using inset and raycasting.")
+    -- Spawn the inactive Victory Gates at designated points
+    local gateSpawnsFolder = spawnsRoot:FindFirstChild("VictoryGate")
+    if gateSpawnsFolder then
+        local gateSpawns = gateSpawnsFolder:GetChildren()
+        for i, spawnPoint in ipairs(gateSpawns) do
+            local gate = Instance.new("Part")
+            gate.Name = "VictoryGate" .. i
+            gate.Size = Vector3.new(12, 15, 2)
+            gate.Anchored = true
+            gate.CanCollide = false
+            gate.Transparency = 1 -- Initially invisible
+            gate.Material = Enum.Material.Plastic
+            gate.BrickColor = BrickColor.new("Black")
+            gate.Position = spawnPoint.Position
+            gate.Parent = Workspace
+        end
+        print(string.format("[GameManager] Spawned %d inactive Victory Gates at designated locations.", #gateSpawns))
+    else
+         warn("[GameManager] No 'VictoryGate' spawn folder found in map. Cannot spawn gates.")
+    end
 end
 
 -- #############################
@@ -334,6 +380,7 @@ function enterWaiting()
     cleanupCurrentLevel()
     cleanupMachines()
     cleanupVictoryGates()
+    cleanupHangers()
     StoreKeeperManager.stopManaging()
     CoinStashManager.cleanupStashes()
     table.clear(currentKillers)
@@ -361,8 +408,9 @@ function enterPlaying()
         return
     end
     spawnMachines(loadedMap)
-    StoreKeeperManager.startManaging(currentLevel)
-    CoinStashManager.spawnStashes()
+    spawnHangers(loadedMap)
+    StoreKeeperManager.startManaging(currentLevel, loadedMap)
+    CoinStashManager.spawnStashes(loadedMap)
     CagingManager.resetAllCageCounts()
 
     local realPlayers = Players:GetPlayers()
