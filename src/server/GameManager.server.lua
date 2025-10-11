@@ -24,11 +24,10 @@ local SimulatedPlayerManager = require(ReplicatedStorage:WaitForChild("MyModules
 local StoreKeeperManager = require(ServerScriptService:WaitForChild("StoreKeeperManager"))
 local CoinStashManager = require(ServerScriptService:WaitForChild("CoinStashManager"))
 local GameStateManager = require(ServerScriptService:WaitForChild("GameStateManager"))
+local MapGenerator = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("MapGenerator"))
 
--- DIAGNOSTIC STEP: Find the MapGenerator object and print its class before requiring.
-local mapGeneratorObject = ServerScriptService:WaitForChild("MapGenerator")
-print("[GameManager] Found MapGenerator object. ClassName is: " .. mapGeneratorObject.ClassName)
-local MapGenerator = require(mapGeneratorObject)
+-- Generate the procedural map on server startup
+MapGenerator.Generate()
 
 -- Configuration
 local CONFIG = {
@@ -89,14 +88,17 @@ end
 function loadRandomLevel()
     cleanupCurrentLevel()
 
-    local selectedMapTemplate = mapsFolder:FindFirstChild("CustomMap")
+    local availableMaps = mapsFolder:GetChildren()
 
-    if not selectedMapTemplate then
-        warn("[GameManager] CRITICAL: Static map 'CustomMap' not found in ServerStorage/Maps folder! Please save your map there.")
+    if #availableMaps == 0 then
+        warn("[GameManager] CRITICAL: No maps found in ServerStorage/Maps folder! Cannot load a level.")
         return nil
     end
 
-    print(string.format("[GameManager] Loading static map: %s", selectedMapTemplate.Name))
+    local randomIndex = math.random(#availableMaps)
+    local selectedMapTemplate = availableMaps[randomIndex]
+
+    print(string.format("[GameManager] Loading random map: %s", selectedMapTemplate.Name))
     currentMap = selectedMapTemplate:Clone()
 
     if not currentMap.PrimaryPart then

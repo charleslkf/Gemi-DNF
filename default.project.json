@@ -18,9 +18,6 @@
       },
       "GameManager": {
         "$path": "src/server/GameManager.server.lua"
-      },
-      "MapGenerator": {
-        "$path": "src/server/MapGenerator.module.lua"
       }
     },
     "ReplicatedStorage": {
@@ -43,6 +40,9 @@
         },
         "SimulatedPlayerManager": {
           "$path": "src/shared/SimulatedPlayerManager.lua"
+        },
+        "MapGenerator": {
+          "$path": "src/shared/MapGenerator.lua"
         }
       },
       "Remotes": {
