@@ -1,10 +1,6 @@
--- Minimal MapGenerator module for testing server startup
+-- Minimal MapGenerator module for diagnostic purposes
 local MapGenerator = {}
 
-function MapGenerator.Generate()
-	print("[MapGenerator] Generate() called. Full implementation pending.")
-end
-
-print("[MapGenerator] Minimal module loaded successfully.")
+print("[MapGenerator] Minimal diagnostic module loaded.")
 
 return MapGenerator
