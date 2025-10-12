@@ -2,6 +2,17 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 4.4.1
+- **Bug Fix: All Spawned Objects "Half-Buried"**
+  - Corrected the spawning logic for every object type in the game (Players, Killers, Machines, Hangers, Coin Stashes, Store Keepers, and Victory Gates).
+  - The code now correctly calculates a vertical offset based on each object's height, ensuring their models rest perfectly on top of the ground instead of clipping through it.
+
+## Version 4.4.0
+- **Major Feature: Custom Map and Designated Spawn System**
+  - **Replaced Procedural Generation:** The entire procedural map generation system in `MapGenerator.lua` was replaced. The game now relies on the user to create a custom map model in Roblox Studio and place it in `ServerStorage/Maps`.
+  - **Implemented Designated Spawning:** Created a new, robust system (`PotentialSpawns`) where the game logic reads spawn locations from a folder of marker parts inside the user's custom map model.
+  - **Refactored All Spawning Logic:** Systematically updated all relevant scripts (`GameManager`, `CoinStashManager`, `StoreKeeperManager`) to remove all forms of random coordinate generation and use the new designated spawn point system. This ensures all objects now spawn exactly where the user places their markers.
+
 ## Version 3.5.0
 - **Feature: Restored and Enhanced Escape Sequence**
   - **Restored Pathfinding Arrow:** Completely rewrote the `EscapeUIController` to remove a non-functional single-arrow system and restore the original, superior four-arrow `PathfindingService` implementation.

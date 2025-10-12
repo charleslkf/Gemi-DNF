@@ -92,10 +92,33 @@ local function _createChestModel()
     return chestModel
 end
 
-function CoinStashManager.spawnStashes()
+function CoinStashManager.spawnStashes(mapModel)
     if stashContainer then
         warn("CoinStashManager: Stashes already exist.")
         return
+    end
+    if not mapModel then
+        warn("CoinStashManager: Cannot spawn stashes, map model is nil.")
+        return
+    end
+
+    local spawnsRoot = mapModel:FindFirstChild("PotentialSpawns")
+    local spawnFolder = spawnsRoot and spawnsRoot:FindFirstChild("CoinStash")
+    if not spawnFolder then
+        warn("CoinStashManager: No 'CoinStash' spawn folder found in map. Cannot spawn stashes.")
+        return
+    end
+
+    local availableSpawns = spawnFolder:GetChildren()
+    if #availableSpawns == 0 then
+        warn("CoinStashManager: No spawn points found in 'CoinStash' folder. Cannot spawn stashes.")
+        return
+    end
+
+    -- Shuffle the spawns for randomness
+    for i = #availableSpawns, 2, -1 do
+        local j = math.random(i)
+        availableSpawns[i], availableSpawns[j] = availableSpawns[j], availableSpawns[i]
     end
 
     print("CoinStashManager: Spawning stashes.")
@@ -103,12 +126,12 @@ function CoinStashManager.spawnStashes()
     stashContainer.Name = CONFIG.StashFolderName
     stashContainer.Parent = Workspace
 
-    for i = 1, CONFIG.NumberOfStashes do
+    local numToSpawn = math.min(CONFIG.NumberOfStashes, #availableSpawns)
+    for i = 1, numToSpawn do
+        local spawnPoint = availableSpawns[i]
         local chest = _createChestModel()
-        local x = math.random(CONFIG.SpawnArea.Min.X, CONFIG.SpawnArea.Max.X)
-        local z = math.random(CONFIG.SpawnArea.Min.Z, CONFIG.SpawnArea.Max.Z)
-        local y = CONFIG.SpawnArea.Min.Y -- Keep Y fixed for simplicity
-        chest:SetPrimaryPartCFrame(CFrame.new(x, y, z))
+        local yOffset = chest.PrimaryPart.Size.Y / 2
+        chest:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position + Vector3.new(0, yOffset, 0)))
         chest.Parent = stashContainer
     end
 end
