@@ -26,63 +26,72 @@ local CONFIG = {
 --================================================================
 -- LAYOUT DEFINITION
 --================================================================
-
--- 5-Room Layout Constants
-local MAP_HALF_SIZE = 225
-local CORNER_SIZE_VAL = 150
-local CORNER_SIZE = Vector3.new(CORNER_SIZE_VAL, CONFIG.ROOM_HEIGHT, CORNER_SIZE_VAL)
-local CORNER_OFFSET = MAP_HALF_SIZE - (CORNER_SIZE_VAL / 2)
-local CENTER_SIZE_VAL = (MAP_HALF_SIZE * 2) - (CORNER_SIZE_VAL * 2)
-local CENTER_SIZE = Vector3.new(CENTER_SIZE_VAL, CONFIG.ROOM_HEIGHT, CENTER_SIZE_VAL)
-
--- Grid-based positions for spawn points (relative to room center)
-local SPAWN_GRID_STEP = 75
-local SPAWN_GRID_OFFSET = -SPAWN_GRID_STEP * 1.5
-
-local function getSpawnPos(row, col)
-	return Vector3.new(SPAWN_GRID_OFFSET + col * SPAWN_GRID_STEP, 2, SPAWN_GRID_OFFSET + row * SPAWN_GRID_STEP)
-end
-
--- Simplified layout defining only the corner walls
--- Layout defining every wall segment from the drawing
--- Layout defining the 12 wall segments from the drawing
-local L_WALL_LENGTH = 150
-local L_WALL_OFFSET = MAP_HALF_SIZE - (L_WALL_LENGTH / 2)
-local WALLS = {
-    -- Outer Boundary Walls
-    { Position = Vector3.new(0, CONFIG.ROOM_HEIGHT/2, -MAP_HALF_SIZE), Size = Vector3.new(MAP_HALF_SIZE*2, CONFIG.ROOM_HEIGHT, CONFIG.WALL_THICKNESS) }, -- Top
-    { Position = Vector3.new(0, CONFIG.ROOM_HEIGHT/2, MAP_HALF_SIZE), Size = Vector3.new(MAP_HALF_SIZE*2, CONFIG.ROOM_HEIGHT, CONFIG.WALL_THICKNESS) }, -- Bottom
-    { Position = Vector3.new(-MAP_HALF_SIZE, CONFIG.ROOM_HEIGHT/2, 0), Size = Vector3.new(CONFIG.WALL_THICKNESS, CONFIG.ROOM_HEIGHT, MAP_HALF_SIZE*2) }, -- Left
-    { Position = Vector3.new(MAP_HALF_SIZE, CONFIG.ROOM_HEIGHT/2, 0), Size = Vector3.new(CONFIG.WALL_THICKNESS, CONFIG.ROOM_HEIGHT, MAP_HALF_SIZE*2) }, -- Right
-
-    -- Inner L-shaped Walls (8 segments total)
-    -- Top-Left L
-    { Position = Vector3.new(-L_WALL_OFFSET, CONFIG.ROOM_HEIGHT/2, -MAP_HALF_SIZE + L_WALL_LENGTH/2), Size = Vector3.new(L_WALL_LENGTH, CONFIG.ROOM_HEIGHT, CONFIG.WALL_THICKNESS) },
-    { Position = Vector3.new(-MAP_HALF_SIZE + L_WALL_LENGTH/2, CONFIG.ROOM_HEIGHT/2, -L_WALL_OFFSET), Size = Vector3.new(CONFIG.WALL_THICKNESS, CONFIG.ROOM_HEIGHT, L_WALL_LENGTH) },
-    -- Top-Right L
-    { Position = Vector3.new(L_WALL_OFFSET, CONFIG.ROOM_HEIGHT/2, -MAP_HALF_SIZE + L_WALL_LENGTH/2), Size = Vector3.new(L_WALL_LENGTH, CONFIG.ROOM_HEIGHT, CONFIG.WALL_THICKNESS) },
-    { Position = Vector3.new(MAP_HALF_SIZE - L_WALL_LENGTH/2, CONFIG.ROOM_HEIGHT/2, -L_WALL_OFFSET), Size = Vector3.new(CONFIG.WALL_THICKNESS, CONFIG.ROOM_HEIGHT, L_WALL_LENGTH) },
-    -- Bottom-Left L
-    { Position = Vector3.new(-L_WALL_OFFSET, CONFIG.ROOM_HEIGHT/2, MAP_HALF_SIZE - L_WALL_LENGTH/2), Size = Vector3.new(L_WALL_LENGTH, CONFIG.ROOM_HEIGHT, CONFIG.WALL_THICKNESS) },
-    { Position = Vector3.new(-MAP_HALF_SIZE + L_WALL_LENGTH/2, CONFIG.ROOM_HEIGHT/2, L_WALL_OFFSET), Size = Vector3.new(CONFIG.WALL_THICKNESS, CONFIG.ROOM_HEIGHT, L_WALL_LENGTH) },
-    -- Bottom-Right L
-    { Position = Vector3.new(L_WALL_OFFSET, CONFIG.ROOM_HEIGHT/2, MAP_HALF_SIZE - L_WALL_LENGTH/2), Size = Vector3.new(L_WALL_LENGTH, CONFIG.ROOM_HEIGHT, CONFIG.WALL_THICKNESS) },
-    { Position = Vector3.new(MAP_HALF_SIZE - L_WALL_LENGTH/2, CONFIG.ROOM_HEIGHT/2, L_WALL_OFFSET), Size = Vector3.new(CONFIG.WALL_THICKNESS, CONFIG.ROOM_HEIGHT, L_WALL_LENGTH) },
-}
-
--- Spawn points are now defined globally relative to the map center, as rooms are no longer used for positioning.
-local SPAWN_POINTS = {
-    Survivor = { getSpawnPos(0,0), getSpawnPos(0,3), getSpawnPos(3,0), getSpawnPos(3,3), getSpawnPos(1,1), getSpawnPos(2,2) }, -- A, D, M, P, F, K
-    Killer = { getSpawnPos(2, 1), getSpawnPos(1, 2) }, -- J, G
-    Machine = { getSpawnPos(0, 1), getSpawnPos(0, 2), getSpawnPos(1, 0), getSpawnPos(1, 3), getSpawnPos(2, 0), getSpawnPos(2, 3), getSpawnPos(3, 1), getSpawnPos(3, 2) }, -- B, C, E, H, I, L, N, O
-    Hanger = { Vector3.new(-150, 2, 0), Vector3.new(150, 2, 0), Vector3.new(0, 2, -150), Vector3.new(0, 2, 150) },
-    StoreKeeper = { getSpawnPos(1,1) + Vector3.new(30,0,30) },
-    CoinStash = { getSpawnPos(1,1) - Vector3.new(30,0,30), getSpawnPos(1,2) + Vector3.new(30,0,-30), getSpawnPos(2,1) - Vector3.new(30,0,-30), getSpawnPos(2,2) - Vector3.new(-30,0,-30) },
-    VictoryGate = { Vector3.new(0, 2, MAP_HALF_SIZE + 20), Vector3.new(0, 2, -MAP_HALF_SIZE - 20) },
+local LAYOUT = {
+	-- The central large room
+	{
+		Id = "CenterRoom",
+		Type = "LargeCircle",
+		Position = Vector3.new(0, 0, 0),
+		Connections = {"TopLeftRoom", "TopRightRoom", "BottomLeftRoom", "BottomRightRoom"},
+		Objects = {
+			{ Type = "KillerSpawn", Angle = 0, Distance = 0 },
+			{ Type = "SurvivorSpawn", Angle = 45, Distance = 30 },
+			{ Type = "KillerHanger", Angle = 90, Distance = 85 },
+			{ Type = "KillerHanger", Angle = 180, Distance = 85 },
+			{ Type = "KillerHanger", Angle = 270, Distance = 85 },
+			{ Type = "Machine", Angle = 135, Distance = 70, RotationY = 45 },
+			{ Type = "Machine", Angle = 225, Distance = 70, RotationY = -45 },
+			{ Type = "Machine", Angle = 315, Distance = 70, RotationY = -135 },
+			{ Type = "Shop", Angle = 60, Distance = 90, RotationY = -30 },
+			{ Type = "Shop", Angle = 200, Distance = 90, RotationY = -110 },
+		}
+	},
+	-- Surrounding smaller rooms
+	{
+		Id = "TopLeftRoom", Type = "SmallCircle", Position = Vector3.new(-150, 0, -150), Connections = {"CenterRoom", "TopRightRoom", "BottomLeftRoom"},
+		Objects = {
+			{ Type = "SurvivorSpawn", Angle = 30, Distance = 20 }, { Type = "SurvivorSpawn", Angle = 330, Distance = 20 },
+			{ Type = "Machine", Angle = 180, Distance = 35, RotationY = 90 }, { Type = "Machine", Angle = 90, Distance = 35, RotationY = 0 },
+			{ Type = "KillerHanger", Angle = 270, Distance = 40 }, { Type = "Shop", Angle = 225, Distance = 40, RotationY = 135 },
+		}
+	},
+	{
+		Id = "TopRightRoom", Type = "SmallCircle", Position = Vector3.new(150, 0, -150), Connections = {"CenterRoom", "TopLeftRoom", "BottomRightRoom"},
+		Objects = {
+			{ Type = "SurvivorSpawn", Angle = 0, Distance = 0 }, { Type = "Machine", Angle = 270, Distance = 35, RotationY = 180 },
+			{ Type = "Shop", Angle = 45, Distance = 40, RotationY = -45 },
+		}
+	},
+	{
+		Id = "BottomLeftRoom", Type = "SmallCircle", Position = Vector3.new(-150, 0, 150), Connections = {"CenterRoom", "TopLeftRoom", "BottomRightRoom"},
+		Objects = {
+			{ Type = "SurvivorSpawn", Angle = 150, Distance = 25 }, { Type = "SurvivorSpawn", Angle = 210, Distance = 25 },
+			{ Type = "Machine", Angle = 0, Distance = 35, RotationY = -90 }, { Type = "KillerHanger", Angle = 90, Distance = 40 },
+		}
+	},
+	{
+		Id = "BottomRightRoom", Type = "SmallCircle", Position = Vector3.new(150, 0, 150), Connections = {"CenterRoom", "BottomLeftRoom", "TopRightRoom"},
+		Objects = {
+			{ Type = "SurvivorSpawn", Angle = 180, Distance = 0 },
+			{ Type = "Machine", Angle = 45, Distance = 35, RotationY = -45 }, { Type = "Machine", Angle = 315, Distance = 35, RotationY = 45 },
+			{ Type = "KillerHanger", Angle = 270, Distance = 40 }, { Type = "Shop", Angle = 135, Distance = 40, RotationY = -135 },
+		}
+	},
+	-- Individual Outer Wall Segments
+	{ Id = "OuterWall_1", Type = "Rectangle", Position = Vector3.new(-200, 0, -275), Size = Vector3.new(100, CONFIG.ROOM_HEIGHT, CONFIG.WALL_THICKNESS), Connections = {} },
+	{ Id = "OuterWall_2", Type = "Rectangle", Position = Vector3.new(200, 0, -275), Size = Vector3.new(100, CONFIG.ROOM_HEIGHT, CONFIG.WALL_THICKNESS), Connections = {} },
+	{ Id = "OuterWall_3", Type = "Rectangle", Position = Vector3.new(-250, 0, -200), Size = Vector3.new(CONFIG.WALL_THICKNESS, CONFIG.ROOM_HEIGHT, 150), Connections = {} },
+	{ Id = "OuterWall_4", Type = "Rectangle", Position = Vector3.new(250, 0, -200), Size = Vector3.new(CONFIG.WALL_THICKNESS, CONFIG.ROOM_HEIGHT, 150), Connections = {} },
+	{ Id = "OuterWall_5", Type = "Rectangle", Position = Vector3.new(-200, 0, 275), Size = Vector3.new(100, CONFIG.ROOM_HEIGHT, CONFIG.WALL_THICKNESS), Connections = {} },
+	{ Id = "OuterWall_6", Type = "Rectangle", Position = Vector3.new(200, 0, 275), Size = Vector3.new(100, CONFIG.ROOM_HEIGHT, CONFIG.WALL_THICKNESS), Connections = {} },
+	{ Id = "OuterWall_7", Type = "Rectangle", Position = Vector3.new(-250, 0, 200), Size = Vector3.new(CONFIG.WALL_THICKNESS, CONFIG.ROOM_HEIGHT, 150), Connections = {} },
+	{ Id = "OuterWall_8", Type = "Rectangle", Position = Vector3.new(250, 0, 200), Size = Vector3.new(CONFIG.WALL_THICKNESS, CONFIG.ROOM_HEIGHT, 150), Connections = {} },
+	{ Id = "OuterWall_9", Type = "Rectangle", Position = Vector3.new(0, 0, 325), Size = Vector3.new(150, CONFIG.ROOM_HEIGHT, CONFIG.WALL_THICKNESS), Connections = {} },
 }
 
 --================================================================
 -- ASSET CREATION (Private)
+-- Ensures the generator can run even in a clean environment.
 --================================================================
 local function createPlaceholderAssets()
 	local assetsFolder = ServerStorage:FindFirstChild("Assets")
@@ -131,25 +140,6 @@ local function createRectangleRoomPart(roomInfo)
 	floor.Parent = roomModel
 	roomModel.PrimaryPart = floor
 
-	-- Create walls around the rectangle room
-	local wallPositions = {
-		{Name = "Wall_N", Position = Vector3.new(0, 0, -roomInfo.Size.Z / 2), Size = Vector3.new(roomInfo.Size.X, CONFIG.ROOM_HEIGHT, CONFIG.WALL_THICKNESS)},
-		{Name = "Wall_S", Position = Vector3.new(0, 0, roomInfo.Size.Z / 2), Size = Vector3.new(roomInfo.Size.X, CONFIG.ROOM_HEIGHT, CONFIG.WALL_THICKNESS)},
-		{Name = "Wall_E", Position = Vector3.new(roomInfo.Size.X / 2, 0, 0), Size = Vector3.new(CONFIG.WALL_THICKNESS, CONFIG.ROOM_HEIGHT, roomInfo.Size.Z)},
-		{Name = "Wall_W", Position = Vector3.new(-roomInfo.Size.X / 2, 0, 0), Size = Vector3.new(CONFIG.WALL_THICKNESS, CONFIG.ROOM_HEIGHT, roomInfo.Size.Z)},
-	}
-
-	for _, wallInfo in ipairs(wallPositions) do
-		local wall = Instance.new("Part")
-		wall.Name = wallInfo.Name
-		wall.Size = wallInfo.Size
-		wall.Position = roomInfo.Position + wallInfo.Position
-		wall.Anchored = true
-		wall.Color = Color3.fromRGB(120, 120, 120)
-		wall.Parent = roomModel
-	end
-
-
 	return roomModel
 end
 
@@ -157,10 +147,12 @@ local function createRoomPart(roomInfo, allRoomsLayout)
 	if roomInfo.Type == "Rectangle" then
 		return createRectangleRoomPart(roomInfo)
 	end
-	-- Note: Circle room generation is no longer used by the new layout but is kept for potential future use.
+
 	local roomModel = Instance.new("Model")
 	roomModel.Name = roomInfo.Id
+
 	local radius = roomInfo.Type == "LargeCircle" and CONFIG.LARGE_ROOM_RADIUS or CONFIG.SMALL_ROOM_RADIUS
+
 	local floor = Instance.new("Part")
 	floor.Name = "Floor"
 	floor.Shape = Enum.PartType.Cylinder
@@ -171,6 +163,55 @@ local function createRoomPart(roomInfo, allRoomsLayout)
 	floor.Color = Color3.fromRGB(80, 80, 80)
 	floor.Parent = roomModel
 	roomModel.PrimaryPart = floor
+
+	-- Calculate angles for corridor openings
+	local openingAngles = {}
+	if roomInfo.Connections then
+		for _, targetId in ipairs(roomInfo.Connections) do
+			for _, room in ipairs(allRoomsLayout) do
+				if room.Id == targetId then
+					local angle = math.atan2(room.Position.Z - roomInfo.Position.Z, room.Position.X - roomInfo.Position.X)
+					table.insert(openingAngles, math.deg(angle))
+				end
+			end
+		end
+	end
+
+	local numWallSegments = 36
+	local segmentAngle = 360 / numWallSegments
+	local openingWidthInDegrees = math.deg(math.atan2(CONFIG.CORRIDOR_WIDTH / 2, radius)) * 2
+
+	for i = 1, numWallSegments do
+		local currentAngle = i * segmentAngle
+
+		local isOpening = false
+		for _, openingAngle in ipairs(openingAngles) do
+			local angleDifference = math.abs(currentAngle - openingAngle)
+			if angleDifference > 180 then
+				angleDifference = 360 - angleDifference
+			end
+			if angleDifference < (openingWidthInDegrees / 2) then
+				isOpening = true
+				break
+			end
+		end
+
+		if not isOpening then
+			local angleRad = math.rad(currentAngle)
+			local x = roomInfo.Position.X + radius * math.cos(angleRad)
+			local z = roomInfo.Position.Z + radius * math.sin(angleRad)
+
+			local segment = Instance.new("Part")
+			segment.Name = "WallSegment"
+			segment.Size = Vector3.new(CONFIG.WALL_THICKNESS, CONFIG.ROOM_HEIGHT, (2 * math.pi * radius) / numWallSegments + 1.5) -- Add overlap
+			segment.Position = Vector3.new(x, roomInfo.Position.Y + CONFIG.ROOM_HEIGHT / 2, z)
+			segment.Orientation = Vector3.new(0, -currentAngle, 0)
+			segment.Anchored = true
+			segment.Color = Color3.fromRGB(100, 100, 100)
+			segment.Parent = roomModel
+		end
+	end
+
 	return roomModel
 end
 
@@ -193,29 +234,57 @@ local function createCorridorPart(roomA, roomB)
 end
 
 --================================================================
--- SPAWN POINT GENERATION (Private)
+-- OBJECT SPAWNING (Private)
 --================================================================
-local function createPotentialSpawnPoints(mapModel)
-	local spawnsRoot = Instance.new("Folder", mapModel)
-	spawnsRoot.Name = "PotentialSpawns"
+local function spawnObjectsInRoom(roomModel, roomInfo)
+	local assetsFolder = ServerStorage:FindFirstChild("Assets")
+	local roomCenter = roomInfo.Position
 
-	for spawnType, positions in pairs(SPAWN_POINTS) do
-		local typeFolder = Instance.new("Folder", spawnsRoot)
-		typeFolder.Name = spawnType
+	if not roomInfo.Objects then return end
 
-		for i, pos in ipairs(positions) do
-			local spawnPoint = Instance.new("Part")
-			spawnPoint.Name = spawnType .. "_" .. i
-			spawnPoint.Size = Vector3.new(4, 1, 4)
-			spawnPoint.Anchored = true
-			spawnPoint.CanCollide = false
-			spawnPoint.Transparency = 0.5
-			spawnPoint.Position = pos
-			spawnPoint.Parent = typeFolder
+	for _, objectInfo in ipairs(roomInfo.Objects) do
+		local angle = math.rad(objectInfo.Angle)
+		local distance = objectInfo.Distance
+
+		local x = roomCenter.X + distance * math.cos(angle)
+		local z = roomCenter.Z + distance * math.sin(angle)
+		local y = roomCenter.Y + 2
+
+		local position = Vector3.new(x, y, z)
+		local orientation = Vector3.new(0, objectInfo.RotationY or 0, 0)
+
+		local newObject = nil
+
+		if objectInfo.Type == "KillerSpawn" or objectInfo.Type == "SurvivorSpawn" then
+			local spawn = Instance.new("SpawnLocation")
+			spawn.Name = objectInfo.Type
+			spawn.Position = position
+			spawn.Anchored = true
+			spawn.Size = Vector3.new(5, 1, 5)
+			spawn.Transparency = 0.5
+			spawn.Neutral = false
+			spawn.TeamColor = objectInfo.Type == "KillerSpawn" and BrickColor.new("Really red") or BrickColor.new("Bright blue")
+			newObject = spawn
+		else
+			local templateName = objectInfo.Type .. "Template"
+			local template = assetsFolder:FindFirstChild(templateName)
+			if template then
+				newObject = template:Clone()
+				newObject.Name = objectInfo.Type
+				if newObject:IsA("Model") and newObject.PrimaryPart then
+					newObject:SetPrimaryPartCFrame(CFrame.new(position) * CFrame.Angles(0, math.rad(orientation.Y), 0))
+				else
+					newObject.Position = position
+					newObject.Orientation = orientation
+				end
+			end
+		end
+
+		if newObject then
+			newObject.Parent = roomModel
 		end
 	end
 end
-
 
 --================================================================
 -- PUBLIC API
@@ -229,30 +298,44 @@ function MapGenerator.Generate()
 	local mapModel = Instance.new("Model")
 	mapModel.Name = CONFIG.MAP_NAME
 
-	-- Step 2: Create a single large floor for the entire map
-	local totalMapSize = MAP_HALF_SIZE * 2
-	local floor = Instance.new("Part")
-	floor.Name = "MainFloor"
-	floor.Size = Vector3.new(totalMapSize, CONFIG.WALL_THICKNESS, totalMapSize)
-	floor.Position = Vector3.new(0, 0, 0)
-	floor.Anchored = true
-	floor.Color = Color3.fromRGB(100, 100, 100)
-	floor.Parent = mapModel
-	mapModel.PrimaryPart = floor
+	local generatedRooms = {}
 
-	-- Step 3: Create the walls from the WALLS layout
-	for i, wallInfo in ipairs(WALLS) do
-		local wall = Instance.new("Part")
-		wall.Name = "Wall_" .. i
-		wall.Size = wallInfo.Size
-		wall.Position = wallInfo.Position
-		wall.Anchored = true
-		wall.Color = Color3.fromRGB(120, 120, 120)
-		wall.Parent = mapModel
+	-- Step 2: Create all the rooms
+	for _, roomInfo in ipairs(LAYOUT) do
+		local roomPart = createRoomPart(roomInfo, LAYOUT)
+		if roomPart then
+			roomPart.Parent = mapModel
+			generatedRooms[roomInfo.Id] = {Info = roomInfo, Part = roomPart}
+		end
 	end
 
-	-- Step 4: Create all potential spawn point markers
-	createPotentialSpawnPoints(mapModel)
+	-- Step 3: Create corridors to connect the rooms
+	local connectedPairs = {}
+	for _, roomInfo in ipairs(LAYOUT) do
+		if roomInfo.Connections then
+			for _, targetId in ipairs(roomInfo.Connections) do
+				local pairKey = table.concat({roomInfo.Id, targetId}, "-")
+				local reversePairKey = table.concat({targetId, roomInfo.Id}, "-")
+
+				if not connectedPairs[pairKey] and not connectedPairs[reversePairKey] then
+					local roomA = generatedRooms[roomInfo.Id]
+					local roomB = generatedRooms[targetId]
+					if roomA and roomB then
+						local corridorPart = createCorridorPart(roomA.Info, roomB.Info)
+						if corridorPart then
+							corridorPart.Parent = mapModel
+						end
+						connectedPairs[pairKey] = true
+					end
+				end
+			end
+		end
+	end
+
+	-- Step 4: Spawn objects within each room
+	for _, roomData in pairs(generatedRooms) do
+		spawnObjectsInRoom(roomData.Part, roomData.Info)
+	end
 
 	-- Step 5: Finalize and save the map
 	local mapsFolder = ServerStorage:FindFirstChild("Maps")

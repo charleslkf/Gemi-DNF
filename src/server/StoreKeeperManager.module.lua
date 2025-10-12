@@ -91,7 +91,8 @@ local function _spawnNPCRandomly(mapModel)
     hrp.Parent = activeNPC
     activeNPC.PrimaryPart = hrp
 
-    activeNPC:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position))
+    local yOffset = activeNPC.PrimaryPart.Size.Y / 2
+    activeNPC:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position + Vector3.new(0, yOffset, 0)))
 
     -- Select and store the random items for this spawn
     local allItemNames = {}

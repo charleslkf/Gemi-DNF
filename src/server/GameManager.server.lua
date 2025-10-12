@@ -161,7 +161,10 @@ function spawnPlayerInMap(player, isKiller)
                  warn("[GameManager] currentMap is nil! Using fallback spawn.")
             end
 
-            character:SetPrimaryPartCFrame(CFrame.new(spawnPos))
+            task.wait() -- Allow character model to fully load
+            local modelSize = character:GetExtentsSize()
+            character:SetPrimaryPartCFrame(CFrame.new(spawnPos + Vector3.new(0, modelSize.Y / 2, 0)))
+
             if isKiller then
                 print("[GameManager] Freezing killer: " .. player.Name)
                 local hrp = character:WaitForChild("HumanoidRootPart")
@@ -267,7 +270,8 @@ function spawnHangers(mapModel)
         local availableSpawns = hangerSpawnsFolder:GetChildren()
         for _, spawnPoint in ipairs(availableSpawns) do
             local hanger = hangerTemplate:Clone()
-            hanger:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position))
+            local yOffset = hanger.PrimaryPart.Size.Y / 2
+            hanger:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position + Vector3.new(0, yOffset, 0)))
             hanger.Parent = hangerFolder
         end
         print(string.format("[GameManager] Spawned %d hangers at designated locations.", #availableSpawns))
@@ -340,7 +344,8 @@ function spawnMachines(mapModel)
             local randomType = gameTypes[math.random(#gameTypes)]
             machine:SetAttribute("GameType", randomType)
 
-            machine:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position))
+            local yOffset = machine.PrimaryPart.Size.Y / 2
+            machine:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position + Vector3.new(0, yOffset, 0)))
             machine.Parent = machineFolder
         end
         print(string.format("[GameManager] Spawned %d machines at designated locations.", numToSpawn))
@@ -361,7 +366,7 @@ function spawnMachines(mapModel)
             gate.Transparency = 1 -- Initially invisible
             gate.Material = Enum.Material.Plastic
             gate.BrickColor = BrickColor.new("Black")
-            gate.Position = spawnPoint.Position
+            gate.Position = spawnPoint.Position + Vector3.new(0, gate.Size.Y / 2, 0)
             gate.Parent = Workspace
         end
         print(string.format("[GameManager] Spawned %d inactive Victory Gates at designated locations.", #gateSpawns))
