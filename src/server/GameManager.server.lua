@@ -322,39 +322,48 @@ function spawnMachines(mapModel)
 
         for i = 1, numToSpawn do
             local spawnPoint = availableSpawns[i]
-            local machine = machineTemplate:Clone()
-            machine.Name = "Machine" .. i
 
-            if not machine.PrimaryPart then
-                local largestPart, largestSize = nil, 0
-                for _, child in ipairs(machine:GetDescendants()) do
-                    if child:IsA("BasePart") then
-                        local size = child.Size.X * child.Size.Y * child.Size.Z
-                        if size > largestSize then
-                            largestSize = size
-                            largestPart = child
-                        end
-                    end
-                end
-                if largestPart then
-                    machine.PrimaryPart = largestPart
-                end
-            end
+            -- Create a new container model for the machine and its physical base
+            local machineContainer = Instance.new("Model")
+            machineContainer.Name = "Machine" .. i
 
-            local randomType = gameTypes[math.random(#gameTypes)]
-            machine:SetAttribute("GameType", randomType)
+            -- Create the physical, collidable base part
+            local machineBase = Instance.new("Part")
+            machineBase.Name = "Base"
+            machineBase.Size = Vector3.new(4, 6, 4) -- Based on MachineTemplate size
+            machineBase.Anchored = true
+            machineBase.CanCollide = true
+            machineBase.Transparency = 1
+            machineBase.Parent = machineContainer
 
-            local yOffset = (machine.PrimaryPart.Size.Y / 2) - 0.5
-            machine:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position + Vector3.new(0, yOffset, 0)))
+            -- Position the base correctly on the ground
+            local yOffset = (machineBase.Size.Y / 2) - 0.5
+            machineBase.CFrame = CFrame.new(spawnPoint.Position + Vector3.new(0, yOffset, 0))
 
-            -- Make sure the machine is collidable
-            for _, part in ipairs(machine:GetDescendants()) do
+            -- Clone the visual machine model and make it non-collidable
+            local machineVisuals = machineTemplate:Clone()
+            machineVisuals.Name = "Visuals"
+            machineVisuals.Parent = machineContainer
+            for _, part in ipairs(machineVisuals:GetDescendants()) do
                 if part:IsA("BasePart") then
-                    part.CanCollide = true
+                    part.CanCollide = false
                 end
             end
 
-            machine.Parent = machineFolder
+            -- Weld the visual model to the physical base
+            local weld = Instance.new("WeldConstraint")
+            weld.Part0 = machineBase
+            weld.Part1 = machineVisuals.PrimaryPart
+            weld.Parent = machineBase
+
+            -- Set attributes on the container model
+            local randomType = gameTypes[math.random(#gameTypes)]
+            machineContainer:SetAttribute("GameType", randomType)
+
+            -- Set the PrimaryPart for interaction prompts
+            machineContainer.PrimaryPart = machineBase
+
+            machineContainer.Parent = machineFolder
         end
         print(string.format("[GameManager] Spawned %d machines at designated locations.", numToSpawn))
     else
