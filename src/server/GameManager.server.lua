@@ -39,6 +39,7 @@ local CONFIG = {
     LOBBY_SPAWN_POSITION = Vector3.new(0, 50, 0),
     MACHINES_TO_SPAWN = 3,
     VICTORY_GATE_TIMER = 30,
+    MACHINE_BONUS_TIME = 5,
 }
 
 -- Teams
@@ -270,7 +271,7 @@ function spawnHangers(mapModel)
         local availableSpawns = hangerSpawnsFolder:GetChildren()
         for _, spawnPoint in ipairs(availableSpawns) do
             local hanger = hangerTemplate:Clone()
-            local yOffset = (hanger.PrimaryPart.Size.Y / 2) - 0.5
+            local yOffset = hanger.PrimaryPart.Size.Y / 2
             hanger:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position + Vector3.new(0, yOffset, 0)))
             hanger.Parent = hangerFolder
         end
@@ -344,10 +345,6 @@ function spawnMachines(mapModel)
             local randomType = gameTypes[math.random(#gameTypes)]
             machine:SetAttribute("GameType", randomType)
 
-            if machine.PrimaryPart then
-                machine.PrimaryPart.CanCollide = true
-            end
-
             local yOffset = machine.PrimaryPart.Size.Y / 2
             machine:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position + Vector3.new(0, yOffset, 0)))
             machine.Parent = machineFolder
@@ -370,7 +367,7 @@ function spawnMachines(mapModel)
             gate.Transparency = 1 -- Initially invisible
             gate.Material = Enum.Material.Plastic
             gate.BrickColor = BrickColor.new("Black")
-            gate.Position = spawnPoint.Position + Vector3.new(0, (gate.Size.Y / 2) - 0.5, 0)
+            gate.Position = spawnPoint.Position + Vector3.new(0, gate.Size.Y / 2, 0)
             gate.Parent = Workspace
         end
         print(string.format("[GameManager] Spawned %d inactive Victory Gates at designated locations.", #gateSpawns))
@@ -590,6 +587,15 @@ end
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local resetRoundEvent = remotes:WaitForChild("ResetRoundRequest")
 local startRoundEvent = remotes:WaitForChild("StartRoundRequest")
+local machineFixedEvent = remotes:WaitForChild("MachineFixed")
+
+machineFixedEvent.OnServerEvent:Connect(function(player)
+    if gameState == "Playing" then
+        stateTimer = stateTimer + CONFIG.MACHINE_BONUS_TIME
+        print(string.format("[GameManager] Machine fixed! Added %d seconds. New time: %d", CONFIG.MACHINE_BONUS_TIME, stateTimer))
+    end
+    GameStateManager:IncrementMachinesCompleted()
+end)
 
 resetRoundEvent.OnServerEvent:Connect(function(player)
     print(string.format("[GameManager] Soft reset requested by %s. Forcing return to Waiting state.", player.Name))

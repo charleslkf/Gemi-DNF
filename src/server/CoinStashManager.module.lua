@@ -130,7 +130,7 @@ function CoinStashManager.spawnStashes(mapModel)
     for i = 1, numToSpawn do
         local spawnPoint = availableSpawns[i]
         local chest = _createChestModel()
-        local yOffset = (chest.PrimaryPart.Size.Y / 2) - 0.5
+        local yOffset = chest.PrimaryPart.Size.Y / 2
         chest:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position + Vector3.new(0, yOffset, 0)))
         chest.Parent = stashContainer
     end
