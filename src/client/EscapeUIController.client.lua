@@ -239,18 +239,19 @@ end
 
 -- Listen for the dedicated escape event to start the UI
 EscapeSequenceStarted.OnClientEvent:Connect(function(gateNames)
-    if player.Team and player.Team.Name == "Survivors" then
-        print("[EscapeUIController] Escape sequence started. Restoring pathfinding system.")
-        table.clear(activeGates)
-        for _, name in ipairs(gateNames) do
-            local gatePart = Workspace:WaitForChild(name, 10)
-            if gatePart then
-                table.insert(activeGates, gatePart)
-            end
+    print("[EscapeUIController] Escape sequence started. Restoring pathfinding system.")
+    table.clear(activeGates)
+    for _, name in ipairs(gateNames) do
+        local gatePart = Workspace:WaitForChild(name, 10)
+        if gatePart then
+            table.insert(activeGates, gatePart)
         end
+    end
 
-        createArrows()
+    createArrows()
 
+    -- For Survivors, start the pathfinding. For Killers, just show the effects.
+    if player.Team and player.Team.Name == "Survivors" then
         -- Start path recalculation loop
         if not pathUpdateConnection then
             pathUpdateConnection = task.spawn(function()
@@ -260,11 +261,11 @@ EscapeSequenceStarted.OnClientEvent:Connect(function(gateNames)
                 end
             end)
         end
+    end
 
-        -- Start UI update loop
-        if not uiUpdateConnection then
-            uiUpdateConnection = RunService.Heartbeat:Connect(updateUI)
-        end
+    -- Start UI update loop (this will handle the screen crack for everyone, and arrows for survivors)
+    if not uiUpdateConnection then
+        uiUpdateConnection = RunService.Heartbeat:Connect(updateUI)
     end
 end)
 
