@@ -84,6 +84,7 @@ local function _spawnNPCRandomly(mapModel)
     hrp.Name = "HumanoidRootPart"
     hrp.Size = Vector3.new(2, 2, 1)
     hrp.Anchored = true
+    hrp.CanCollide = true -- Make the Store Keeper solid
 
     local humanoid = Instance.new("Humanoid", activeNPC)
     humanoid.DisplayName = "Store Keeper"
@@ -91,7 +92,7 @@ local function _spawnNPCRandomly(mapModel)
     hrp.Parent = activeNPC
     activeNPC.PrimaryPart = hrp
 
-    local yOffset = (activeNPC.PrimaryPart.Size.Y / 2) - 0.5
+    local yOffset = activeNPC.PrimaryPart.Size.Y / 2
     activeNPC:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position + Vector3.new(0, yOffset, 0)))
 
     -- Select and store the random items for this spawn
