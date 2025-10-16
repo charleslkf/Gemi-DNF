@@ -270,7 +270,7 @@ function spawnHangers(mapModel)
         local availableSpawns = hangerSpawnsFolder:GetChildren()
         for _, spawnPoint in ipairs(availableSpawns) do
             local hanger = hangerTemplate:Clone()
-            local yOffset = hanger.PrimaryPart.Size.Y / 2
+            local yOffset = (hanger.PrimaryPart.Size.Y / 2) - 0.5
             hanger:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position + Vector3.new(0, yOffset, 0)))
             hanger.Parent = hangerFolder
         end
@@ -344,8 +344,16 @@ function spawnMachines(mapModel)
             local randomType = gameTypes[math.random(#gameTypes)]
             machine:SetAttribute("GameType", randomType)
 
-            local yOffset = machine.PrimaryPart.Size.Y / 2
+            local yOffset = (machine.PrimaryPart.Size.Y / 2) - 0.5
             machine:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position + Vector3.new(0, yOffset, 0)))
+
+            -- Make sure the machine is collidable
+            for _, part in ipairs(machine:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = true
+                end
+            end
+
             machine.Parent = machineFolder
         end
         print(string.format("[GameManager] Spawned %d machines at designated locations.", numToSpawn))
@@ -366,7 +374,7 @@ function spawnMachines(mapModel)
             gate.Transparency = 1 -- Initially invisible
             gate.Material = Enum.Material.Plastic
             gate.BrickColor = BrickColor.new("Black")
-            gate.Position = spawnPoint.Position + Vector3.new(0, gate.Size.Y / 2, 0)
+            gate.Position = spawnPoint.Position + Vector3.new(0, (gate.Size.Y / 2) - 0.5, 0)
             gate.Parent = Workspace
         end
         print(string.format("[GameManager] Spawned %d inactive Victory Gates at designated locations.", #gateSpawns))
