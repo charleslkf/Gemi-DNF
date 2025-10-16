@@ -69,6 +69,9 @@ end
 
 function GameStateManager.initialize()
     print("GameStateManager initialized.")
+    MachineFixed.OnServerEvent:Connect(function()
+        GameStateManager:IncrementMachinesCompleted()
+    end)
 end
 
 return GameStateManager

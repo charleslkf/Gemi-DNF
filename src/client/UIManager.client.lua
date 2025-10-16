@@ -142,29 +142,4 @@ healthChangedEvent.OnClientEvent:Connect(function(player, currentHealth, maxHeal
     HealthManager.createOrUpdateHealthBar(player, currentHealth, maxHealth)
 end)
 
--- Listen for server notifications
-local showNotificationEvent = Remotes:WaitForChild("ShowNotification")
-showNotificationEvent.OnClientEvent:Connect(function(message)
-    local notificationLabel = Instance.new("TextLabel")
-    notificationLabel.Name = "NotificationLabel"
-    notificationLabel.Size = UDim2.new(1, 0, 0, 50)
-    notificationLabel.Position = UDim2.new(0, 0, 0.3, 0)
-    notificationLabel.Font = Enum.Font.SourceSansBold
-    notificationLabel.TextSize = 32
-    notificationLabel.TextColor3 = Color3.new(0, 1, 0)
-    notificationLabel.TextStrokeTransparency = 0
-    notificationLabel.BackgroundTransparency = 1
-    notificationLabel.Text = message
-    notificationLabel.Parent = screenGui
-
-    -- Fade out and destroy the label after a few seconds
-    task.wait(2)
-    for i = 1, 10 do
-        notificationLabel.TextTransparency = i / 10
-        notificationLabel.TextStrokeTransparency = i / 10
-        task.wait(0.1)
-    end
-    notificationLabel:Destroy()
-end)
-
 print("UIManager.client.lua loaded and created base frames.")

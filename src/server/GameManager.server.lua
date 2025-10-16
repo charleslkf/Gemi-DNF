@@ -39,7 +39,6 @@ local CONFIG = {
     LOBBY_SPAWN_POSITION = Vector3.new(0, 50, 0),
     MACHINES_TO_SPAWN = 3,
     VICTORY_GATE_TIMER = 30,
-    MACHINE_BONUS_TIME = 5,
 }
 
 -- Teams
@@ -345,10 +344,6 @@ function spawnMachines(mapModel)
             local randomType = gameTypes[math.random(#gameTypes)]
             machine:SetAttribute("GameType", randomType)
 
-            if machine.PrimaryPart then
-                machine.PrimaryPart.CanCollide = true
-            end
-
             local yOffset = machine.PrimaryPart.Size.Y / 2
             machine:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position + Vector3.new(0, yOffset, 0)))
             machine.Parent = machineFolder
@@ -489,12 +484,8 @@ function enterEscape()
 
     local remotes = ReplicatedStorage:WaitForChild("Remotes")
     local escapeEvent = remotes:WaitForChild("EscapeSequenceStarted")
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player.Team == survivorsTeam then
-            print("[GameManager-DEBUG] Firing EscapeSequenceStarted event for: " .. player.Name)
-            escapeEvent:FireClient(player, gateNames)
-        end
-    end
+    print("[GameManager-DEBUG] Firing EscapeSequenceStarted event for all clients.")
+    escapeEvent:FireAllClients(gateNames)
 end
 
 function checkWinConditions()
@@ -589,22 +580,8 @@ for _, player in ipairs(Players:GetPlayers()) do
 end
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
-if not remotes:FindFirstChild("ShowNotification") then
-    Instance.new("RemoteEvent", remotes).Name = "ShowNotification"
-end
 local resetRoundEvent = remotes:WaitForChild("ResetRoundRequest")
 local startRoundEvent = remotes:WaitForChild("StartRoundRequest")
-local machineFixedEvent = remotes:WaitForChild("MachineFixed")
-local showNotificationEvent = remotes:WaitForChild("ShowNotification")
-
-machineFixedEvent.OnServerEvent:Connect(function(player)
-    if gameState == "Playing" then
-        stateTimer = stateTimer + CONFIG.MACHINE_BONUS_TIME
-        print(string.format("[GameManager] Machine fixed! Added %d seconds. New time: %d", CONFIG.MACHINE_BONUS_TIME, stateTimer))
-        showNotificationEvent:FireAllClients("Machine Fixed +" .. CONFIG.MACHINE_BONUS_TIME .. " sec")
-    end
-    GameStateManager:IncrementMachinesCompleted()
-end)
 
 resetRoundEvent.OnServerEvent:Connect(function(player)
     print(string.format("[GameManager] Soft reset requested by %s. Forcing return to Waiting state.", player.Name))

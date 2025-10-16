@@ -4,7 +4,7 @@ This document contains a set of rules and guidelines to follow during the develo
 
 ## 1. Plan Approval Workflow (MANDATORY)
 - **Propose First:** After receiving a new objective, first analyze the request and create a detailed, step-by-step plan.
-- **Wait for Approval:** Present this plan to the user. **DO NOT** begin any work (creating files, editing code, etc.) until you receive explicit permission to proceed from the user. This is to prevent wasted work from misunderstandings.
+- **Wait for Approval:** Present this plan to the user. **DO NOT** begin any work (creating files, editing code, etc.) until you receive explicit permission to proceed from the user. This is to prevent wasted work from misunderstandings. I MUST NEVER EVER TRY TO MAKE CHANGES THAT THE USER DID NOT APPROVE. AFTER I PRESENT MY PLAN, I MUST WAIT FOR THE USER'S EXPLICIT PERMISSION TO START WORK.
 
 ## 2. World & Asset Generation
 - **`GameManager.server.lua`:** This is the authoritative script for all world generation.
