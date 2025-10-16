@@ -589,6 +589,9 @@ for _, player in ipairs(Players:GetPlayers()) do
 end
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
+if not remotes:FindFirstChild("ShowNotification") then
+    Instance.new("RemoteEvent", remotes).Name = "ShowNotification"
+end
 local resetRoundEvent = remotes:WaitForChild("ResetRoundRequest")
 local startRoundEvent = remotes:WaitForChild("StartRoundRequest")
 local machineFixedEvent = remotes:WaitForChild("MachineFixed")
