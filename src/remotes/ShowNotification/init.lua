@@ -1,0 +1,3 @@
+-- This script is intentionally left blank.
+-- It serves as a placeholder for the Rojo tool to recognize this folder
+-- as a RemoteEvent to be created in ReplicatedStorage.

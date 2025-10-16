@@ -84,6 +84,7 @@ local function _spawnNPCRandomly(mapModel)
     hrp.Name = "HumanoidRootPart"
     hrp.Size = Vector3.new(2, 2, 1)
     hrp.Anchored = true
+    hrp.CanCollide = true -- Make the Store Keeper solid
 
     local humanoid = Instance.new("Humanoid", activeNPC)
     humanoid.DisplayName = "Store Keeper"

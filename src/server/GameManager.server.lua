@@ -345,6 +345,10 @@ function spawnMachines(mapModel)
             local randomType = gameTypes[math.random(#gameTypes)]
             machine:SetAttribute("GameType", randomType)
 
+            if machine.PrimaryPart then
+                machine.PrimaryPart.CanCollide = true
+            end
+
             local yOffset = machine.PrimaryPart.Size.Y / 2
             machine:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position + Vector3.new(0, yOffset, 0)))
             machine.Parent = machineFolder
@@ -588,11 +592,13 @@ local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local resetRoundEvent = remotes:WaitForChild("ResetRoundRequest")
 local startRoundEvent = remotes:WaitForChild("StartRoundRequest")
 local machineFixedEvent = remotes:WaitForChild("MachineFixed")
+local showNotificationEvent = remotes:WaitForChild("ShowNotification")
 
 machineFixedEvent.OnServerEvent:Connect(function(player)
     if gameState == "Playing" then
         stateTimer = stateTimer + CONFIG.MACHINE_BONUS_TIME
         print(string.format("[GameManager] Machine fixed! Added %d seconds. New time: %d", CONFIG.MACHINE_BONUS_TIME, stateTimer))
+        showNotificationEvent:FireAllClients("Machine Fixed +" .. CONFIG.MACHINE_BONUS_TIME .. " sec")
     end
     GameStateManager:IncrementMachinesCompleted()
 end)
