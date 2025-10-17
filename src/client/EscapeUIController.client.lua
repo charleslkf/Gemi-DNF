@@ -239,25 +239,18 @@ end
 
 -- Listen for the dedicated escape event to start the UI
 EscapeSequenceStarted.OnClientEvent:Connect(function(gateNames)
-    print("[EscapeUIController] Escape sequence started for client: " .. player.Name)
-    table.clear(activeGates)
-    for _, name in ipairs(gateNames) do
-        local gatePart = Workspace:WaitForChild(name, 10)
-        if gatePart then
-            table.insert(activeGates, gatePart)
-        end
-    end
-
-    createArrows()
-
-    -- The screen crack effect should be visible to everyone.
-    -- The UI update loop handles the flickering effect.
-    if not uiUpdateConnection then
-        uiUpdateConnection = RunService.Heartbeat:Connect(updateUI)
-    end
-
-    -- Only survivors get the pathfinding arrows and path updates.
     if player.Team and player.Team.Name == "Survivors" then
+        print("[EscapeUIController] Escape sequence started. Restoring pathfinding system.")
+        table.clear(activeGates)
+        for _, name in ipairs(gateNames) do
+            local gatePart = Workspace:WaitForChild(name, 10)
+            if gatePart then
+                table.insert(activeGates, gatePart)
+            end
+        end
+
+        createArrows()
+
         -- Start path recalculation loop
         if not pathUpdateConnection then
             pathUpdateConnection = task.spawn(function()
@@ -266,6 +259,11 @@ EscapeSequenceStarted.OnClientEvent:Connect(function(gateNames)
                     task.wait(1) -- Recalculate every second
                 end
             end)
+        end
+
+        -- Start UI update loop
+        if not uiUpdateConnection then
+            uiUpdateConnection = RunService.Heartbeat:Connect(updateUI)
         end
     end
 end)
