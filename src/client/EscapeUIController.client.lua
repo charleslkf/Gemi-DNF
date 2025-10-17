@@ -250,7 +250,13 @@ EscapeSequenceStarted.OnClientEvent:Connect(function(gateNames)
 
     createArrows()
 
-    -- Only survivors get the pathfinding arrows
+    -- The screen crack effect should be visible to everyone.
+    -- The UI update loop handles the flickering effect.
+    if not uiUpdateConnection then
+        uiUpdateConnection = RunService.Heartbeat:Connect(updateUI)
+    end
+
+    -- Only survivors get the pathfinding arrows and path updates.
     if player.Team and player.Team.Name == "Survivors" then
         -- Start path recalculation loop
         if not pathUpdateConnection then
@@ -260,11 +266,6 @@ EscapeSequenceStarted.OnClientEvent:Connect(function(gateNames)
                     task.wait(1) -- Recalculate every second
                 end
             end)
-        end
-
-        -- Start UI update loop
-        if not uiUpdateConnection then
-            uiUpdateConnection = RunService.Heartbeat:Connect(updateUI)
         end
     end
 end)
