@@ -2,6 +2,12 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## [6.1.9] - 2025-10-16
+
+### Fixed
+- Resolved a server-side race condition in `GameManager.server.lua` where the game state would change before the machine repair time bonus could be applied. The logic was reordered to ensure the bonus is always awarded.
+- Implemented a missing client-side event handler in `UIManager.client.lua` for the `ShowNotification` event, which now correctly displays the `+5 sec` notification when a machine is fixed.
+
 ## Version 4.4.1
 - **Bug Fix: All Spawned Objects "Half-Buried"**
   - Corrected the spawning logic for every object type in the game (Players, Killers, Machines, Hangers, Coin Stashes, Store Keepers, and Victory Gates).
