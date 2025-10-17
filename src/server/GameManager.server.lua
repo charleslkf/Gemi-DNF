@@ -489,12 +489,8 @@ function enterEscape()
 
     local remotes = ReplicatedStorage:WaitForChild("Remotes")
     local escapeEvent = remotes:WaitForChild("EscapeSequenceStarted")
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player.Team == survivorsTeam then
-            print("[GameManager-DEBUG] Firing EscapeSequenceStarted event for: " .. player.Name)
-            escapeEvent:FireClient(player, gateNames)
-        end
-    end
+    print("[GameManager-DEBUG] Firing EscapeSequenceStarted event for all clients.")
+    escapeEvent:FireAllClients(gateNames)
 end
 
 function checkWinConditions()
