@@ -594,12 +594,21 @@ local machineFixedEvent = remotes:WaitForChild("MachineFixed")
 local showNotificationEvent = remotes:WaitForChild("ShowNotification")
 
 machineFixedEvent.OnServerEvent:Connect(function(player)
+    -- A killer or someone not on the survivor team should not be able to fix a machine.
+    if not player or player.Team ~= survivorsTeam then
+        return
+    end
+
     if gameState == "Playing" then
+        -- Add time bonus and update UI *before* the action that could change the game state.
         stateTimer = stateTimer + CONFIG.MACHINE_BONUS_TIME
+        GameStateManager:SetTimer(stateTimer) -- This is critical to sync the HUD
         print(string.format("[GameManager] Machine fixed! Added %d seconds. New time: %d", CONFIG.MACHINE_BONUS_TIME, stateTimer))
         showNotificationEvent:FireAllClients("Machine Fixed +" .. CONFIG.MACHINE_BONUS_TIME .. " sec")
+
+        -- Now, perform the action that might trigger a win condition check.
+        GameStateManager:IncrementMachinesCompleted()
     end
-    GameStateManager:IncrementMachinesCompleted()
 end)
 
 resetRoundEvent.OnServerEvent:Connect(function(player)
