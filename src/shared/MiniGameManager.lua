@@ -318,11 +318,13 @@ function MiniGameManager.init()
         local characterPos = character.PrimaryPart.Position
         local closestMachineFound
 
-        for _, machine in ipairs(machinesFolder:GetChildren()) do
-            if not machine:IsA("Model") or not machine.PrimaryPart then continue end
-            if (characterPos - machine.PrimaryPart.Position).Magnitude < CONFIG.INTERACTION_DISTANCE and not machine:GetAttribute("IsCompleted") then
-                closestMachineFound = machine
-                break
+        if player.Team and player.Team.Name == "Survivors" then
+            for _, machine in ipairs(machinesFolder:GetChildren()) do
+                if not machine:IsA("Model") or not machine.PrimaryPart then continue end
+                if (characterPos - machine.PrimaryPart.Position).Magnitude < CONFIG.INTERACTION_DISTANCE and not machine:GetAttribute("IsCompleted") then
+                    closestMachineFound = machine
+                    break
+                end
             end
         end
 

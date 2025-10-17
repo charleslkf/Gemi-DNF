@@ -344,6 +344,10 @@ function spawnMachines(mapModel)
             local randomType = gameTypes[math.random(#gameTypes)]
             machine:SetAttribute("GameType", randomType)
 
+            if machine.PrimaryPart then
+                machine.PrimaryPart.CanCollide = true
+            end
+
             local yOffset = machine.PrimaryPart.Size.Y / 2
             machine:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position + Vector3.new(0, yOffset, 0)))
             machine.Parent = machineFolder
