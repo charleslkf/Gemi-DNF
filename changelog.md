@@ -2,6 +2,13 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 6.1.10
+- **Bug Fix: Resolved Multiple Gameplay Regressions**
+  - **Machine/NPC Collision:** Machines and the Store Keeper are now solid and can no longer be walked through. The `CanCollide` property is now correctly set on their PrimaryPart when they are spawned.
+  - **Universal Escape UI:** The escape sequence UI (screen crack effect) is now correctly displayed for all players, including the Killer. The server now fires the `EscapeSequenceStarted` event to all clients, not just survivors.
+  - **Killer Machine Interaction:** Killers can no longer interact with or repair machines. A server-side check was added to the `MachineFixed` event to ensure the action is only performed by players on the "Survivors" team.
+  - **Time Bonus Fix:** The "+5 sec" time bonus for repairing a machine is now correctly applied to the round timer and a notification is displayed on the HUD. This fixed a race condition and a duplicate event listener that was preventing the bonus from working as intended.
+
 ## Version 4.4.1
 - **Bug Fix: All Spawned Objects "Half-Buried"**
   - Corrected the spawning logic for every object type in the game (Players, Killers, Machines, Hangers, Coin Stashes, Store Keepers, and Victory Gates).
