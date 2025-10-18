@@ -33,6 +33,22 @@ local lastAttackTimes = {} -- { [Player]: tick() }
 local killersTeam = Teams:WaitForChild("Killers")
 local survivorsTeam = Teams:WaitForChild("Survivors")
 
+-- Animation Setup
+local animationsFolder = ReplicatedStorage:FindFirstChild("Animations")
+if not animationsFolder then
+    animationsFolder = Instance.new("Folder")
+    animationsFolder.Name = "Animations"
+    animationsFolder.Parent = ReplicatedStorage
+end
+
+local crawlAnimation = animationsFolder:FindFirstChild("Crawl")
+if not crawlAnimation then
+    crawlAnimation = Instance.new("Animation")
+    crawlAnimation.Name = "Crawl"
+    crawlAnimation.AnimationId = "rbxassetid://507766388"
+    crawlAnimation.Parent = animationsFolder
+end
+
 -- Main Handler for Attack Requests
 -- Main Handler for Attack Requests. The target can be a Player object or a Model.
 local function onAttackRequest(killerPlayer, targetCharacter)
@@ -101,11 +117,24 @@ local function onAttackRequest(killerPlayer, targetCharacter)
         -- Apply normal damage, passing the killerPlayer as the damageDealer
         HealthManager.applyDamage(targetEntity, ATTACK_DAMAGE, killerPlayer)
 
-        -- Check if the survivor/bot should be caged (only for normal attacks)
+        -- Check if the survivor/bot should be downed (only for normal attacks)
         local targetHealth = HealthManager.getHealth(targetEntity)
         if targetHealth and targetHealth <= CAGE_HEALTH_THRESHOLD then
-            print(string.format("[InteractionManager] Health is %d, attempting to cage %s.", targetHealth, targetCharacter.Name))
-            CagingManager.cagePlayer(targetEntity, killerPlayer)
+            -- The player is now "Downed"
+            print(string.format("[InteractionManager] Health is %d, putting %s into Downed state.", targetHealth, targetCharacter.Name))
+            targetCharacter:SetAttribute("Downed", true)
+
+            local humanoid = targetCharacter:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                -- Load and play the crawl animation
+                local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
+                local crawlTrack = animator:LoadAnimation(crawlAnimation)
+                crawlTrack:Play()
+                crawlTrack.Looped = true
+
+                -- Reduce speed
+                humanoid.WalkSpeed = 5
+            end
         end
     end
 end

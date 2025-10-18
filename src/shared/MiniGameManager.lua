@@ -306,7 +306,7 @@ function MiniGameManager.init()
         local machinesFolder = Workspace:FindFirstChild(CONFIG.MACHINE_FOLDER_NAME)
         local character = player.Character
 
-        if not machinesFolder or not character or not character.PrimaryPart then
+        if not machinesFolder or not character or not character.PrimaryPart or character:GetAttribute("Downed") then
             if nearbyMachine and nearbyMachine.Parent then
                  local prompt = nearbyMachine:FindFirstChild("InteractionPrompt")
                  if prompt then prompt:Destroy() end
