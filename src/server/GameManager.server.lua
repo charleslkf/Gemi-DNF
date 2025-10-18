@@ -29,6 +29,22 @@ local MapGenerator = require(ReplicatedStorage:WaitForChild("MyModules"):WaitFor
 -- Generate the procedural map on server startup
 MapGenerator.Generate()
 
+-- Create shared assets that clients might need
+local animationsFolder = ReplicatedStorage:FindFirstChild("Animations")
+if not animationsFolder then
+    animationsFolder = Instance.new("Folder")
+    animationsFolder.Name = "Animations"
+    animationsFolder.Parent = ReplicatedStorage
+end
+
+local crawlAnimation = animationsFolder:FindFirstChild("Crawl")
+if not crawlAnimation then
+    crawlAnimation = Instance.new("Animation")
+    crawlAnimation.Name = "Crawl"
+    crawlAnimation.AnimationId = "rbxassetid://507766388"
+    crawlAnimation.Parent = animationsFolder
+end
+
 -- Configuration
 local CONFIG = {
     INTERMISSION_DURATION = 15,
