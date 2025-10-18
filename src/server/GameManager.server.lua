@@ -489,7 +489,7 @@ function enterEscape()
 
     local remotes = ReplicatedStorage:WaitForChild("Remotes")
     local escapeEvent = remotes:WaitForChild("EscapeSequenceStarted")
-    print("[GameManager-DEBUG] Firing EscapeSequenceStarted event for all clients.")
+    print("[GameManager-DEBUG] SERVER SCRIPT: About to fire EscapeSequenceStarted for all clients.")
     escapeEvent:FireAllClients(gateNames)
 end
 
