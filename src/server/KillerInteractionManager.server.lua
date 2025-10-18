@@ -135,6 +135,9 @@ local function onAttackRequest(killerPlayer, targetCharacter)
 
                 -- Reduce speed
                 humanoid.WalkSpeed = 5
+
+                -- Force state to ensure animation plays
+                humanoid:ChangeState(Enum.HumanoidStateType.Physics)
             end
         end
     end
