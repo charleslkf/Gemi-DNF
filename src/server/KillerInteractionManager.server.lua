@@ -129,6 +129,7 @@ local function onAttackRequest(killerPlayer, targetCharacter)
                 -- Load and play the crawl animation
                 local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
                 local crawlTrack = animator:LoadAnimation(crawlAnimation)
+                crawlTrack.Priority = Enum.AnimationPriority.Action
                 crawlTrack:Play()
                 crawlTrack.Looped = true
 
