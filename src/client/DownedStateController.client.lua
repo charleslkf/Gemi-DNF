@@ -15,6 +15,8 @@ local DownedStateChanged = Remotes:WaitForChild("DownedStateChanged")
 local CrawlAnimation = ReplicatedStorage:WaitForChild("CrawlAnimation")
 
 -- Main Event Handler
+local activeCrawlTracks = {} -- [Character] = AnimationTrack
+
 DownedStateChanged.OnClientEvent:Connect(function(downedCharacter)
     if not downedCharacter then return end
 
@@ -35,8 +37,21 @@ DownedStateChanged.OnClientEvent:Connect(function(downedCharacter)
     crawlTrack.Looped = true
     crawlTrack:Play()
 
-    -- We do not need to force the humanoid state if we disable the Animate script.
-    -- The priority and disabled script handle it correctly.
+    activeCrawlTracks[downedCharacter] = crawlTrack
+end)
+
+-- Listen for attribute changes to stop the animation when carried
+workspace.DescendantAdded:Connect(function(descendant)
+    if descendant:IsA("Model") and descendant:FindFirstChildOfClass("Humanoid") then
+        descendant:GetAttributeChangedSignal("BeingCarried"):Connect(function()
+            if descendant:GetAttribute("BeingCarried") == true then
+                if activeCrawlTracks[descendant] then
+                    activeCrawlTracks[descendant]:Stop()
+                    activeCrawlTracks[descendant] = nil
+                end
+            end
+        end)
+    end
 end)
 
 print("DownedStateController.client.lua loaded and listening.")

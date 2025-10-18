@@ -22,6 +22,10 @@ local MAX_ATTACK_DISTANCE = 10
 -- Remotes
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local AttackRequest = Remotes:WaitForChild("AttackRequest")
+local RequestGrab = Remotes:WaitForChild("RequestGrab")
+
+-- Configuration
+local MAX_GRAB_DISTANCE = 15
 
 -- State
 local killersTeam = Teams:WaitForChild("Killers")
@@ -49,13 +53,11 @@ local function findCharacterFromPart(part)
 end
 
 -- Main Attack Logic
-local function onInputBegan(input, gameProcessed)
-    -- Only proceed if input was a left-click and not handled by the game engine already
+local function onAttackInput(input, gameProcessed)
     if input.UserInputType ~= Enum.UserInputType.MouseButton1 or gameProcessed then
         return
     end
 
-    -- Abort if the player is not a killer or if their character doesn't exist
     if not isKiller() or not player.Character or not player.Character.PrimaryPart then
         return
     end
@@ -63,39 +65,74 @@ local function onInputBegan(input, gameProcessed)
     local targetPart = mouse.Target
     if not targetPart then return end
 
-    -- Find the character model from the clicked part
     local targetCharacter = findCharacterFromPart(targetPart)
     if not targetCharacter or targetCharacter == player.Character then
-        return -- Abort if no character was found, or if it's the killer's own character
-    end
-
-    -- Check if the target is a real player
-    local targetPlayer = Players:GetPlayerFromCharacter(targetCharacter)
-    if targetPlayer then
-        -- If it's a real player, they must be on the opposing team
-        if targetPlayer.Team == killersTeam then
-            return
-        end
-    -- If it's not a real player, check if it's a bot model
-    elseif not targetCharacter.Name:match("^Bot") then
-        -- If it's not a player and not a bot, it's an invalid target
         return
     end
 
-    -- Check the distance between the killer and the target
+    local targetPlayer = Players:GetPlayerFromCharacter(targetCharacter)
+    if targetPlayer and targetPlayer.Team == killersTeam then
+        return
+    elseif not targetPlayer and not targetCharacter.Name:match("^Bot") then
+        return
+    end
+
     local distance = (player.Character.PrimaryPart.Position - targetCharacter.PrimaryPart.Position).Magnitude
     if distance > MAX_ATTACK_DISTANCE then
-        print(string.format("Attack failed: %s is too far away (%.1f studs).", targetCharacter.Name, distance))
         return
     end
 
-    -- If all checks pass, notify the server, sending the character model itself.
-    -- The server can then determine if it's a player or a bot.
     print(string.format("Attack success: Firing remote for %s.", targetCharacter.Name))
     AttackRequest:FireServer(targetCharacter)
 end
 
--- Connect the handler to user input
-UserInputService.InputBegan:Connect(onInputBegan)
+-- Grab Logic
+local function onGrabInput(input, gameProcessed)
+    if input.KeyCode ~= Enum.KeyCode.F or gameProcessed then
+        return
+    end
+
+    if not isKiller() or not player.Character or not player.Character.PrimaryPart then
+        return
+    end
+
+    -- Find the nearest downed character
+    local killerPos = player.Character.PrimaryPart.Position
+    local nearestDownedChar, minDistance = nil, MAX_GRAB_DISTANCE
+
+    for _, otherPlayer in ipairs(Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character and otherPlayer.Character:GetAttribute("Downed") then
+            local distance = (killerPos - otherPlayer.Character.PrimaryPart.Position).Magnitude
+            if distance < minDistance then
+                minDistance = distance
+                nearestDownedChar = otherPlayer.Character
+            end
+        end
+    end
+
+    -- Also check for downed bots
+    for _, model in ipairs(workspace:GetChildren()) do
+        if model:IsA("Model") and model.Name:match("^Bot") and model:GetAttribute("Downed") then
+            if model.PrimaryPart then
+                local distance = (killerPos - model.PrimaryPart.Position).Magnitude
+                if distance < minDistance then
+                    minDistance = distance
+                    nearestDownedChar = model
+                end
+            end
+        end
+    end
+
+    if nearestDownedChar then
+        print(string.format("Requesting to grab downed character: %s", nearestDownedChar.Name))
+        RequestGrab:FireServer(nearestDownedChar)
+    end
+end
+
+-- Connect the handlers to user input
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    onAttackInput(input, gameProcessed)
+    onGrabInput(input, gameProcessed)
+end)
 
 print("KillerControls.client.lua loaded.")

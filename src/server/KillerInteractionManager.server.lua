@@ -134,4 +134,49 @@ end)
 -- Connect the handler to the remote event
 AttackRequest.OnServerEvent:Connect(onAttackRequest)
 
+-- Main Handler for Grab Requests
+local function onRequestGrab(killerPlayer, targetCharacter)
+    local killerCharacter = killerPlayer.Character
+    if not killerCharacter or not targetCharacter or not targetCharacter:FindFirstChild("Humanoid") then
+        return
+    end
+
+    -- Validation
+    if not targetCharacter:GetAttribute("Downed") then
+        print("[InteractionManager] Grab failed: Target is not downed.")
+        return
+    end
+
+    if killerCharacter:GetAttribute("Carrying") then
+        print("[InteractionManager] Grab failed: Killer is already carrying someone.")
+        return
+    end
+
+    local distance = (killerCharacter.PrimaryPart.Position - targetCharacter.PrimaryPart.Position).Magnitude
+    if distance > 15 then -- Use a grab-specific distance check
+        print("[InteractionManager] Grab failed: Target is too far away.")
+        return
+    end
+
+    -- Incapacitate and attach the survivor
+    local targetHumanoid = targetCharacter:FindFirstChildOfClass("Humanoid")
+    if targetHumanoid then
+        targetHumanoid.WalkSpeed = 0
+    end
+
+    local weld = Instance.new("WeldConstraint")
+    weld.Part0 = killerCharacter.HumanoidRootPart
+    weld.Part1 = targetCharacter.HumanoidRootPart
+    weld.Parent = killerCharacter.HumanoidRootPart
+
+    killerCharacter:SetAttribute("Carrying", targetCharacter)
+    targetCharacter:SetAttribute("BeingCarried", true)
+
+    print(string.format("[InteractionManager] %s has grabbed %s.", killerPlayer.Name, targetCharacter.Name))
+end
+
+local RequestGrab = Remotes:WaitForChild("RequestGrab")
+RequestGrab.OnServerEvent:Connect(onRequestGrab)
+
+
 print("KillerInteractionManager (Remote Event version) is running.")
