@@ -169,7 +169,7 @@ local function onRequestGrab(killerPlayer, targetCharacter)
     weld.Part1 = targetCharacter.HumanoidRootPart
     weld.Parent = killerCharacter.HumanoidRootPart
 
-    killerCharacter:SetAttribute("Carrying", targetCharacter)
+    killerCharacter:SetAttribute("Carrying", targetCharacter.Name)
     targetCharacter:SetAttribute("BeingCarried", true)
 
     print(string.format("[InteractionManager] %s has grabbed %s.", killerPlayer.Name, targetCharacter.Name))
