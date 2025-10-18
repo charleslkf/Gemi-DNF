@@ -34,20 +34,6 @@ local killersTeam = Teams:WaitForChild("Killers")
 local survivorsTeam = Teams:WaitForChild("Survivors")
 
 -- Animation Setup
-local animationsFolder = ReplicatedStorage:FindFirstChild("Animations")
-if not animationsFolder then
-    animationsFolder = Instance.new("Folder")
-    animationsFolder.Name = "Animations"
-    animationsFolder.Parent = ReplicatedStorage
-end
-
-local crawlAnimation = animationsFolder:FindFirstChild("Crawl")
-if not crawlAnimation then
-    crawlAnimation = Instance.new("Animation")
-    crawlAnimation.Name = "Crawl"
-    crawlAnimation.AnimationId = "rbxassetid://507766388"
-    crawlAnimation.Parent = animationsFolder
-end
 
 -- Main Handler for Attack Requests
 -- Main Handler for Attack Requests. The target can be a Player object or a Model.
@@ -126,18 +112,13 @@ local function onAttackRequest(killerPlayer, targetCharacter)
 
             local humanoid = targetCharacter:FindFirstChildOfClass("Humanoid")
             if humanoid then
-                -- Load and play the crawl animation
-                local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
-                local crawlTrack = animator:LoadAnimation(crawlAnimation)
-                crawlTrack.Priority = Enum.AnimationPriority.Action
-                crawlTrack:Play()
-                crawlTrack.Looped = true
-
-                -- Reduce speed
                 humanoid.WalkSpeed = 5
+            end
 
-                -- Force state to ensure animation plays
-                humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+            -- Command all clients to handle the visual change
+            local downedStateEvent = Remotes:FindFirstChild("DownedStateChanged")
+            if downedStateEvent then
+                downedStateEvent:FireAllClients(targetCharacter)
             end
         end
     end

@@ -591,6 +591,9 @@ local resetRoundEvent = remotes:WaitForChild("ResetRoundRequest")
 local startRoundEvent = remotes:WaitForChild("StartRoundRequest")
 local machineFixedEvent = remotes:WaitForChild("MachineFixed")
 local showNotificationEvent = remotes:WaitForChild("ShowNotification")
+if not remotes:FindFirstChild("DownedStateChanged") then
+    Instance.new("RemoteEvent", remotes).Name = "DownedStateChanged"
+end
 
 machineFixedEvent.OnServerEvent:Connect(function(player)
     -- A killer or someone not on the survivor team should not be able to fix a machine.
