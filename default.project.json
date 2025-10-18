@@ -18,6 +18,9 @@
       },
       "GameManager": {
         "$path": "src/server/GameManager.server.lua"
+      },
+      "InitializeRemotes": {
+        "$path": "src/server/InitializeRemotes.server.lua"
       }
     },
     "ReplicatedStorage": {

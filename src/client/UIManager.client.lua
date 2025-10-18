@@ -128,7 +128,11 @@ GameStateChanged.OnClientEvent:Connect(function(newState)
 end)
 
 -- Listen for local player stat changes
-local leaderstats = player:WaitForChild("leaderstats")
+local leaderstats = player:WaitForChild("leaderstats", 10)
+if not leaderstats then
+    warn("UIManager: leaderstats not found on player after 10 seconds.")
+    return
+end
 local levelCoins = leaderstats:WaitForChild("LevelCoins")
 levelCoins.Changed:Connect(function(newCoins)
     coinLabel.Text = string.format("Coins: %d", newCoins)

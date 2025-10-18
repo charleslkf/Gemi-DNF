@@ -2,6 +2,16 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 6.1.12
+- **Feature: Implemented Survivor "Downed" State**
+  - This is the first step of the new "Hanger" caging system.
+  - When a Killer attacks a low-health Survivor, the Survivor is no longer instantly caged.
+  - Instead, they now enter a "Downed" state, which forces them into a slow-moving crawl animation.
+  - Downed players are correctly prevented from interacting with objectives like Machines.
+  - **Technical Implementation:**
+    - Refactored the animation logic to be client-centric for reliability. The server now fires a `DownedStateChanged` `RemoteEvent`, and a new `DownedStateController` on the client handles playing the animation. This fixed multiple bugs where the animation would not play.
+    - Centralized the creation of the "Crawl" animation asset into the main `GameManager` script to prevent "Infinite yield" errors on the client.
+
 ## Version 6.1.10
 - **Bug Fix: Resolved Multiple Gameplay Regressions**
   - **Machine/NPC Collision:** Machines and the Store Keeper are now solid and can no longer be walked through. The `CanCollide` property is now correctly set on their PrimaryPart when they are spawned.
