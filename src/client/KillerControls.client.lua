@@ -23,9 +23,11 @@ local MAX_ATTACK_DISTANCE = 10
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local AttackRequest = Remotes:WaitForChild("AttackRequest")
 local RequestGrab = Remotes:WaitForChild("RequestGrab")
+local RequestHang = Remotes:WaitForChild("RequestHang")
 
 -- Configuration
 local MAX_GRAB_DISTANCE = 15
+local MAX_HANG_DISTANCE = 10
 
 -- State
 local killersTeam = Teams:WaitForChild("Killers")
@@ -36,6 +38,21 @@ local function isKiller()
 end
 
 -- Helper function to find a character model from any of its descendant parts
+local function createInteractionPrompt(text)
+    local promptGui = Instance.new("BillboardGui")
+    promptGui.Name = "InteractionPrompt"
+    promptGui.Size = UDim2.new(5, 0, 2, 0)
+    promptGui.AlwaysOnTop = true
+    local textLabel = Instance.new("TextLabel", promptGui)
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.Text = text
+    textLabel.Font = Enum.Font.SourceSansBold
+    textLabel.TextSize = 30
+    textLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+    textLabel.BackgroundTransparency = 1
+    return promptGui
+end
+
 local function findCharacterFromPart(part)
     if not part then return nil end
     local current = part
@@ -129,10 +146,79 @@ local function onGrabInput(input, gameProcessed)
     end
 end
 
+-- Hang Logic
+local function onHangInput(input, gameProcessed)
+    if input.KeyCode ~= Enum.KeyCode.E or gameProcessed then
+        return
+    end
+
+    local killerCharacter = player.Character
+    if not isKiller() or not killerCharacter or not killerCharacter:GetAttribute("Carrying") then
+        return
+    end
+
+    -- Find the nearest hanger
+    local killerPos = killerCharacter.PrimaryPart.Position
+    local nearestHanger, minDistance = nil, MAX_HANG_DISTANCE
+    local hangersFolder = workspace:FindFirstChild("Hangers")
+
+    if hangersFolder then
+        for _, hanger in ipairs(hangersFolder:GetChildren()) do
+            if hanger:IsA("Model") and hanger.PrimaryPart then
+                local distance = (killerPos - hanger.PrimaryPart.Position).Magnitude
+                if distance < minDistance then
+                    minDistance = distance
+                    nearestHanger = hanger
+                end
+            end
+        end
+    end
+
+    if nearestHanger then
+        print(string.format("Requesting to hang on hanger: %s", nearestHanger.Name))
+        RequestHang:FireServer(nearestHanger)
+    end
+end
+
 -- Connect the handlers to user input
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     onAttackInput(input, gameProcessed)
     onGrabInput(input, gameProcessed)
+    onHangInput(input, gameProcessed)
+end)
+
+-- Proximity check loop for prompts
+local nearbyHanger = nil
+game:GetService("RunService").RenderStepped:Connect(function()
+    local killerCharacter = player.Character
+    if not isKiller() or not killerCharacter or not killerCharacter.PrimaryPart then
+        return
+    end
+
+    local closestHangerFound = nil
+    if killerCharacter:GetAttribute("Carrying") then
+        local killerPos = killerCharacter.PrimaryPart.Position
+        local hangersFolder = workspace:FindFirstChild("Hangers")
+        if hangersFolder then
+            for _, hanger in ipairs(hangersFolder:GetChildren()) do
+                if hanger:IsA("Model") and hanger.PrimaryPart and (killerPos - hanger.PrimaryPart.Position).Magnitude < MAX_HANG_DISTANCE then
+                    closestHangerFound = hanger
+                    break
+                end
+            end
+        end
+    end
+
+    if closestHangerFound ~= nearbyHanger then
+        if nearbyHanger and nearbyHanger.Parent then
+            local oldPrompt = nearbyHanger:FindFirstChild("InteractionPrompt")
+            if oldPrompt then oldPrompt:Destroy() end
+        end
+        if closestHangerFound then
+            createInteractionPrompt("[E] to Hang").Parent = closestHangerFound
+        end
+        nearbyHanger = closestHangerFound
+    end
 end)
 
 print("KillerControls.client.lua loaded.")

@@ -178,5 +178,56 @@ end
 local RequestGrab = Remotes:WaitForChild("RequestGrab")
 RequestGrab.OnServerEvent:Connect(onRequestGrab)
 
+-- Main Handler for Hang Requests
+local function onRequestHang(killerPlayer, hanger)
+    local killerCharacter = killerPlayer.Character
+    if not killerCharacter or not hanger or not hanger:IsA("Model") then return end
+
+    local carriedName = killerCharacter:GetAttribute("Carrying")
+    if not carriedName then
+        print("[InteractionManager] Hang failed: Killer is not carrying anyone.")
+        return
+    end
+
+    -- Find the survivor's character model in the workspace
+    local survivorCharacter = workspace:FindFirstChild(carriedName)
+    if not survivorCharacter or not survivorCharacter:GetAttribute("BeingCarried") then
+        print("[InteractionManager] Hang failed: Carried character not found or not being carried.")
+        return
+    end
+
+    -- Destroy the weld connecting survivor to killer
+    local weld = killerCharacter.HumanoidRootPart:FindFirstChildOfClass("WeldConstraint")
+    if weld and (weld.Part1 == survivorCharacter.HumanoidRootPart or weld.Part0 == survivorCharacter.HumanoidRootPart) then
+        weld:Destroy()
+    end
+
+    -- Attach survivor to hanger
+    local newWeld = Instance.new("WeldConstraint")
+    newWeld.Part0 = hanger.PrimaryPart
+    newWeld.Part1 = survivorCharacter.HumanoidRootPart
+    newWeld.Parent = hanger.PrimaryPart
+
+    -- Clear attributes
+    killerCharacter:SetAttribute("Carrying", nil)
+    survivorCharacter:SetAttribute("BeingCarried", nil)
+    -- We can also remove the "Downed" attribute now as they are being caged
+    survivorCharacter:SetAttribute("Downed", nil)
+
+    -- Trigger the caging timer
+    local survivorPlayer = Players:GetPlayerFromCharacter(survivorCharacter)
+    if survivorPlayer then
+        CagingManager.cagePlayer(survivorPlayer, killerPlayer)
+        print(string.format("[InteractionManager] %s has been hung on %s.", survivorPlayer.Name, hanger.Name))
+    else
+        -- Handle bots
+        CagingManager.cagePlayer(survivorCharacter, killerPlayer)
+        print(string.format("[InteractionManager] Bot %s has been hung on %s.", survivorCharacter.Name, hanger.Name))
+    end
+end
+
+local RequestHang = Remotes:WaitForChild("RequestHang")
+RequestHang.OnServerEvent:Connect(onRequestHang)
+
 
 print("KillerInteractionManager (Remote Event version) is running.")

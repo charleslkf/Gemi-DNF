@@ -31,7 +31,8 @@ local eventNames = {
     "GameStateChanged",
     "HealthChanged",
     "EscapeSequenceStarted",
-    "RequestGrab"
+    "RequestGrab",
+    "RequestHang"
 }
 
 -- Create each event if it doesn't exist
