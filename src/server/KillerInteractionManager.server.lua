@@ -17,11 +17,14 @@ local Teams = game:GetService("Teams")
 local HealthManager
 local CagingManager
 local KillerAbilityManager
+local CONFIG = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("Config"))
 
 -- Remotes
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local AttackRequest = Remotes:WaitForChild("AttackRequest")
 local DownedStateChanged = Remotes:WaitForChild("DownedStateChanged")
+local RequestGrab = Remotes:WaitForChild("RequestGrab")
+local RequestDrop = Remotes:WaitForChild("RequestDrop")
 
 -- Constants
 local ATTACK_COOLDOWN = 5 -- seconds
@@ -130,5 +133,96 @@ end)
 
 -- Connect the handler to the remote event
 AttackRequest.OnServerEvent:Connect(onAttackRequest)
+
+-- Handler for Grab Requests
+local function onGrabRequest(killerPlayer, targetCharacter)
+    -- 1. VALIDATION
+    local killerCharacter = killerPlayer.Character
+    if not killerCharacter or not killerCharacter.PrimaryPart or killerCharacter:GetAttribute("Carrying") then
+        return -- Killer doesn't exist or is already carrying someone
+    end
+
+    if not targetCharacter or not targetCharacter.PrimaryPart or not targetCharacter:FindFirstChild("Humanoid") then
+        return -- Target is invalid
+    end
+
+    if targetCharacter:GetAttribute("Downed") ~= true then
+        return -- Target is not in the downed state
+    end
+
+    -- Server-side distance check to prevent exploits
+    local distance = (killerCharacter.PrimaryPart.Position - targetCharacter.PrimaryPart.Position).Magnitude
+    if distance > CONFIG.GRAB_DISTANCE + 2 then -- Add a small buffer for latency
+        print(string.format("[InteractionManager] Grab failed: %s is too far from %s.", killerPlayer.Name, targetCharacter.Name))
+        return
+    end
+
+    -- 2. APPLY GRAB LOGIC
+    print(string.format("[InteractionManager] Grab validated: %s is grabbing %s.", killerPlayer.Name, targetCharacter.Name))
+
+    -- Fully incapacitate the survivor
+    targetCharacter.Humanoid.WalkSpeed = 0
+
+    -- Disable collisions on the survivor to prevent dragging issues
+    for _, part in ipairs(targetCharacter:GetDescendants()) do
+        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+            part.CanCollide = false
+        end
+    end
+
+    -- Create the weld to attach the survivor to the killer
+    local weld = Instance.new("WeldConstraint")
+    weld.Name = "GrabWeld"
+    weld.Part0 = killerCharacter.HumanoidRootPart
+    weld.Part1 = targetCharacter.HumanoidRootPart
+    weld.Parent = killerCharacter.HumanoidRootPart
+
+    -- Update killer state
+    killerCharacter:SetAttribute("Carrying", targetCharacter)
+
+    -- Apply speed penalty to the killer
+    killerCharacter.Humanoid.WalkSpeed = killerCharacter.Humanoid.WalkSpeed * CONFIG.CARRYING_SPEED_PENALTY
+end
+
+RequestGrab.OnServerEvent:Connect(onGrabRequest)
+
+-- Handler for Drop Requests
+local function onDropRequest(killerPlayer)
+    -- 1. VALIDATION
+    local killerCharacter = killerPlayer.Character
+    if not killerCharacter or not killerCharacter.PrimaryPart then return end
+
+    local carriedCharacter = killerCharacter:GetAttribute("Carrying")
+    if not carriedCharacter or not carriedCharacter.Parent or not carriedCharacter:FindFirstChild("Humanoid") then
+        return -- Killer isn't carrying a valid character
+    end
+
+    -- 2. APPLY DROP LOGIC
+    print(string.format("[InteractionManager] Drop validated: %s is dropping %s.", killerPlayer.Name, carriedCharacter.Name))
+
+    -- Destroy the weld
+    local weld = killerCharacter.HumanoidRootPart:FindFirstChild("GrabWeld")
+    if weld then
+        weld:Destroy()
+    end
+
+    -- Remove carrying attribute from killer
+    killerCharacter:SetAttribute("Carrying", nil)
+
+    -- Restore killer's normal speed
+    killerCharacter.Humanoid.WalkSpeed = killerCharacter.Humanoid.WalkSpeed / CONFIG.CARRYING_SPEED_PENALTY
+
+    -- Restore survivor's collisions
+    for _, part in ipairs(carriedCharacter:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = true
+        end
+    end
+
+    -- Return survivor to the "Downed" state (low speed)
+    carriedCharacter.Humanoid.WalkSpeed = 5
+end
+
+RequestDrop.OnServerEvent:Connect(onDropRequest)
 
 print("KillerInteractionManager (Remote Event version) is running.")

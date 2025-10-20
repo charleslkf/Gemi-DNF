@@ -128,4 +128,11 @@ function SimulatedPlayerManager.startRandomMovement(botModel)
     end)()
 end
 
+---
+-- Returns the table of currently active bot models.
+-- @returns {table} A list of the active bot models in the Workspace.
+function SimulatedPlayerManager.getSpawnedBots()
+    return activeBots
+end
+
 return SimulatedPlayerManager

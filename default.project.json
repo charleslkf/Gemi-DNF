@@ -43,10 +43,35 @@
         },
         "MapGenerator": {
           "$path": "src/shared/MapGenerator.lua"
+        },
+        "Config": {
+          "$path": "src/shared/Config.module.lua"
         }
       },
       "Remotes": {
-        "$path": "src/remotes"
+        "$className": "Folder",
+        "AttackRequest": { "$path": "src/remotes/AttackRequest" },
+        "DownedStateChanged": { "$path": "src/remotes/DownedStateChanged" },
+        "DropItemRequest": { "$path": "src/remotes/DropItemRequest" },
+        "EliminationEvent": { "$path": "src/remotes/EliminationEvent" },
+        "EscapeSequenceStarted": { "$path": "src/remotes/EscapeSequenceStarted" },
+        "GameStateChanged": { "$path": "src/remotes/GameStateChanged" },
+        "GetStoreData": { "$path": "src/remotes/GetStoreData" },
+        "HealthChanged": { "$path": "src/remotes/HealthChanged" },
+        "InventoryChanged": { "$path": "src/remotes/InventoryChanged" },
+        "MachineFixed": { "$path": "src/remotes/MachineFixed" },
+        "PlayerCaged": { "$path": "src/remotes/PlayerCaged" },
+        "PlayerRescued": { "$path": "src/remotes/PlayerRescued" },
+        "PurchaseFailed": { "$path": "src/remotes/PurchaseFailed" },
+        "PurchaseItemRequest": { "$path": "src/remotes/PurchaseItemRequest" },
+        "RequestDrop": { "$path": "src/remotes/RequestDrop" },
+        "RequestGrab": { "$path": "src/remotes/RequestGrab" },
+        "ResetRoundRequest": { "$path": "src/remotes/ResetRoundRequest" },
+        "StartRoundRequest": { "$path": "src/remotes/StartRoundRequest" },
+        "TestAddItemRequest": { "$path": "src/remotes/TestAddItemRequest" },
+        "TestCageRequest": { "$path": "src/remotes/TestCageRequest" },
+        "TestDamageRequest": { "$path": "src/remotes/TestDamageRequest" },
+        "UseItemRequest": { "$path": "src/remotes/UseItemRequest" }
       }
     },
     "StarterPlayer": {
