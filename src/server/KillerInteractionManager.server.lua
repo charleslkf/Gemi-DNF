@@ -17,10 +17,15 @@ local Teams = game:GetService("Teams")
 local HealthManager
 local CagingManager
 local KillerAbilityManager
+local CONFIG = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("Config"))
 
 -- Remotes
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local AttackRequest = Remotes:WaitForChild("AttackRequest")
+local DownedStateChanged = Remotes:WaitForChild("DownedStateChanged")
+local RequestGrab = Remotes:WaitForChild("RequestGrab")
+local RequestDrop = Remotes:WaitForChild("RequestDrop")
+local CarryingStateChanged = Remotes:WaitForChild("CarryingStateChanged")
 
 -- Constants
 local ATTACK_COOLDOWN = 5 -- seconds
@@ -30,6 +35,7 @@ local MAX_ATTACK_DISTANCE = 12 -- A little more than the client's 10 for latency
 
 -- State
 local lastAttackTimes = {} -- { [Player]: tick() }
+local carrying = {} -- { [killerPlayer]: survivorCharacter }
 local killersTeam = Teams:WaitForChild("Killers")
 local survivorsTeam = Teams:WaitForChild("Survivors")
 
@@ -101,11 +107,21 @@ local function onAttackRequest(killerPlayer, targetCharacter)
         -- Apply normal damage, passing the killerPlayer as the damageDealer
         HealthManager.applyDamage(targetEntity, ATTACK_DAMAGE, killerPlayer)
 
-        -- Check if the survivor/bot should be caged (only for normal attacks)
+        -- Check if the survivor/bot should be downed (only for normal attacks)
         local targetHealth = HealthManager.getHealth(targetEntity)
         if targetHealth and targetHealth <= CAGE_HEALTH_THRESHOLD then
-            print(string.format("[InteractionManager] Health is %d, attempting to cage %s.", targetHealth, targetCharacter.Name))
-            CagingManager.cagePlayer(targetEntity, killerPlayer)
+            print(string.format("[InteractionManager] Health is %d. Putting %s into Downed state.", targetHealth, targetCharacter.Name))
+
+            -- Set the "Downed" attribute on the character model
+            targetCharacter:SetAttribute("Downed", true)
+
+            -- Reduce the survivor's movement speed
+            if targetCharacter.Humanoid then
+                targetCharacter.Humanoid.WalkSpeed = 5
+            end
+
+            -- Notify all clients that the player's state has changed
+            DownedStateChanged:FireAllClients(targetCharacter)
         end
     end
 end
@@ -115,9 +131,103 @@ Players.PlayerRemoving:Connect(function(player)
     if lastAttackTimes[player] then
         lastAttackTimes[player] = nil
     end
+    if carrying[player] then
+        carrying[player] = nil
+    end
 end)
 
 -- Connect the handler to the remote event
 AttackRequest.OnServerEvent:Connect(onAttackRequest)
+
+-- Handler for Grab Requests
+local function onGrabRequest(killerPlayer, targetCharacter)
+    -- 1. VALIDATION
+    local killerCharacter = killerPlayer.Character
+    if not killerCharacter or not killerCharacter.PrimaryPart or carrying[killerPlayer] then
+        return -- Killer doesn't exist or is already carrying someone
+    end
+
+    if not targetCharacter or not targetCharacter.PrimaryPart or not targetCharacter:FindFirstChild("Humanoid") then
+        return -- Target is invalid
+    end
+
+    if targetCharacter:GetAttribute("Downed") ~= true then
+        return -- Target is not in the downed state
+    end
+
+    -- Server-side distance check to prevent exploits
+    local distance = (killerCharacter.PrimaryPart.Position - targetCharacter.PrimaryPart.Position).Magnitude
+    if distance > CONFIG.GRAB_DISTANCE + 2 then -- Add a small buffer for latency
+        print(string.format("[InteractionManager] Grab failed: %s is too far from %s.", killerPlayer.Name, targetCharacter.Name))
+        return
+    end
+
+    -- 2. APPLY GRAB LOGIC
+    print(string.format("[InteractionManager] Grab validated: %s is grabbing %s.", killerPlayer.Name, targetCharacter.Name))
+
+    -- Fully incapacitate the survivor
+    targetCharacter.Humanoid.WalkSpeed = 0
+
+    -- Disable collisions on the survivor to prevent dragging issues
+    for _, part in ipairs(targetCharacter:GetDescendants()) do
+        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+            part.CanCollide = false
+        end
+    end
+
+    -- Create the weld to attach the survivor to the killer
+    local weld = Instance.new("WeldConstraint")
+    weld.Name = "GrabWeld"
+    weld.Part0 = killerCharacter.HumanoidRootPart
+    weld.Part1 = targetCharacter.HumanoidRootPart
+    weld.Parent = killerCharacter.HumanoidRootPart
+
+    -- Update killer state
+    carrying[killerPlayer] = targetCharacter
+
+    -- Notify the client that its state has changed
+    CarryingStateChanged:FireClient(killerPlayer, true)
+end
+
+RequestGrab.OnServerEvent:Connect(onGrabRequest)
+
+-- Handler for Drop Requests
+local function onDropRequest(killerPlayer)
+    -- 1. VALIDATION
+    local killerCharacter = killerPlayer.Character
+    if not killerCharacter or not killerCharacter.PrimaryPart then return end
+
+    local carriedCharacter = carrying[killerPlayer]
+    if not carriedCharacter or not carriedCharacter.Parent or not carriedCharacter:FindFirstChild("Humanoid") then
+        return -- Killer isn't carrying a valid character
+    end
+
+    -- 2. APPLY DROP LOGIC
+    print(string.format("[InteractionManager] Drop validated: %s is dropping %s.", killerPlayer.Name, carriedCharacter.Name))
+
+    -- Destroy the weld
+    local weld = killerCharacter.HumanoidRootPart:FindFirstChild("GrabWeld")
+    if weld then
+        weld:Destroy()
+    end
+
+    -- Update killer state
+    carrying[killerPlayer] = nil
+
+    -- Notify the client that its state has changed
+    CarryingStateChanged:FireClient(killerPlayer, false)
+
+    -- Restore survivor's collisions
+    for _, part in ipairs(carriedCharacter:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = true
+        end
+    end
+
+    -- Return survivor to the "Downed" state (low speed)
+    carriedCharacter.Humanoid.WalkSpeed = 5
+end
+
+RequestDrop.OnServerEvent:Connect(onDropRequest)
 
 print("KillerInteractionManager (Remote Event version) is running.")

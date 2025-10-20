@@ -12,6 +12,10 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Teams = game:GetService("Teams")
 
+-- Modules
+local CONFIG = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("Config"))
+local SimulatedPlayerManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("SimulatedPlayerManager"))
+
 -- Player Globals
 local player = Players.LocalPlayer
 local mouse = player:GetMouse()
@@ -22,8 +26,12 @@ local MAX_ATTACK_DISTANCE = 10
 -- Remotes
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local AttackRequest = Remotes:WaitForChild("AttackRequest")
+local RequestGrab = Remotes:WaitForChild("RequestGrab")
+local RequestDrop = Remotes:WaitForChild("RequestDrop")
+local CarryingStateChanged = Remotes:WaitForChild("CarryingStateChanged")
 
 -- State
+local isCarrying = false
 local killersTeam = Teams:WaitForChild("Killers")
 
 -- Function to check if the player is a killer
@@ -48,10 +56,75 @@ local function findCharacterFromPart(part)
     return nil
 end
 
--- Main Attack Logic
+-- Helper function to find the nearest character in the "Downed" state
+local function findNearestDownedCharacter(position, maxDistance)
+    local nearestCharacter = nil
+    local minDistance = maxDistance
+
+    for _, otherPlayer in ipairs(Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character and otherPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local targetCharacter = otherPlayer.Character
+            if targetCharacter:GetAttribute("Downed") == true then
+                local distance = (position - targetCharacter.HumanoidRootPart.Position).Magnitude
+                if distance < minDistance then
+                    minDistance = distance
+                    nearestCharacter = targetCharacter
+                end
+            end
+        end
+    end
+    -- Find the nearest downed bot
+    local activeBots = SimulatedPlayerManager.getSpawnedBots()
+    for _, botModel in ipairs(activeBots) do
+        if botModel and botModel.Parent and botModel:FindFirstChild("HumanoidRootPart") then
+            if botModel:GetAttribute("Downed") == true then
+                local distance = (position - botModel.HumanoidRootPart.Position).Magnitude
+                if distance < minDistance then
+                    minDistance = distance
+                    nearestCharacter = botModel
+                end
+            end
+        end
+    end
+
+    return nearestCharacter
+end
+
+-- Main Attack & Grab Logic
 local function onInputBegan(input, gameProcessed)
-    -- Only proceed if input was a left-click and not handled by the game engine already
-    if input.UserInputType ~= Enum.UserInputType.MouseButton1 or gameProcessed then
+    -- Ignore input if it's already being handled by the game engine
+    if gameProcessed then
+        return
+    end
+
+    -- Abort if the player is not a killer or if their character doesn't exist
+    if not isKiller() or not player.Character or not player.Character.PrimaryPart then
+        return
+    end
+
+    local killerCharacter = player.Character
+
+    -- Handle 'F' key for Grab/Drop
+    if input.KeyCode == Enum.KeyCode.F then
+        if isCarrying then
+            -- If already carrying, drop the survivor
+            print("[KillerControls] F pressed. Requesting drop.")
+            RequestDrop:FireServer()
+        else
+            -- If not carrying, attempt to grab a downed survivor
+            local nearestDowned = findNearestDownedCharacter(killerCharacter.PrimaryPart.Position, CONFIG.GRAB_DISTANCE)
+            if nearestDowned then
+                print(string.format("[KillerControls] F pressed. Found downed character %s. Requesting grab.", nearestDowned.Name))
+                RequestGrab:FireServer(nearestDowned)
+            else
+                 print("[KillerControls] F pressed. No downed character in range.")
+            end
+        end
+        return -- End processing for 'F' key
+    end
+
+    -- Handle MouseButton1 for Attack
+    if input.UserInputType ~= Enum.UserInputType.MouseButton1 then
         return
     end
 
@@ -97,5 +170,11 @@ end
 
 -- Connect the handler to user input
 UserInputService.InputBegan:Connect(onInputBegan)
+
+-- Listen for state changes from the server
+CarryingStateChanged.OnClientEvent:Connect(function(newState)
+    isCarrying = newState
+    print("[KillerControls] Carrying state updated to:", newState)
+end)
 
 print("KillerControls.client.lua loaded.")

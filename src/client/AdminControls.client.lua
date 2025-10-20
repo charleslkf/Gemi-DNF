@@ -101,7 +101,11 @@ resetButton.MouseButton1Click:Connect(function() resetRoundEvent:FireServer() en
 startButton.MouseButton1Click:Connect(function() startRoundEvent:FireServer() end)
 damageButton.MouseButton1Click:Connect(function() testDamageEvent:FireServer() end)
 cageButton.MouseButton1Click:Connect(function() testCageEvent:FireServer() end)
-addHammerButton.MouseButton1Click:Connect(function() testAddItemEvent:FireServer("Hammer") end)
+addHammerButton.MouseButton1Click:Connect(function()
+    print("[DEBUG] AddHammerButton clicked!")
+    print("[DEBUG] Firing AddItem event to server for Hammer...")
+    testAddItemEvent:FireServer("Hammer")
+end)
 addKeyButton.MouseButton1Click:Connect(function() testAddItemEvent:FireServer("Key") end)
 
 --== Visibility Logic ==--

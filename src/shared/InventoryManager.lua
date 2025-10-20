@@ -29,6 +29,7 @@ if RunService:IsServer() then
     local inventoryChangedEvent = remotes:WaitForChild("InventoryChanged")
     local useItemRequest = remotes:WaitForChild("UseItemRequest")
     local dropItemRequest = remotes:WaitForChild("DropItemRequest")
+    local addItemRequest = remotes:WaitForChild("TestAddItemRequest")
 
     local inventories = {} -- { [Player]: { items: {string} } }
 
@@ -87,6 +88,11 @@ if RunService:IsServer() then
         print(string.format("Server: %s dropped %s.", player.Name, itemName))
         InventoryManager.removeItem(player, itemName)
     end
+
+    addItemRequest.OnServerEvent:Connect(function(player, itemName)
+        print("[DEBUG] Received AddItem request from client:", player.Name, "Item:", itemName)
+        InventoryManager.addItem(player, itemName)
+    end)
 
     useItemRequest.OnServerEvent:Connect(function(player, itemName)
         if not inventories[player] then return end
