@@ -194,36 +194,47 @@ local Workspace = game:GetService("Workspace")
 
 RunService.RenderStepped:Connect(function()
     if not _G.UI then return end -- Wait for UIManager to initialize
-
-    if not isCarrying or not player.Character or not player.Character.PrimaryPart then
-        _G.UI.setInteractionPrompt("") -- Hide prompt if not carrying
-        targetHanger = nil
+    if not player.Character or not player.Character.PrimaryPart then
+        _G.UI.setInteractionPrompt("")
         return
     end
 
     local killerPos = player.Character.PrimaryPart.Position
-    local hangersFolder = Workspace:FindFirstChild("Hangers")
-    local closestHanger = nil
-    local minDistance = CONFIG.HANGER_INTERACT_DISTANCE
 
-    if hangersFolder then
-        for _, hanger in ipairs(hangersFolder:GetChildren()) do
-            if hanger:FindFirstChild("AttachPoint") then
-                local distance = (killerPos - hanger.AttachPoint.Position).Magnitude
-                if distance < minDistance then
-                    minDistance = distance
-                    closestHanger = hanger
+    if isCarrying then
+        -- Logic for when carrying: find a hanger
+        local hangersFolder = Workspace:FindFirstChild("Hangers")
+        local closestHanger = nil
+        local minDistance = CONFIG.HANGER_INTERACT_DISTANCE
+
+        if hangersFolder then
+            for _, hanger in ipairs(hangersFolder:GetChildren()) do
+                if hanger:FindFirstChild("AttachPoint") then
+                    local distance = (killerPos - hanger.AttachPoint.Position).Magnitude
+                    if distance < minDistance then
+                        minDistance = distance
+                        closestHanger = hanger
+                    end
                 end
             end
         end
-    end
 
-    if closestHanger then
-        _G.UI.setInteractionPrompt("[E] to Hang")
-        targetHanger = closestHanger
+        if closestHanger then
+            _G.UI.setInteractionPrompt("[E] to Hang")
+            targetHanger = closestHanger
+        else
+            _G.UI.setInteractionPrompt("")
+            targetHanger = nil
+        end
     else
-        _G.UI.setInteractionPrompt("")
-        targetHanger = nil
+        -- Logic for when not carrying: find a downed survivor
+        targetHanger = nil -- Ensure this is nil when not carrying
+        local nearestDowned = findNearestDownedCharacter(killerPos, CONFIG.GRAB_DISTANCE)
+        if nearestDowned then
+            _G.UI.setInteractionPrompt("[F] to Grab")
+        else
+            _G.UI.setInteractionPrompt("")
+        end
     end
 end)
 
