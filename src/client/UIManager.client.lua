@@ -182,3 +182,23 @@ showNotificationEvent.OnClientEvent:Connect(function(message)
         notificationLabel:Destroy()
     end)
 end)
+
+-- Create the Interaction Prompt label
+local interactionPrompt = Instance.new("TextLabel")
+interactionPrompt.Name = "InteractionPrompt"
+interactionPrompt.Size = UDim2.new(1, 0, 0, 100)
+interactionPrompt.Position = UDim2.new(0, 0, 0.5, -50) -- Centered vertically
+interactionPrompt.Font = Enum.Font.SourceSansBold
+interactionPrompt.TextSize = 36
+interactionPrompt.TextColor3 = Color3.new(1, 1, 1)
+interactionPrompt.BackgroundTransparency = 1
+interactionPrompt.Text = ""
+interactionPrompt.Parent = screenGui
+
+-- Expose a global function to control the interaction prompt
+_G.UI = {}
+function _G.UI.setInteractionPrompt(text)
+    if interactionPrompt and interactionPrompt.Parent then
+        interactionPrompt.Text = text
+    end
+end

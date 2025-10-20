@@ -190,12 +190,13 @@ end)
 
 -- Proximity checks for UI prompts
 local RunService = game:GetService("RunService")
-local UIManager = require(player.PlayerScripts:WaitForChild("UIManager"))
 local Workspace = game:GetService("Workspace")
 
 RunService.RenderStepped:Connect(function()
+    if not _G.UI then return end -- Wait for UIManager to initialize
+
     if not isCarrying or not player.Character or not player.Character.PrimaryPart then
-        UIManager.setInteractionPrompt("") -- Hide prompt if not carrying
+        _G.UI.setInteractionPrompt("") -- Hide prompt if not carrying
         targetHanger = nil
         return
     end
@@ -218,10 +219,10 @@ RunService.RenderStepped:Connect(function()
     end
 
     if closestHanger then
-        UIManager.setInteractionPrompt("[E] to Hang")
+        _G.UI.setInteractionPrompt("[E] to Hang")
         targetHanger = closestHanger
     else
-        UIManager.setInteractionPrompt("")
+        _G.UI.setInteractionPrompt("")
         targetHanger = nil
     end
 end)
