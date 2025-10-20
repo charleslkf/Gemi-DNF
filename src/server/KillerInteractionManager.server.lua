@@ -25,6 +25,7 @@ local AttackRequest = Remotes:WaitForChild("AttackRequest")
 local DownedStateChanged = Remotes:WaitForChild("DownedStateChanged")
 local RequestGrab = Remotes:WaitForChild("RequestGrab")
 local RequestDrop = Remotes:WaitForChild("RequestDrop")
+local CarryingStateChanged = Remotes:WaitForChild("CarryingStateChanged")
 
 -- Constants
 local ATTACK_COOLDOWN = 5 -- seconds
@@ -34,6 +35,7 @@ local MAX_ATTACK_DISTANCE = 12 -- A little more than the client's 10 for latency
 
 -- State
 local lastAttackTimes = {} -- { [Player]: tick() }
+local carrying = {} -- { [killerPlayer]: survivorCharacter }
 local killersTeam = Teams:WaitForChild("Killers")
 local survivorsTeam = Teams:WaitForChild("Survivors")
 
@@ -129,6 +131,9 @@ Players.PlayerRemoving:Connect(function(player)
     if lastAttackTimes[player] then
         lastAttackTimes[player] = nil
     end
+    if carrying[player] then
+        carrying[player] = nil
+    end
 end)
 
 -- Connect the handler to the remote event
@@ -138,7 +143,7 @@ AttackRequest.OnServerEvent:Connect(onAttackRequest)
 local function onGrabRequest(killerPlayer, targetCharacter)
     -- 1. VALIDATION
     local killerCharacter = killerPlayer.Character
-    if not killerCharacter or not killerCharacter.PrimaryPart or killerCharacter:GetAttribute("Carrying") then
+    if not killerCharacter or not killerCharacter.PrimaryPart or carrying[killerPlayer] then
         return -- Killer doesn't exist or is already carrying someone
     end
 
@@ -178,10 +183,10 @@ local function onGrabRequest(killerPlayer, targetCharacter)
     weld.Parent = killerCharacter.HumanoidRootPart
 
     -- Update killer state
-    killerCharacter:SetAttribute("Carrying", targetCharacter)
+    carrying[killerPlayer] = targetCharacter
 
-    -- Apply speed penalty to the killer
-    killerCharacter.Humanoid.WalkSpeed = killerCharacter.Humanoid.WalkSpeed * CONFIG.CARRYING_SPEED_PENALTY
+    -- Notify the client that its state has changed
+    CarryingStateChanged:FireClient(killerPlayer, true)
 end
 
 RequestGrab.OnServerEvent:Connect(onGrabRequest)
@@ -192,7 +197,7 @@ local function onDropRequest(killerPlayer)
     local killerCharacter = killerPlayer.Character
     if not killerCharacter or not killerCharacter.PrimaryPart then return end
 
-    local carriedCharacter = killerCharacter:GetAttribute("Carrying")
+    local carriedCharacter = carrying[killerPlayer]
     if not carriedCharacter or not carriedCharacter.Parent or not carriedCharacter:FindFirstChild("Humanoid") then
         return -- Killer isn't carrying a valid character
     end
@@ -206,11 +211,11 @@ local function onDropRequest(killerPlayer)
         weld:Destroy()
     end
 
-    -- Remove carrying attribute from killer
-    killerCharacter:SetAttribute("Carrying", nil)
+    -- Update killer state
+    carrying[killerPlayer] = nil
 
-    -- Restore killer's normal speed
-    killerCharacter.Humanoid.WalkSpeed = killerCharacter.Humanoid.WalkSpeed / CONFIG.CARRYING_SPEED_PENALTY
+    -- Notify the client that its state has changed
+    CarryingStateChanged:FireClient(killerPlayer, false)
 
     -- Restore survivor's collisions
     for _, part in ipairs(carriedCharacter:GetDescendants()) do

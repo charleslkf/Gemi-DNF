@@ -28,8 +28,10 @@ local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local AttackRequest = Remotes:WaitForChild("AttackRequest")
 local RequestGrab = Remotes:WaitForChild("RequestGrab")
 local RequestDrop = Remotes:WaitForChild("RequestDrop")
+local CarryingStateChanged = Remotes:WaitForChild("CarryingStateChanged")
 
 -- State
+local isCarrying = false
 local killersTeam = Teams:WaitForChild("Killers")
 
 -- Function to check if the player is a killer
@@ -102,8 +104,7 @@ local function onInputBegan(input, gameProcessed)
 
     -- Handle 'F' key for Grab/Drop
     if input.KeyCode == Enum.KeyCode.F then
-        local killerCharacter = player.Character
-        if killerCharacter:GetAttribute("Carrying") then
+        if isCarrying then
             -- If already carrying, drop the survivor
             print("[KillerControls] F pressed. Requesting drop.")
             RequestDrop:FireServer()
@@ -167,5 +168,11 @@ end
 
 -- Connect the handler to user input
 UserInputService.InputBegan:Connect(onInputBegan)
+
+-- Listen for state changes from the server
+CarryingStateChanged.OnClientEvent:Connect(function(newState)
+    isCarrying = newState
+    print("[KillerControls] Carrying state updated to:", newState)
+end)
 
 print("KillerControls.client.lua loaded.")

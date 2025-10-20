@@ -51,6 +51,7 @@
       "Remotes": {
         "$className": "Folder",
         "AttackRequest": { "$path": "src/remotes/AttackRequest", "$className": "RemoteEvent" },
+        "CarryingStateChanged": { "$path": "src/remotes/CarryingStateChanged", "$className": "RemoteEvent" },
         "DownedStateChanged": { "$path": "src/remotes/DownedStateChanged", "$className": "RemoteEvent" },
         "DropItemRequest": { "$path": "src/remotes/DropItemRequest", "$className": "RemoteEvent" },
         "EliminationEvent": { "$path": "src/remotes/EliminationEvent", "$className": "RemoteEvent" },
