@@ -102,6 +102,8 @@ local function onInputBegan(input, gameProcessed)
         return
     end
 
+    local killerCharacter = player.Character
+
     -- Handle 'F' key for Grab/Drop
     if input.KeyCode == Enum.KeyCode.F then
         if isCarrying then
