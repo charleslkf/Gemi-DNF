@@ -21,6 +21,7 @@ local KillerAbilityManager
 -- Remotes
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local AttackRequest = Remotes:WaitForChild("AttackRequest")
+local DownedStateChanged = Remotes:WaitForChild("DownedStateChanged")
 
 -- Constants
 local ATTACK_COOLDOWN = 5 -- seconds
@@ -101,11 +102,21 @@ local function onAttackRequest(killerPlayer, targetCharacter)
         -- Apply normal damage, passing the killerPlayer as the damageDealer
         HealthManager.applyDamage(targetEntity, ATTACK_DAMAGE, killerPlayer)
 
-        -- Check if the survivor/bot should be caged (only for normal attacks)
+        -- Check if the survivor/bot should be downed (only for normal attacks)
         local targetHealth = HealthManager.getHealth(targetEntity)
         if targetHealth and targetHealth <= CAGE_HEALTH_THRESHOLD then
-            print(string.format("[InteractionManager] Health is %d, attempting to cage %s.", targetHealth, targetCharacter.Name))
-            CagingManager.cagePlayer(targetEntity, killerPlayer)
+            print(string.format("[InteractionManager] Health is %d. Putting %s into Downed state.", targetHealth, targetCharacter.Name))
+
+            -- Set the "Downed" attribute on the character model
+            targetCharacter:SetAttribute("Downed", true)
+
+            -- Reduce the survivor's movement speed
+            if targetCharacter.Humanoid then
+                targetCharacter.Humanoid.WalkSpeed = 5
+            end
+
+            -- Notify all clients that the player's state has changed
+            DownedStateChanged:FireAllClients(targetCharacter)
         end
     end
 end
