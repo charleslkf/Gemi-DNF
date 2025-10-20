@@ -26,6 +26,7 @@ local DownedStateChanged = Remotes:WaitForChild("DownedStateChanged")
 local RequestGrab = Remotes:WaitForChild("RequestGrab")
 local RequestDrop = Remotes:WaitForChild("RequestDrop")
 local CarryingStateChanged = Remotes:WaitForChild("CarryingStateChanged")
+local RequestHang = Remotes:WaitForChild("RequestHang")
 
 -- Constants
 local ATTACK_COOLDOWN = 5 -- seconds
@@ -229,5 +230,58 @@ local function onDropRequest(killerPlayer)
 end
 
 RequestDrop.OnServerEvent:Connect(onDropRequest)
+
+-- Handler for Hang Requests
+local function onHangRequest(killerPlayer, hanger)
+    -- 1. VALIDATION
+    local killerCharacter = killerPlayer.Character
+    if not killerCharacter or not killerCharacter.PrimaryPart then return end
+
+    local survivorCharacter = carrying[killerPlayer]
+    if not survivorCharacter or not survivorCharacter.Parent then
+        return -- Killer isn't carrying a valid character
+    end
+
+    if not hanger or not hanger:IsA("Model") or not hanger:FindFirstChild("AttachPoint") then
+        return -- Invalid hanger model
+    end
+
+    -- Server-side distance check
+    local distance = (killerCharacter.PrimaryPart.Position - hanger.AttachPoint.Position).Magnitude
+    if distance > CONFIG.HANGER_INTERACT_DISTANCE + 2 then
+        return -- Too far
+    end
+
+    -- 2. APPLY HANG LOGIC
+    print(string.format("[InteractionManager] Hang validated: %s is hanging %s on %s.", killerPlayer.Name, survivorCharacter.Name, hanger.Name))
+
+    -- Detach from killer
+    local weld = killerCharacter.HumanoidRootPart:FindFirstChild("GrabWeld")
+    if weld then weld:Destroy() end
+
+    carrying[killerPlayer] = nil
+    CarryingStateChanged:FireClient(killerPlayer, false)
+
+    -- Attach to hanger
+    local hangWeld = Instance.new("WeldConstraint")
+    hangWeld.Name = "HangWeld"
+    hangWeld.Part0 = hanger.AttachPoint
+    hangWeld.Part1 = survivorCharacter.HumanoidRootPart
+    hangWeld.Parent = hanger.AttachPoint
+
+    -- Survivor is fully incapacitated on the hanger
+    survivorCharacter.Humanoid.WalkSpeed = 0
+
+    -- Trigger the caging timer
+    local survivorPlayer = Players:GetPlayerFromCharacter(survivorCharacter)
+    if survivorPlayer then
+        CagingManager.cagePlayer(survivorPlayer, killerPlayer)
+    else
+        -- Handle case for bots, which are just models
+        CagingManager.cagePlayer(survivorCharacter, killerPlayer)
+    end
+end
+
+RequestHang.OnServerEvent:Connect(onHangRequest)
 
 print("KillerInteractionManager (Remote Event version) is running.")
