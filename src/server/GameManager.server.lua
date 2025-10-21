@@ -259,9 +259,14 @@ function spawnHangers(mapModel)
         local availableSpawns = hangerSpawnsFolder:GetChildren()
         for _, spawnPoint in ipairs(availableSpawns) do
             local hanger = hangerTemplate:Clone()
-            local yOffset = hanger.PrimaryPart.Size.Y / 2
-            hanger:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position + Vector3.new(0, yOffset, 0)))
-            hanger.Parent = hangerFolder
+            if hanger.PrimaryPart then
+                local yOffset = hanger.PrimaryPart.Size.Y / 2
+                hanger:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position + Vector3.new(0, yOffset, 0)))
+                hanger.Parent = hangerFolder
+            else
+                warn(string.format("[GameManager] Could not spawn hanger at %s because the KillerHangerTemplate asset is missing its PrimaryPart.", tostring(spawnPoint.Position)))
+                hanger:Destroy() -- Clean up the invalid clone
+            end
         end
         print(string.format("[GameManager] Spawned %d hangers at designated locations.", #availableSpawns))
     else
