@@ -271,7 +271,14 @@ function spawnHangers(mapModel)
         local availableSpawns = hangerSpawnsFolder:GetChildren()
         for _, spawnPoint in ipairs(availableSpawns) do
             local hanger = hangerTemplate:Clone()
-            local yOffset = hanger.PrimaryPart.Size.Y / 2
+
+            -- Use the same Y-offset logic as machines for correct positioning
+            local yOffset = 0
+            if hanger.PrimaryPart then
+                -- Hangers need to be placed on the ground, so a -0.5 stud offset is required.
+                yOffset = (hanger.PrimaryPart.Size.Y / 2) - 0.5
+            end
+
             hanger:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position + Vector3.new(0, yOffset, 0)))
             hanger.Parent = hangerFolder
         end
