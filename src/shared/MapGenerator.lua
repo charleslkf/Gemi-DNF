@@ -272,9 +272,6 @@ local function spawnObjectsInRoom(roomModel, roomInfo)
 				newObject.Name = objectInfo.Type
 				if newObject:IsA("Model") and newObject.PrimaryPart then
 					newObject:SetPrimaryPartCFrame(CFrame.new(position) * CFrame.Angles(0, math.rad(orientation.Y), 0))
-				else
-					newObject.Position = position
-					newObject.Orientation = orientation
 				end
 			end
 		end
