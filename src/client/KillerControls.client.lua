@@ -215,12 +215,8 @@ RunService.RenderStepped:Connect(function()
                         minDistance = distance
                         closestHanger = hanger
                     end
-                else
-                    print("[DEBUG] Hanger found without AttachPoint:", hanger.Name)
                 end
             end
-        else
-            print("[DEBUG] Hangers folder not found in Workspace.")
         end
 
         if closestHanger then
