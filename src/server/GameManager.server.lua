@@ -25,22 +25,10 @@ local StoreKeeperManager = require(ServerScriptService:WaitForChild("StoreKeeper
 local CoinStashManager = require(ServerScriptService:WaitForChild("CoinStashManager"))
 local GameStateManager = require(ServerScriptService:WaitForChild("GameStateManager"))
 local MapGenerator = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("MapGenerator"))
+local CONFIG = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("Config"))
 
 -- Generate the procedural map on server startup
 MapGenerator.Generate()
-
--- Configuration
-local CONFIG = {
-    INTERMISSION_DURATION = 15,
-    ROUND_DURATION = 180,
-    POST_ROUND_DURATION = 5,
-    KILLER_SPAWN_DELAY = 5,
-    MIN_PLAYERS = 5,
-    LOBBY_SPAWN_POSITION = Vector3.new(0, 50, 0),
-    MACHINES_TO_SPAWN = 3,
-    VICTORY_GATE_TIMER = 30,
-    MACHINE_BONUS_TIME = 5,
-}
 
 -- Teams
 local killersTeam = Teams:FindFirstChild("Killers") or Instance.new("Team", Teams); killersTeam.Name = "Killers"; killersTeam.TeamColor = BrickColor.new("Really red")
@@ -271,14 +259,7 @@ function spawnHangers(mapModel)
         local availableSpawns = hangerSpawnsFolder:GetChildren()
         for _, spawnPoint in ipairs(availableSpawns) do
             local hanger = hangerTemplate:Clone()
-
-            -- Use the same Y-offset logic as machines for correct positioning
-            local yOffset = 0
-            if hanger.PrimaryPart then
-                -- Hangers need to be placed on the ground, so a -0.5 stud offset is required.
-                yOffset = (hanger.PrimaryPart.Size.Y / 2) - 0.5
-            end
-
+            local yOffset = hanger.PrimaryPart.Size.Y / 2
             hanger:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position + Vector3.new(0, yOffset, 0)))
             hanger.Parent = hangerFolder
         end

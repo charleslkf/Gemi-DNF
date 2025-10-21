@@ -119,7 +119,6 @@ local function createPlaceholderAssets()
 
 	createTemplate("MachineTemplate", Vector3.new(4, 6, 4))
 	createTemplate("ShopTemplate", Vector3.new(8, 10, 8))
-	createTemplate("KillerHangerTemplate", Vector3.new(3, 12, 3))
 end
 
 --================================================================
