@@ -25,10 +25,22 @@ local StoreKeeperManager = require(ServerScriptService:WaitForChild("StoreKeeper
 local CoinStashManager = require(ServerScriptService:WaitForChild("CoinStashManager"))
 local GameStateManager = require(ServerScriptService:WaitForChild("GameStateManager"))
 local MapGenerator = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("MapGenerator"))
-local CONFIG = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("Config"))
 
 -- Generate the procedural map on server startup
 MapGenerator.Generate()
+
+-- Configuration
+local CONFIG = {
+    INTERMISSION_DURATION = 15,
+    ROUND_DURATION = 180,
+    POST_ROUND_DURATION = 5,
+    KILLER_SPAWN_DELAY = 5,
+    MIN_PLAYERS = 5,
+    LOBBY_SPAWN_POSITION = Vector3.new(0, 50, 0),
+    MACHINES_TO_SPAWN = 3,
+    VICTORY_GATE_TIMER = 30,
+    MACHINE_BONUS_TIME = 5,
+}
 
 -- Teams
 local killersTeam = Teams:FindFirstChild("Killers") or Instance.new("Team", Teams); killersTeam.Name = "Killers"; killersTeam.TeamColor = BrickColor.new("Really red")
@@ -257,22 +269,13 @@ function spawnHangers(mapModel)
 
     if hangerSpawnsFolder then
         local availableSpawns = hangerSpawnsFolder:GetChildren()
-        local spawnedCount = 0
         for _, spawnPoint in ipairs(availableSpawns) do
             local hanger = hangerTemplate:Clone()
-            if hanger and hanger.PrimaryPart then
-                local yOffset = hanger.PrimaryPart.Size.Y / 2
-                hanger:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position + Vector3.new(0, yOffset, 0)))
-                hanger.Parent = hangerFolder
-                spawnedCount = spawnedCount + 1
-            else
-                warn(string.format("[GameManager] Could not spawn hanger at %s because the KillerHangerTemplate asset is missing its PrimaryPart.", tostring(spawnPoint.Position)))
-                if hanger then
-                    hanger:Destroy() -- Clean up the invalid clone
-                end
-            end
+            local yOffset = hanger.PrimaryPart.Size.Y / 2
+            hanger:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position + Vector3.new(0, yOffset, 0)))
+            hanger.Parent = hangerFolder
         end
-        print(string.format("[GameManager] Spawned %d hangers at designated locations.", spawnedCount))
+        print(string.format("[GameManager] Spawned %d hangers at designated locations.", #availableSpawns))
     else
         warn("[GameManager] No 'Hanger' spawn folder found in map. Cannot spawn hangers.")
     end
@@ -453,10 +456,9 @@ function enterPlaying()
 
     for _, player in ipairs(realPlayers) do
         local isKiller = (player.Team == killersTeam)
-        -- Initialize systems BEFORE spawning the character to prevent race conditions
+        spawnPlayerInMap(player, isKiller)
         HealthManager.initializeHealth(player)
         InventoryManager.initializeInventory(player)
-        spawnPlayerInMap(player, isKiller)
         local leaderstats = player:FindFirstChild("leaderstats")
         if leaderstats and leaderstats:FindFirstChild("LevelCoins") then
             leaderstats.LevelCoins.Value = 0
@@ -589,21 +591,6 @@ local resetRoundEvent = remotes:WaitForChild("ResetRoundRequest")
 local startRoundEvent = remotes:WaitForChild("StartRoundRequest")
 local machineFixedEvent = remotes:WaitForChild("MachineFixed")
 local showNotificationEvent = remotes:WaitForChild("ShowNotification")
-
--- Setup BindableEvents for server-to-server communication
-local bindables = ServerScriptService:FindFirstChild("Bindables")
-if not bindables then
-    bindables = Instance.new("Folder")
-    bindables.Name = "Bindables"
-    bindables.Parent = ServerScriptService
-end
-
-if not bindables:FindFirstChild("PlayerRescuedInternal") then
-    local playerRescuedEvent = Instance.new("BindableEvent")
-    playerRescuedEvent.Name = "PlayerRescuedInternal"
-    playerRescuedEvent.Parent = bindables
-    print("[GameManager] Created PlayerRescuedInternal BindableEvent.")
-end
 
 machineFixedEvent.OnServerEvent:Connect(function(player)
     -- A killer or someone not on the survivor team should not be able to fix a machine.

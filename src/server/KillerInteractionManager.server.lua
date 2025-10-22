@@ -31,8 +31,19 @@ local PlayerRescueRequest_SERVER = Remotes:WaitForChild("PlayerRescueRequest_SER
 local PlayerRescued_CLIENT = Remotes:WaitForChild("PlayerRescued_CLIENT")
 
 -- Bindables for server-to-server
-local Bindables = ServerScriptService:WaitForChild("Bindables")
-local PlayerRescuedInternal = Bindables:WaitForChild("PlayerRescuedInternal")
+-- Bindables for server-to-server (Idempotent Initialization)
+local Bindables = ServerScriptService:FindFirstChild("Bindables")
+if not Bindables then
+    Bindables = Instance.new("Folder")
+    Bindables.Name = "Bindables"
+    Bindables.Parent = ServerScriptService
+end
+local PlayerRescuedInternal = Bindables:FindFirstChild("PlayerRescuedInternal")
+if not PlayerRescuedInternal then
+    PlayerRescuedInternal = Instance.new("BindableEvent")
+    PlayerRescuedInternal.Name = "PlayerRescuedInternal"
+    PlayerRescuedInternal.Parent = Bindables
+end
 
 -- Constants
 local ATTACK_COOLDOWN = 5 -- seconds
@@ -356,8 +367,8 @@ end
 PlayerRescueRequest_SERVER.OnServerEvent:Connect(onPlayerRescueRequest)
 
 -- When a player is rescued by any means, check if a killer was carrying them.
--- If so, force the killer to drop them. This prevents weird states where a
--- player is rescued but still attached to the killer.
+-- This function now handles all server-side logic for when a player is rescued,
+-- regardless of the source (teammate, self-rescue via item, etc.).
 local function onPlayerRescuedInternal(rescuedEntity)
     local rescuedCharacter
     if rescuedEntity:IsA("Player") then
@@ -366,15 +377,55 @@ local function onPlayerRescuedInternal(rescuedEntity)
         rescuedCharacter = rescuedEntity -- It's a bot model
     end
 
-    if not rescuedCharacter then return end
+    if not rescuedCharacter or not rescuedCharacter:FindFirstChild("Humanoid") then return end
 
-    -- Check if any killer is carrying this character
+    -- CASE 1: Survivor was being carried by a killer. Force a drop.
     for killerPlayer, carriedCharacter in pairs(carrying) do
         if carriedCharacter == rescuedCharacter then
-            print(string.format("[InteractionManager] Player %s was rescued while being carried by %s. Forcing drop.", rescuedCharacter.Name, killerPlayer.Name))
+            print(string.format("[InteractionManager-Internal] %s was rescued while being carried by %s. Forcing drop.", rescuedCharacter.Name, killerPlayer.Name))
             onDropRequest(killerPlayer)
-            break -- Stop checking once we've found the carrier
+            -- Don't break here; a player could theoretically be on a hook *and* carried (if a bug occurs).
         end
+    end
+
+    -- CASE 2: Survivor was on a hanger. Release them.
+    -- Find the HangWeld by searching from the HumanoidRootPart upwards.
+    local hangWeld = rescuedCharacter.HumanoidRootPart:FindFirstChild("HangWeld", true) -- Recursive search
+    if not hangWeld then
+         -- It's possible the weld is on the hanger's AttachPoint instead, depending on timing.
+         local hangersFolder = Workspace:FindFirstChild("Hangers")
+         if hangersFolder then
+             for _, hanger in ipairs(hangersFolder:GetChildren()) do
+                 local attachPoint = hanger:FindFirstChild("AttachPoint")
+                 if attachPoint then
+                     local foundWeld = attachPoint:FindFirstChild("HangWeld")
+                     if foundWeld and foundWeld.Part1 == rescuedCharacter.HumanoidRootPart then
+                         hangWeld = foundWeld
+                         break
+                     end
+                 end
+             end
+         end
+    end
+
+    if hangWeld then
+        print(string.format("[InteractionManager-Internal] %s was rescued from a hanger. Releasing.", rescuedCharacter.Name))
+        hangWeld:Destroy()
+
+        -- Restore health and state
+        rescuedCharacter.Humanoid.Health = 51
+        rescuedCharacter:SetAttribute("Downed", false)
+
+        -- Restore collisions and speed
+        for _, part in ipairs(rescuedCharacter:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+        rescuedCharacter.Humanoid.WalkSpeed = 16 -- Default speed
+
+        -- Notify clients of the state change
+        PlayerRescued_CLIENT:FireAllClients(rescuedCharacter)
     end
 end
 

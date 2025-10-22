@@ -37,13 +37,16 @@ end
 
 -- Proximity checks for UI prompts
 RunService.RenderStepped:Connect(function()
-    if not _G.UI or not isPlayerHealthy() then
-        _G.UI.setInteractionPrompt("")
+    -- Guard Clause: Do nothing until the UI Manager is initialized.
+    if not _G.UI then
         return
     end
 
-    if not player.Character or not player.Character.PrimaryPart then
+    -- If the player isn't in a state to rescue, hide the prompt and clear targets.
+    if not isPlayerHealthy() or not player.Character or not player.Character.PrimaryPart then
         _G.UI.setInteractionPrompt("")
+        targetHanger = nil
+        targetSurvivor = nil
         return
     end
 
