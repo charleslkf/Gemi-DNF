@@ -453,9 +453,10 @@ function enterPlaying()
 
     for _, player in ipairs(realPlayers) do
         local isKiller = (player.Team == killersTeam)
-        spawnPlayerInMap(player, isKiller)
+        -- Initialize systems BEFORE spawning the character to prevent race conditions
         HealthManager.initializeHealth(player)
         InventoryManager.initializeInventory(player)
+        spawnPlayerInMap(player, isKiller)
         local leaderstats = player:FindFirstChild("leaderstats")
         if leaderstats and leaderstats:FindFirstChild("LevelCoins") then
             leaderstats.LevelCoins.Value = 0
