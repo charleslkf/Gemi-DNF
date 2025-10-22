@@ -29,9 +29,11 @@ local AttackRequest = Remotes:WaitForChild("AttackRequest")
 local RequestGrab = Remotes:WaitForChild("RequestGrab")
 local RequestDrop = Remotes:WaitForChild("RequestDrop")
 local CarryingStateChanged = Remotes:WaitForChild("CarryingStateChanged")
+local RequestHang = Remotes:WaitForChild("RequestHang")
 
 -- State
 local isCarrying = false
+local targetHanger = nil
 local killersTeam = Teams:WaitForChild("Killers")
 
 -- Function to check if the player is a killer
@@ -104,6 +106,15 @@ local function onInputBegan(input, gameProcessed)
 
     local killerCharacter = player.Character
 
+    -- Handle 'E' key for Hang
+    if input.KeyCode == CONFIG.HANG_KEY then
+        if isCarrying and targetHanger then
+            print(string.format("[KillerControls] E pressed. Requesting hang on %s.", targetHanger.Name))
+            RequestHang:FireServer(targetHanger)
+        end
+        return -- End processing for 'E' key
+    end
+
     -- Handle 'F' key for Grab/Drop
     if input.KeyCode == Enum.KeyCode.F then
         if isCarrying then
@@ -175,6 +186,56 @@ UserInputService.InputBegan:Connect(onInputBegan)
 CarryingStateChanged.OnClientEvent:Connect(function(newState)
     isCarrying = newState
     print("[KillerControls] Carrying state updated to:", newState)
+end)
+
+-- Proximity checks for UI prompts
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+RunService.RenderStepped:Connect(function()
+    if not _G.UI then return end -- Wait for UIManager to initialize
+    if not player.Character or not player.Character.PrimaryPart then
+        _G.UI.setInteractionPrompt("")
+        return
+    end
+
+    local killerPos = player.Character.PrimaryPart.Position
+
+    if isCarrying then
+        -- Logic for when carrying: find a hanger
+        local hangersFolder = Workspace:FindFirstChild("Hangers")
+        local closestHanger = nil
+        local minDistance = CONFIG.HANGER_INTERACT_DISTANCE
+
+        if hangersFolder then
+            for _, hanger in ipairs(hangersFolder:GetChildren()) do
+                if hanger:FindFirstChild("AttachPoint") then
+                    local distance = (killerPos - hanger.AttachPoint.Position).Magnitude
+                    if distance < minDistance then
+                        minDistance = distance
+                        closestHanger = hanger
+                    end
+                end
+            end
+        end
+
+        if closestHanger then
+            _G.UI.setInteractionPrompt("[E] to Hang")
+            targetHanger = closestHanger
+        else
+            _G.UI.setInteractionPrompt("")
+            targetHanger = nil
+        end
+    else
+        -- Logic for when not carrying: find a downed survivor
+        targetHanger = nil -- Ensure this is nil when not carrying
+        local nearestDowned = findNearestDownedCharacter(killerPos, CONFIG.GRAB_DISTANCE)
+        if nearestDowned then
+            _G.UI.setInteractionPrompt("[F] to Grab")
+        else
+            _G.UI.setInteractionPrompt("")
+        end
+    end
 end)
 
 print("KillerControls.client.lua loaded.")

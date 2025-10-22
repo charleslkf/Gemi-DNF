@@ -17,6 +17,8 @@ local Config = {
     MACHINE_BONUS_TIME = 5,
     GRAB_DISTANCE = 10,
     CARRYING_SPEED_PENALTY = 0.95,
+    HANG_KEY = Enum.KeyCode.E,
+    HANGER_INTERACT_DISTANCE = 12,
 }
 
 return Config

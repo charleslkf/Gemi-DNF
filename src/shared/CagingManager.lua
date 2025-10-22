@@ -38,6 +38,22 @@ if RunService:IsServer() then
     local playerRescuedEvent = remotes:WaitForChild("PlayerRescued")
     local eliminationEvent = remotes:WaitForChild("EliminationEvent")
 
+    -- Server-to-server communication (Idempotent Initialization)
+    local ServerScriptService = game:GetService("ServerScriptService")
+    local bindables = ServerScriptService:FindFirstChild("Bindables")
+    if not bindables then
+        bindables = Instance.new("Folder")
+        bindables.Name = "Bindables"
+        bindables.Parent = ServerScriptService
+    end
+
+    local playerRescuedInternalEvent = bindables:FindFirstChild("PlayerRescuedInternal")
+    if not playerRescuedInternalEvent then
+        playerRescuedInternalEvent = Instance.new("BindableEvent")
+        playerRescuedInternalEvent.Name = "PlayerRescuedInternal"
+        playerRescuedInternalEvent.Parent = bindables
+    end
+
     -- This table now uses the instance (Player or Model) as the key.
     local cageData = {}
 
@@ -117,6 +133,7 @@ if RunService:IsServer() then
         cageData[entity].isTimerActive = false
         cageData[entity].killerWhoCaged = nil -- Clear the killer when rescued
         playerRescuedEvent:FireAllClients(entity)
+        playerRescuedInternalEvent:Fire(entity)
     end
 
     ---

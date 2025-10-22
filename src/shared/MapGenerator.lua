@@ -119,7 +119,6 @@ local function createPlaceholderAssets()
 
 	createTemplate("MachineTemplate", Vector3.new(4, 6, 4))
 	createTemplate("ShopTemplate", Vector3.new(8, 10, 8))
-	createTemplate("KillerHangerTemplate", Vector3.new(3, 12, 3))
 end
 
 --================================================================
@@ -273,9 +272,6 @@ local function spawnObjectsInRoom(roomModel, roomInfo)
 				newObject.Name = objectInfo.Type
 				if newObject:IsA("Model") and newObject.PrimaryPart then
 					newObject:SetPrimaryPartCFrame(CFrame.new(position) * CFrame.Angles(0, math.rad(orientation.Y), 0))
-				else
-					newObject.Position = position
-					newObject.Orientation = orientation
 				end
 			end
 		end

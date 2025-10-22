@@ -26,6 +26,24 @@ local DownedStateChanged = Remotes:WaitForChild("DownedStateChanged")
 local RequestGrab = Remotes:WaitForChild("RequestGrab")
 local RequestDrop = Remotes:WaitForChild("RequestDrop")
 local CarryingStateChanged = Remotes:WaitForChild("CarryingStateChanged")
+local RequestHang = Remotes:WaitForChild("RequestHang")
+local PlayerRescueRequest_SERVER = Remotes:WaitForChild("PlayerRescueRequest_SERVER")
+local PlayerRescued_CLIENT = Remotes:WaitForChild("PlayerRescued_CLIENT")
+
+-- Bindables for server-to-server
+-- Bindables for server-to-server (Idempotent Initialization)
+local Bindables = ServerScriptService:FindFirstChild("Bindables")
+if not Bindables then
+    Bindables = Instance.new("Folder")
+    Bindables.Name = "Bindables"
+    Bindables.Parent = ServerScriptService
+end
+local PlayerRescuedInternal = Bindables:FindFirstChild("PlayerRescuedInternal")
+if not PlayerRescuedInternal then
+    PlayerRescuedInternal = Instance.new("BindableEvent")
+    PlayerRescuedInternal.Name = "PlayerRescuedInternal"
+    PlayerRescuedInternal.Parent = Bindables
+end
 
 -- Constants
 local ATTACK_COOLDOWN = 5 -- seconds
@@ -165,8 +183,10 @@ local function onGrabRequest(killerPlayer, targetCharacter)
     -- 2. APPLY GRAB LOGIC
     print(string.format("[InteractionManager] Grab validated: %s is grabbing %s.", killerPlayer.Name, targetCharacter.Name))
 
-    -- Fully incapacitate the survivor
+    -- Fully incapacitate the survivor and disable their physics to prevent dragging down the killer
     targetCharacter.Humanoid.WalkSpeed = 0
+    targetCharacter.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false) -- Disable sitting
+    targetCharacter.Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
 
     -- Disable collisions on the survivor to prevent dragging issues
     for _, part in ipairs(targetCharacter:GetDescendants()) do
@@ -224,10 +244,191 @@ local function onDropRequest(killerPlayer)
         end
     end
 
-    -- Return survivor to the "Downed" state (low speed)
+    -- Return survivor to the "Downed" state (low speed) and re-enable their physics
+    carriedCharacter.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true) -- Re-enable sitting
     carriedCharacter.Humanoid.WalkSpeed = 5
+    carriedCharacter.Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 end
 
 RequestDrop.OnServerEvent:Connect(onDropRequest)
+
+-- Handler for Hang Requests
+local function onHangRequest(killerPlayer, hanger)
+    -- 1. VALIDATION
+    local killerCharacter = killerPlayer.Character
+    if not killerCharacter or not killerCharacter.PrimaryPart then return end
+
+    local survivorCharacter = carrying[killerPlayer]
+    if not survivorCharacter or not survivorCharacter.Parent then
+        return -- Killer isn't carrying a valid character
+    end
+
+    if not hanger or not hanger:IsA("Model") or not hanger:FindFirstChild("AttachPoint") then
+        return -- Invalid hanger model
+    end
+
+    -- Server-side distance check
+    local distance = (killerCharacter.PrimaryPart.Position - hanger.AttachPoint.Position).Magnitude
+    if distance > CONFIG.HANGER_INTERACT_DISTANCE + 2 then
+        return -- Too far
+    end
+
+    -- 2. APPLY HANG LOGIC
+    print(string.format("[InteractionManager] Hang validated: %s is hanging %s on %s.", killerPlayer.Name, survivorCharacter.Name, hanger.Name))
+
+    -- Detach from killer
+    local weld = killerCharacter.HumanoidRootPart:FindFirstChild("GrabWeld")
+    if weld then weld:Destroy() end
+
+    carrying[killerPlayer] = nil
+    CarryingStateChanged:FireClient(killerPlayer, false)
+
+    -- Attach to hanger
+    local hangWeld = Instance.new("WeldConstraint")
+    hangWeld.Name = "HangWeld"
+    hangWeld.Part0 = hanger.AttachPoint
+    hangWeld.Part1 = survivorCharacter.HumanoidRootPart
+    hangWeld.Parent = hanger.AttachPoint
+
+    -- Survivor is fully incapacitated on the hanger
+    survivorCharacter.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true) -- Re-enable sitting
+    survivorCharacter.Humanoid.WalkSpeed = 0
+    survivorCharacter.Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+
+    -- Trigger the caging timer
+    local survivorPlayer = Players:GetPlayerFromCharacter(survivorCharacter)
+    if survivorPlayer then
+        CagingManager.cagePlayer(survivorPlayer, killerPlayer)
+    else
+        -- Handle case for bots, which are just models
+        CagingManager.cagePlayer(survivorCharacter, killerPlayer)
+    end
+end
+
+RequestHang.OnServerEvent:Connect(onHangRequest)
+
+-- Handler for Rescue Requests
+local function onPlayerRescueRequest(rescuerPlayer, hangedSurvivorEntity)
+    -- 1. VALIDATION
+    local rescuerCharacter = rescuerPlayer.Character
+    if not rescuerCharacter or not rescuerCharacter.PrimaryPart or rescuerCharacter:GetAttribute("Downed") == true then
+        return -- Rescuer is not in a valid state to rescue
+    end
+
+    -- The entity can be a Player object or a bot's Model
+    local hangedSurvivorCharacter
+    if hangedSurvivorEntity:IsA("Player") then
+        hangedSurvivorCharacter = hangedSurvivorEntity.Character
+    else
+        hangedSurvivorCharacter = hangedSurvivorEntity
+    end
+
+    if not hangedSurvivorCharacter or not hangedSurvivorCharacter.PrimaryPart then return end
+
+    -- Find the weld to verify the survivor is actually on a hanger
+    local hangWeld = hangedSurvivorCharacter.HumanoidRootPart:FindFirstAncestorWhichIsA("Model"):FindFirstChild("HangWeld")
+    if not hangWeld then
+        print(string.format("[InteractionManager] Rescue failed: %s is not on a hanger.", hangedSurvivorCharacter.Name))
+        return
+    end
+
+    -- Server-side distance check
+    local distance = (rescuerCharacter.PrimaryPart.Position - hangedSurvivorCharacter.PrimaryPart.Position).Magnitude
+    if distance > CONFIG.HANGER_INTERACT_DISTANCE + 2 then
+        print(string.format("[InteractionManager] Rescue failed: %s is too far from %s.", rescuerPlayer.Name, hangedSurvivorCharacter.Name))
+        return
+    end
+
+    -- 2. APPLY RESCUE LOGIC
+    print(string.format("[InteractionManager] Rescue validated: %s is rescuing %s.", rescuerPlayer.Name, hangedSurvivorCharacter.Name))
+
+    -- Stop the caging timer
+    CagingManager.rescuePlayer(hangedSurvivorEntity)
+
+    -- Restore health to 51
+    hangedSurvivorCharacter.Humanoid.Health = 51
+    hangedSurvivorCharacter:SetAttribute("Downed", false) -- No longer downed
+
+    -- Destroy the weld
+    hangWeld:Destroy()
+
+    -- Restore survivor's collisions and speed
+    for _, part in ipairs(hangedSurvivorCharacter:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = true
+        end
+    end
+    hangedSurvivorCharacter.Humanoid.WalkSpeed = 16 -- Default speed
+
+    -- Notify all clients of the successful rescue
+    PlayerRescued_CLIENT:FireAllClients(hangedSurvivorCharacter)
+end
+
+PlayerRescueRequest_SERVER.OnServerEvent:Connect(onPlayerRescueRequest)
+
+-- When a player is rescued by any means, check if a killer was carrying them.
+-- This function now handles all server-side logic for when a player is rescued,
+-- regardless of the source (teammate, self-rescue via item, etc.).
+local function onPlayerRescuedInternal(rescuedEntity)
+    local rescuedCharacter
+    if rescuedEntity:IsA("Player") then
+        rescuedCharacter = rescuedEntity.Character
+    else
+        rescuedCharacter = rescuedEntity -- It's a bot model
+    end
+
+    if not rescuedCharacter or not rescuedCharacter:FindFirstChild("Humanoid") then return end
+
+    -- CASE 1: Survivor was being carried by a killer. Force a drop.
+    for killerPlayer, carriedCharacter in pairs(carrying) do
+        if carriedCharacter == rescuedCharacter then
+            print(string.format("[InteractionManager-Internal] %s was rescued while being carried by %s. Forcing drop.", rescuedCharacter.Name, killerPlayer.Name))
+            onDropRequest(killerPlayer)
+            -- Don't break here; a player could theoretically be on a hook *and* carried (if a bug occurs).
+        end
+    end
+
+    -- CASE 2: Survivor was on a hanger. Release them.
+    -- Find the HangWeld by searching from the HumanoidRootPart upwards.
+    local hangWeld = rescuedCharacter.HumanoidRootPart:FindFirstChild("HangWeld", true) -- Recursive search
+    if not hangWeld then
+         -- It's possible the weld is on the hanger's AttachPoint instead, depending on timing.
+         local hangersFolder = Workspace:FindFirstChild("Hangers")
+         if hangersFolder then
+             for _, hanger in ipairs(hangersFolder:GetChildren()) do
+                 local attachPoint = hanger:FindFirstChild("AttachPoint")
+                 if attachPoint then
+                     local foundWeld = attachPoint:FindFirstChild("HangWeld")
+                     if foundWeld and foundWeld.Part1 == rescuedCharacter.HumanoidRootPart then
+                         hangWeld = foundWeld
+                         break
+                     end
+                 end
+             end
+         end
+    end
+
+    if hangWeld then
+        print(string.format("[InteractionManager-Internal] %s was rescued from a hanger. Releasing.", rescuedCharacter.Name))
+        hangWeld:Destroy()
+
+        -- Restore health and state
+        rescuedCharacter.Humanoid.Health = 51
+        rescuedCharacter:SetAttribute("Downed", false)
+
+        -- Restore collisions and speed
+        for _, part in ipairs(rescuedCharacter:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+        rescuedCharacter.Humanoid.WalkSpeed = 16 -- Default speed
+
+        -- Notify clients of the state change
+        PlayerRescued_CLIENT:FireAllClients(rescuedCharacter)
+    end
+end
+
+PlayerRescuedInternal.Event:Connect(onPlayerRescuedInternal)
 
 print("KillerInteractionManager (Remote Event version) is running.")
