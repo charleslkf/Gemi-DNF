@@ -63,6 +63,8 @@
         "MachineFixed": { "$path": "src/remotes/MachineFixed", "$className": "RemoteEvent" },
         "PlayerCaged": { "$path": "src/remotes/PlayerCaged", "$className": "RemoteEvent" },
         "PlayerRescued": { "$path": "src/remotes/PlayerRescued", "$className": "RemoteEvent" },
+        "PlayerRescueRequest_SERVER": { "$path": "src/remotes/PlayerRescueRequest_SERVER", "$className": "RemoteEvent" },
+        "PlayerRescued_CLIENT": { "$path": "src/remotes/PlayerRescued_CLIENT", "$className": "RemoteEvent" },
         "PurchaseFailed": { "$path": "src/remotes/PurchaseFailed", "$className": "RemoteEvent" },
         "PurchaseItemRequest": { "$path": "src/remotes/PurchaseItemRequest", "$className": "RemoteEvent" },
         "RequestDrop": { "$path": "src/remotes/RequestDrop", "$className": "RemoteEvent" },
@@ -104,6 +106,9 @@
         },
         "EscapeUIController": {
             "$path": "src/client/EscapeUIController.client.lua"
+        },
+        "RescueController": {
+            "$path": "src/client/RescueController.client.lua"
         }
       }
     }
