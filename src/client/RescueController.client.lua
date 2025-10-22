@@ -17,6 +17,16 @@ local CONFIG = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild(
 
 -- Player Globals
 local player = Players.LocalPlayer
+local Teams = game:GetService("Teams")
+local survivorsTeam = nil -- Lazy loaded to prevent race condition on startup
+
+-- Helper function to check if the player is a survivor
+local function isSurvivor()
+    if not survivorsTeam then
+        survivorsTeam = Teams:WaitForChild("Survivors")
+    end
+    return player.Team == survivorsTeam
+end
 
 -- Remotes
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -37,8 +47,8 @@ end
 
 -- Proximity checks for UI prompts
 RunService.RenderStepped:Connect(function()
-    -- Guard Clause: Do nothing until the UI Manager is initialized.
-    if not _G.UI then
+    -- Guard Clause: Do nothing until the UI Manager is initialized or if not a survivor.
+    if not _G.UI or not isSurvivor() then
         return
     end
 
@@ -58,20 +68,26 @@ RunService.RenderStepped:Connect(function()
     if hangersFolder then
         for _, hanger in ipairs(hangersFolder:GetChildren()) do
             -- A hanger is a valid target if it has a survivor attached to it.
-            local hangWeld = hanger:FindFirstChild("HangWeld")
-            if hangWeld and hangWeld:IsA("WeldConstraint") and hangWeld.Part1 and hangWeld.Part1.Parent and hangWeld.Part1.Parent:FindFirstChild("Humanoid") then
-                local distance = (myPos - hanger.PrimaryPart.Position).Magnitude
-                if distance < minDistance then
-                    minDistance = distance
-                    closestHanger = hanger
-                    -- The Part1 of the weld is the HumanoidRootPart of the survivor
-                    targetSurvivor = hangWeld.Part1.Parent
+            -- CORRECTED LOGIC: The HangWeld is a child of the AttachPoint, not the hanger model itself.
+            local attachPoint = hanger:FindFirstChild("AttachPoint")
+            if attachPoint then
+                local hangWeld = attachPoint:FindFirstChild("HangWeld")
+                if hangWeld and hangWeld:IsA("WeldConstraint") and hangWeld.Part1 and hangWeld.Part1.Parent and hangWeld.Part1.Parent:FindFirstChild("Humanoid") then
+                    local distance = (myPos - hanger.PrimaryPart.Position).Magnitude
+                    if distance < minDistance then
+                        minDistance = distance
+                        closestHanger = hanger
+                        -- The Part1 of the weld is the HumanoidRootPart of the survivor
+                        targetSurvivor = hangWeld.Part1.Parent
+                    end
                 end
             end
         end
     end
 
     if closestHanger and targetSurvivor then
+        -- The prompt was incorrectly showing "F" because KillerControls was interfering.
+        -- Now that scripts are isolated, this will correctly show "E".
         _G.UI.setInteractionPrompt("[E] to Rescue")
         targetHanger = closestHanger
     else
@@ -83,8 +99,9 @@ end)
 
 -- Handle player input
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
+    if gameProcessed or not isSurvivor() then return end
 
+    -- The key for rescuing is the HANG_KEY ('E'), not the grab key.
     if input.KeyCode == CONFIG.HANG_KEY then
         if targetHanger and targetSurvivor then
             -- Find the player object associated with the character model
