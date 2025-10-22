@@ -326,8 +326,26 @@ local function onPlayerRescueRequest(rescuerPlayer, hangedSurvivorEntity)
 
     if not hangedSurvivorCharacter or not hangedSurvivorCharacter.PrimaryPart then return end
 
-    -- Find the weld to verify the survivor is actually on a hanger
-    local hangWeld = hangedSurvivorCharacter.HumanoidRootPart:FindFirstAncestorWhichIsA("Model"):FindFirstChild("HangWeld")
+    -- Find the weld to verify the survivor is actually on a hanger.
+    -- This logic mirrors the robust search in onPlayerRescuedInternal.
+    local hangWeld = hangedSurvivorCharacter.HumanoidRootPart:FindFirstChild("HangWeld", true) -- Recursive search
+    if not hangWeld then
+         -- It's possible the weld is on the hanger's AttachPoint instead, depending on timing.
+         local hangersFolder = game:GetService("Workspace"):FindFirstChild("Hangers")
+         if hangersFolder then
+             for _, hanger in ipairs(hangersFolder:GetChildren()) do
+                 local attachPoint = hanger:FindFirstChild("AttachPoint")
+                 if attachPoint then
+                     local foundWeld = attachPoint:FindFirstChild("HangWeld")
+                     if foundWeld and foundWeld.Part1 == hangedSurvivorCharacter.HumanoidRootPart then
+                         hangWeld = foundWeld
+                         break
+                     end
+                 end
+             end
+         end
+    end
+
     if not hangWeld then
         print(string.format("[InteractionManager] Rescue failed: %s is not on a hanger.", hangedSurvivorCharacter.Name))
         return
