@@ -68,14 +68,18 @@ RunService.RenderStepped:Connect(function()
     if hangersFolder then
         for _, hanger in ipairs(hangersFolder:GetChildren()) do
             -- A hanger is a valid target if it has a survivor attached to it.
-            local hangWeld = hanger:FindFirstChild("HangWeld")
-            if hangWeld and hangWeld:IsA("WeldConstraint") and hangWeld.Part1 and hangWeld.Part1.Parent and hangWeld.Part1.Parent:FindFirstChild("Humanoid") then
-                local distance = (myPos - hanger.PrimaryPart.Position).Magnitude
-                if distance < minDistance then
-                    minDistance = distance
-                    closestHanger = hanger
-                    -- The Part1 of the weld is the HumanoidRootPart of the survivor
-                    targetSurvivor = hangWeld.Part1.Parent
+            -- CORRECTED LOGIC: The HangWeld is a child of the AttachPoint, not the hanger model itself.
+            local attachPoint = hanger:FindFirstChild("AttachPoint")
+            if attachPoint then
+                local hangWeld = attachPoint:FindFirstChild("HangWeld")
+                if hangWeld and hangWeld:IsA("WeldConstraint") and hangWeld.Part1 and hangWeld.Part1.Parent and hangWeld.Part1.Parent:FindFirstChild("Humanoid") then
+                    local distance = (myPos - hanger.PrimaryPart.Position).Magnitude
+                    if distance < minDistance then
+                        minDistance = distance
+                        closestHanger = hanger
+                        -- The Part1 of the weld is the HumanoidRootPart of the survivor
+                        targetSurvivor = hangWeld.Part1.Parent
+                    end
                 end
             end
         end
