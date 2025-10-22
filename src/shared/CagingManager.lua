@@ -38,6 +38,10 @@ if RunService:IsServer() then
     local playerRescuedEvent = remotes:WaitForChild("PlayerRescued")
     local eliminationEvent = remotes:WaitForChild("EliminationEvent")
 
+    -- Server-to-server communication
+    local ServerScriptService = game:GetService("ServerScriptService")
+    local playerRescuedInternalEvent = ServerScriptService:WaitForChild("Bindables"):WaitForChild("PlayerRescuedInternal")
+
     -- This table now uses the instance (Player or Model) as the key.
     local cageData = {}
 
@@ -117,6 +121,7 @@ if RunService:IsServer() then
         cageData[entity].isTimerActive = false
         cageData[entity].killerWhoCaged = nil -- Clear the killer when rescued
         playerRescuedEvent:FireAllClients(entity)
+        playerRescuedInternalEvent:Fire(entity)
     end
 
     ---

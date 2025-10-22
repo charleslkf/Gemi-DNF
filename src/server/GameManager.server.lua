@@ -590,6 +590,21 @@ local startRoundEvent = remotes:WaitForChild("StartRoundRequest")
 local machineFixedEvent = remotes:WaitForChild("MachineFixed")
 local showNotificationEvent = remotes:WaitForChild("ShowNotification")
 
+-- Setup BindableEvents for server-to-server communication
+local bindables = ServerScriptService:FindFirstChild("Bindables")
+if not bindables then
+    bindables = Instance.new("Folder")
+    bindables.Name = "Bindables"
+    bindables.Parent = ServerScriptService
+end
+
+if not bindables:FindFirstChild("PlayerRescuedInternal") then
+    local playerRescuedEvent = Instance.new("BindableEvent")
+    playerRescuedEvent.Name = "PlayerRescuedInternal"
+    playerRescuedEvent.Parent = bindables
+    print("[GameManager] Created PlayerRescuedInternal BindableEvent.")
+end
+
 machineFixedEvent.OnServerEvent:Connect(function(player)
     -- A killer or someone not on the survivor team should not be able to fix a machine.
     if not player or player.Team ~= survivorsTeam then

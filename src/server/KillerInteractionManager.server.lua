@@ -30,6 +30,10 @@ local RequestHang = Remotes:WaitForChild("RequestHang")
 local PlayerRescueRequest_SERVER = Remotes:WaitForChild("PlayerRescueRequest_SERVER")
 local PlayerRescued_CLIENT = Remotes:WaitForChild("PlayerRescued_CLIENT")
 
+-- Bindables for server-to-server
+local Bindables = ServerScriptService:WaitForChild("Bindables")
+local PlayerRescuedInternal = Bindables:WaitForChild("PlayerRescuedInternal")
+
 -- Constants
 local ATTACK_COOLDOWN = 5 -- seconds
 local ATTACK_DAMAGE = 25
@@ -350,5 +354,30 @@ local function onPlayerRescueRequest(rescuerPlayer, hangedSurvivorEntity)
 end
 
 PlayerRescueRequest_SERVER.OnServerEvent:Connect(onPlayerRescueRequest)
+
+-- When a player is rescued by any means, check if a killer was carrying them.
+-- If so, force the killer to drop them. This prevents weird states where a
+-- player is rescued but still attached to the killer.
+local function onPlayerRescuedInternal(rescuedEntity)
+    local rescuedCharacter
+    if rescuedEntity:IsA("Player") then
+        rescuedCharacter = rescuedEntity.Character
+    else
+        rescuedCharacter = rescuedEntity -- It's a bot model
+    end
+
+    if not rescuedCharacter then return end
+
+    -- Check if any killer is carrying this character
+    for killerPlayer, carriedCharacter in pairs(carrying) do
+        if carriedCharacter == rescuedCharacter then
+            print(string.format("[InteractionManager] Player %s was rescued while being carried by %s. Forcing drop.", rescuedCharacter.Name, killerPlayer.Name))
+            onDropRequest(killerPlayer)
+            break -- Stop checking once we've found the carrier
+        end
+    end
+end
+
+PlayerRescuedInternal.Event:Connect(onPlayerRescuedInternal)
 
 print("KillerInteractionManager (Remote Event version) is running.")
