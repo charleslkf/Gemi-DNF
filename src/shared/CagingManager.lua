@@ -84,7 +84,8 @@ if RunService:IsServer() then
         end
 
         if not cageData[entity] then
-            cageData[entity] = { cageCount = 0, isTimerActive = false, killerWhoCaged = nil }
+            -- Added timerToken to prevent race conditions
+            cageData[entity] = { cageCount = 0, isTimerActive = false, killerWhoCaged = nil, timerToken = nil }
         end
 
         -- An entity who is already in a cage cannot be re-caged.
@@ -103,13 +104,20 @@ if RunService:IsServer() then
             return
         end
 
+        -- RACE CONDITION FIX: Use a token to invalidate old timers.
+        local timerToken = tick()
         cageData[entity].isTimerActive = true
+        cageData[entity].timerToken = timerToken
+
         task.spawn(function()
             task.wait(duration)
-            if cageData[entity] and cageData[entity].isTimerActive then
+            -- Only eliminate if the timer is still active AND the token matches.
+            if cageData[entity] and cageData[entity].isTimerActive and cageData[entity].timerToken == timerToken then
                 -- When the timer runs out, use the stored killer identity
                 local originalKiller = cageData[entity].killerWhoCaged
                 eliminatePlayer(entity, originalKiller)
+            else
+                print(string.format("Server: Obsolete timer for %s finished. No action taken.", entity.Name))
             end
         end)
     end
@@ -132,6 +140,7 @@ if RunService:IsServer() then
         print(string.format("Server: %s has been rescued.", entity.Name))
         cageData[entity].isTimerActive = false
         cageData[entity].killerWhoCaged = nil -- Clear the killer when rescued
+        cageData[entity].timerToken = nil -- RACE CONDITION FIX: Invalidate the current timer token
         playerRescuedEvent:FireAllClients(entity)
         playerRescuedInternalEvent:Fire(entity)
     end
@@ -146,7 +155,8 @@ if RunService:IsServer() then
         if cageData[entity] then
             cageData[entity].isTimerActive = false
             cageData[entity].killerWhoCaged = nil
-            cageData[entity].cageCount = 0 -- Reset the cage count
+            -- DO NOT reset the cage count here. It should only be reset for all players
+            -- at the start of a new round by resetAllCageCounts().
         end
 
         -- Fire the elimination event for other systems to listen to

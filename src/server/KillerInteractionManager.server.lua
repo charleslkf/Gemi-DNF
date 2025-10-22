@@ -185,8 +185,6 @@ local function onGrabRequest(killerPlayer, targetCharacter)
 
     -- Fully incapacitate the survivor and disable their physics to prevent dragging down the killer
     targetCharacter.Humanoid.WalkSpeed = 0
-    targetCharacter.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false) -- Disable sitting
-    targetCharacter.Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
 
     -- Disable collisions on the survivor to prevent dragging issues
     for _, part in ipairs(targetCharacter:GetDescendants()) do
@@ -194,6 +192,9 @@ local function onGrabRequest(killerPlayer, targetCharacter)
             part.CanCollide = false
         end
     end
+
+    targetCharacter.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false) -- Disable sitting
+    targetCharacter.Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
 
     -- Create the weld to attach the survivor to the killer
     local weld = Instance.new("WeldConstraint")

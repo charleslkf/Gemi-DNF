@@ -27,7 +27,7 @@ local GameStateManager = require(ServerScriptService:WaitForChild("GameStateMana
 local MapGenerator = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("MapGenerator"))
 
 -- Generate the procedural map on server startup
-MapGenerator.Generate()
+-- MapGenerator.Generate() -- Disabled as it overwrites proper assets with placeholders
 
 -- Configuration
 local CONFIG = {
