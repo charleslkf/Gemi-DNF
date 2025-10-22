@@ -94,8 +94,8 @@ end
 
 -- Main Attack & Grab Logic
 local function onInputBegan(input, gameProcessed)
-    -- Ignore input if it's already being handled by the game engine
-    if gameProcessed then
+    -- Ignore input if it's already being handled by the game engine or if the player is not a killer
+    if gameProcessed or not isKiller() then
         return
     end
 
@@ -193,7 +193,8 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 RunService.RenderStepped:Connect(function()
-    if not _G.UI then return end -- Wait for UIManager to initialize
+    if not _G.UI or not isKiller() then return end -- Abort if not a killer or UI is not ready
+
     if not player.Character or not player.Character.PrimaryPart then
         _G.UI.setInteractionPrompt("")
         return

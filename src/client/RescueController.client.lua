@@ -17,6 +17,12 @@ local CONFIG = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild(
 
 -- Player Globals
 local player = Players.LocalPlayer
+local survivorsTeam = Teams:WaitForChild("Survivors")
+
+-- Helper function to check if the player is a survivor
+local function isSurvivor()
+    return player.Team == survivorsTeam
+end
 
 -- Remotes
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -37,8 +43,8 @@ end
 
 -- Proximity checks for UI prompts
 RunService.RenderStepped:Connect(function()
-    -- Guard Clause: Do nothing until the UI Manager is initialized.
-    if not _G.UI then
+    -- Guard Clause: Do nothing until the UI Manager is initialized or if not a survivor.
+    if not _G.UI or not isSurvivor() then
         return
     end
 
@@ -72,6 +78,8 @@ RunService.RenderStepped:Connect(function()
     end
 
     if closestHanger and targetSurvivor then
+        -- The prompt was incorrectly showing "F" because KillerControls was interfering.
+        -- Now that scripts are isolated, this will correctly show "E".
         _G.UI.setInteractionPrompt("[E] to Rescue")
         targetHanger = closestHanger
     else
@@ -83,8 +91,9 @@ end)
 
 -- Handle player input
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
+    if gameProcessed or not isSurvivor() then return end
 
+    -- The key for rescuing is the HANG_KEY ('E'), not the grab key.
     if input.KeyCode == CONFIG.HANG_KEY then
         if targetHanger and targetSurvivor then
             -- Find the player object associated with the character model
