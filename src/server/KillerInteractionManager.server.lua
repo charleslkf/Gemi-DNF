@@ -193,7 +193,9 @@ local function onGrabRequest(killerPlayer, targetCharacter)
         end
     end
 
-    targetCharacter.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false) -- Disable sitting
+    -- ROBUSTNESS FIX: More aggressively disable all motor states to prevent movement stutter.
+    targetCharacter.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+    targetCharacter.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
     targetCharacter.Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
 
     -- Create the weld to attach the survivor to the killer
@@ -246,7 +248,8 @@ local function onDropRequest(killerPlayer)
     end
 
     -- Return survivor to the "Downed" state (low speed) and re-enable their physics
-    carriedCharacter.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true) -- Re-enable sitting
+    carriedCharacter.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+    carriedCharacter.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
     carriedCharacter.Humanoid.WalkSpeed = 5
     carriedCharacter.Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 end
@@ -435,12 +438,14 @@ local function onPlayerRescuedInternal(rescuedEntity)
         rescuedCharacter.Humanoid.Health = 51
         rescuedCharacter:SetAttribute("Downed", false)
 
-        -- Restore collisions and speed
+        -- Restore collisions, motor abilities, and speed
         for _, part in ipairs(rescuedCharacter:GetDescendants()) do
             if part:IsA("BasePart") then
                 part.CanCollide = true
             end
         end
+        rescuedCharacter.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+        rescuedCharacter.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
         rescuedCharacter.Humanoid.WalkSpeed = 16 -- Default speed
 
         -- Notify clients of the state change
