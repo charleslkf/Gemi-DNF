@@ -42,7 +42,7 @@ RunService.RenderStepped:Connect(function()
         return
     end
 
-    if not player.Character or not player.-haracter.PrimaryPart then
+    if not player.Character or not player.Character.PrimaryPart then
         _G.UI.setInteractionPrompt("")
         return
     end
