@@ -166,6 +166,9 @@ local function onGrabRequest(killerPlayer, targetCharacter)
     -- 2. APPLY GRAB LOGIC
     print(string.format("[InteractionManager] Grab validated: %s is grabbing %s.", killerPlayer.Name, targetCharacter.Name))
 
+    -- SPEED DEBUGGING
+    print(string.format("[SPEED DEBUG] PRE-GRAB: Killer Speed = %.2f, Survivor Speed = %.2f", killerCharacter.Humanoid.WalkSpeed, targetCharacter.Humanoid.WalkSpeed))
+
     -- Fully incapacitate the survivor and disable their physics to prevent dragging down the killer
     targetCharacter.Humanoid.WalkSpeed = 0
     targetCharacter.Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
@@ -187,6 +190,10 @@ local function onGrabRequest(killerPlayer, targetCharacter)
     -- Update killer state
     carrying[killerPlayer] = targetCharacter
 
+    -- SPEED DEBUGGING
+    task.wait(0.1) -- Wait a moment for physics to apply
+    print(string.format("[SPEED DEBUG] POST-GRAB: Killer Speed = %.2f, Survivor Speed = %.2f", killerCharacter.Humanoid.WalkSpeed, targetCharacter.Humanoid.WalkSpeed))
+
     -- Notify the client that its state has changed
     CarryingStateChanged:FireClient(killerPlayer, true)
 end
@@ -206,6 +213,9 @@ local function onDropRequest(killerPlayer)
 
     -- 2. APPLY DROP LOGIC
     print(string.format("[InteractionManager] Drop validated: %s is dropping %s.", killerPlayer.Name, carriedCharacter.Name))
+
+    -- SPEED DEBUGGING
+    print(string.format("[SPEED DEBUG] PRE-DROP: Killer Speed = %.2f, Survivor Speed = %.2f", killerCharacter.Humanoid.WalkSpeed, carriedCharacter.Humanoid.WalkSpeed))
 
     -- Destroy the weld
     local weld = killerCharacter.HumanoidRootPart:FindFirstChild("GrabWeld")
@@ -229,6 +239,10 @@ local function onDropRequest(killerPlayer)
     -- Return survivor to the "Downed" state (low speed) and re-enable their physics
     carriedCharacter.Humanoid.WalkSpeed = 5
     carriedCharacter.Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+
+    -- SPEED DEBUGGING
+    task.wait(0.1) -- Wait a moment for physics to apply
+    print(string.format("[SPEED DEBUG] POST-DROP: Killer Speed = %.2f, Survivor Speed = %.2f", killerCharacter.Humanoid.WalkSpeed, carriedCharacter.Humanoid.WalkSpeed))
 end
 
 RequestDrop.OnServerEvent:Connect(onDropRequest)

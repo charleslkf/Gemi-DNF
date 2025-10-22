@@ -18,7 +18,7 @@ local Config = {
     GRAB_DISTANCE = 10,
     CARRYING_SPEED_PENALTY = 0.95,
     HANG_KEY = Enum.KeyCode.E,
-    HANGER_INTERACT_DISTANCE = 20,
+    HANGER_INTERACT_DISTANCE = 12,
 }
 
 return Config
