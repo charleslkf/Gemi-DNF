@@ -166,8 +166,9 @@ local function onGrabRequest(killerPlayer, targetCharacter)
     -- 2. APPLY GRAB LOGIC
     print(string.format("[InteractionManager] Grab validated: %s is grabbing %s.", killerPlayer.Name, targetCharacter.Name))
 
-    -- Fully incapacitate the survivor
+    -- Fully incapacitate the survivor and disable their physics to prevent dragging down the killer
     targetCharacter.Humanoid.WalkSpeed = 0
+    targetCharacter.Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
 
     -- Disable collisions on the survivor to prevent dragging issues
     for _, part in ipairs(targetCharacter:GetDescendants()) do
@@ -225,8 +226,9 @@ local function onDropRequest(killerPlayer)
         end
     end
 
-    -- Return survivor to the "Downed" state (low speed)
+    -- Return survivor to the "Downed" state (low speed) and re-enable their physics
     carriedCharacter.Humanoid.WalkSpeed = 5
+    carriedCharacter.Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 end
 
 RequestDrop.OnServerEvent:Connect(onDropRequest)
@@ -271,6 +273,7 @@ local function onHangRequest(killerPlayer, hanger)
 
     -- Survivor is fully incapacitated on the hanger
     survivorCharacter.Humanoid.WalkSpeed = 0
+    survivorCharacter.Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 
     -- Trigger the caging timer
     local survivorPlayer = Players:GetPlayerFromCharacter(survivorCharacter)

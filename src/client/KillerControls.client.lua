@@ -208,15 +208,22 @@ RunService.RenderStepped:Connect(function()
         local minDistance = CONFIG.HANGER_INTERACT_DISTANCE
 
         if hangersFolder then
+            print("[DEBUG] Found Hangers folder in Workspace. Found", #hangersFolder:GetChildren(), "children.")
             for _, hanger in ipairs(hangersFolder:GetChildren()) do
-                if hanger:FindFirstChild("AttachPoint") then
-                    local distance = (killerPos - hanger.AttachPoint.Position).Magnitude
+                local attachPoint = hanger:FindFirstChild("AttachPoint")
+                if attachPoint then
+                    local distance = (killerPos - attachPoint.Position).Magnitude
+                    print(string.format("[DEBUG] Hanger '%s' has AttachPoint. Distance: %.2f", hanger.Name, distance))
                     if distance < minDistance then
                         minDistance = distance
                         closestHanger = hanger
                     end
+                else
+                    print(string.format("[DEBUG] Hanger '%s' is MISSING its AttachPoint.", hanger.Name))
                 end
             end
+        else
+            print("[DEBUG] Hangers folder NOT found in Workspace.")
         end
 
         if closestHanger then
