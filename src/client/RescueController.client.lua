@@ -17,10 +17,14 @@ local CONFIG = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild(
 
 -- Player Globals
 local player = Players.LocalPlayer
-local survivorsTeam = Teams:WaitForChild("Survivors")
+local Teams = game:GetService("Teams")
+local survivorsTeam = nil -- Lazy loaded to prevent race condition on startup
 
 -- Helper function to check if the player is a survivor
 local function isSurvivor()
+    if not survivorsTeam then
+        survivorsTeam = Teams:WaitForChild("Survivors")
+    end
     return player.Team == survivorsTeam
 end
 

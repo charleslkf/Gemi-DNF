@@ -34,10 +34,13 @@ local RequestHang = Remotes:WaitForChild("RequestHang")
 -- State
 local isCarrying = false
 local targetHanger = nil
-local killersTeam = Teams:WaitForChild("Killers")
+local killersTeam = nil -- Lazy loaded to prevent race condition
 
 -- Function to check if the player is a killer
 local function isKiller()
+    if not killersTeam then
+        killersTeam = Teams:WaitForChild("Killers")
+    end
     return player.Team == killersTeam
 end
 
