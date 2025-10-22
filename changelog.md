@@ -2,6 +2,18 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 6.2.2
+- **Major Feature: Complete "Killer Hanger" Gameplay Loop**
+  - Implemented the full gameplay loop for the killer's primary mechanic:
+    1.  **Downed State:** Survivors now enter a "Downed" state with reduced speed when their health is low.
+    2.  **Grab & Carry:** The killer can now grab a downed survivor with [F], carry them, and drop them with [F].
+    3.  **Hanging:** The killer can hang a carried survivor on a hanger with [E], which triggers the tiered elimination timer.
+    4.  **Rescue:** Healthy survivors can rescue a teammate from a hanger by approaching them and pressing [E].
+- **Critical Bug Fixes & Refactoring**
+  - **UI & Input System:** Overhauled the client-side control scripts to resolve numerous bugs where UI prompts were incorrect, flickering, or missing, and input was unresponsive. Killer and Survivor controls are now isolated and team-aware.
+  - **Server-Side Stability:** Fixed multiple server crashes and race conditions, including a critical bug in the caging timer that caused premature eliminations. Server-side logic is now more robust with decoupled modules and idempotent initialization.
+  - **Physics & Movement:** Resolved a persistent bug where the killer's movement speed would be restricted while carrying a survivor.
+
 ## Version 6.1.10
 - **Bug Fix: Resolved Multiple Gameplay Regressions**
   - **Machine/NPC Collision:** Machines and the Store Keeper are now solid and can no longer be walked through. The `CanCollide` property is now correctly set on their PrimaryPart when they are spawned.
