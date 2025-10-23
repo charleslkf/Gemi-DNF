@@ -12,7 +12,7 @@ This document tracks the major features and bug fixes implemented in the Gemi-DN
 - **Critical Bug Fixes & Refactoring**
   - **UI & Input System:** Overhauled the client-side control scripts to resolve numerous bugs where UI prompts were incorrect, flickering, or missing, and input was unresponsive. Killer and Survivor controls are now isolated and team-aware.
   - **Server-Side Stability:** Fixed multiple server crashes and race conditions, including a critical bug in the caging timer that caused premature eliminations. Server-side logic is now more robust with decoupled modules and idempotent initialization.
-  - **Physics & Movement:** Resolved a persistent bug where the killer's movement speed would be restricted while carrying a survivor.
+  - **Physics & Movement:** Permanently resolved a persistent physics bug that restricted the killer's movement. The final solution makes the carried survivor's limbs `Massless` to prevent any physics interference.
 
 ## Version 6.1.10
 - **Bug Fix: Resolved Multiple Gameplay Regressions**
