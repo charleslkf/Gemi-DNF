@@ -75,38 +75,53 @@ cageButton.TextColor3 = Color3.fromRGB(0, 0, 0)
 cageButton.Font = Enum.Font.SourceSansBold
 
 -- Add Hammer Button
-local addHammerButton = Instance.new("TextButton", screenGui)
-addHammerButton.Name = "AddHammerButton"
-addHammerButton.Text = "Add Hammer"
-addHammerButton.TextSize = 18
-addHammerButton.Size = UDim2.new(0, 120, 0, 40)
-addHammerButton.Position = UDim2.new(0.5, 195, 0, 10)
-addHammerButton.BackgroundColor3 = Color3.fromRGB(150, 150, 200)
-addHammerButton.TextColor3 = Color3.fromRGB(0, 0, 0)
-addHammerButton.Font = Enum.Font.SourceSansBold
+--== Item Buttons Refactor ==--
 
--- Add Key Button
-local addKeyButton = Instance.new("TextButton", screenGui)
-addKeyButton.Name = "AddKeyButton"
-addKeyButton.Text = "Add Key"
-addKeyButton.TextSize = 18
-addKeyButton.Size = UDim2.new(0, 120, 0, 40)
-addKeyButton.Position = UDim2.new(0.5, 320, 0, 10)
-addKeyButton.BackgroundColor3 = Color3.fromRGB(200, 200, 150)
-addKeyButton.TextColor3 = Color3.fromRGB(0, 0, 0)
-addKeyButton.Font = Enum.Font.SourceSansBold
+-- Create a container frame for the item buttons
+local itemButtonFrame = Instance.new("Frame", screenGui)
+itemButtonFrame.Name = "ItemButtonFrame"
+itemButtonFrame.BackgroundTransparency = 1
+itemButtonFrame.Size = UDim2.new(0, 650, 0, 40) -- Adjusted size for 5 buttons
+itemButtonFrame.Position = UDim2.new(0.5, 195, 0, 10)
+
+-- Add a layout to automatically position the buttons
+local listLayout = Instance.new("UIListLayout", itemButtonFrame)
+listLayout.FillDirection = Enum.FillDirection.Horizontal
+listLayout.Padding = UDim.new(0, 5) -- 5 pixels of padding between buttons
+
+-- Helper function to create an item button
+local function createItemButton(name, text, itemName, color)
+    local button = Instance.new("TextButton")
+    button.Name = name
+    button.Text = text
+    button.TextSize = 18
+    button.Size = UDim2.new(0, 120, 0, 40)
+    button.BackgroundColor3 = color
+    button.TextColor3 = Color3.fromRGB(0, 0, 0)
+    button.Font = Enum.Font.SourceSansBold
+    button.Parent = itemButtonFrame
+
+    button.MouseButton1Click:Connect(function()
+        print(string.format("[DEBUG] Firing AddItem event for %s...", itemName))
+        testAddItemEvent:FireServer(itemName)
+    end)
+
+    return button
+end
+
+-- Create the item buttons using the helper
+local addHammerButton = createItemButton("AddHammerButton", "Add Hammer", "Hammer", Color3.fromRGB(150, 150, 200))
+local addMedkitButton = createItemButton("AddMedkitButton", "Add Med-kit", "Med-kit", Color3.fromRGB(200, 150, 150))
+local addSmokeBombButton = createItemButton("AddSmokeBombButton", "Add Smoke", "Smoke Bomb", Color3.fromRGB(180, 180, 180))
+local addColaButton = createItemButton("AddColaButton", "Add Cola", "Active Cola", Color3.fromRGB(150, 200, 200))
+local addKeyButton = createItemButton("AddKeyButton", "Add Key", "Key", Color3.fromRGB(200, 200, 150))
+
 
 --== Event Connections ==--
 resetButton.MouseButton1Click:Connect(function() resetRoundEvent:FireServer() end)
 startButton.MouseButton1Click:Connect(function() startRoundEvent:FireServer() end)
 damageButton.MouseButton1Click:Connect(function() testDamageEvent:FireServer() end)
 cageButton.MouseButton1Click:Connect(function() testCageEvent:FireServer() end)
-addHammerButton.MouseButton1Click:Connect(function()
-    print("[DEBUG] AddHammerButton clicked!")
-    print("[DEBUG] Firing AddItem event to server for Hammer...")
-    testAddItemEvent:FireServer("Hammer")
-end)
-addKeyButton.MouseButton1Click:Connect(function() testAddItemEvent:FireServer("Key") end)
 
 --== Visibility Logic ==--
 RunService.RenderStepped:Connect(function()
@@ -121,15 +136,13 @@ RunService.RenderStepped:Connect(function()
         local inRound = not isInLobby
         damageButton.Visible = inRound
         cageButton.Visible = inRound
-        addHammerButton.Visible = inRound and isSurvivor
-        addKeyButton.Visible = inRound and isSurvivor
+        itemButtonFrame.Visible = inRound and isSurvivor -- Toggle the whole frame
     else
         resetButton.Visible = false
         startButton.Visible = false
         damageButton.Visible = false
         cageButton.Visible = false
-        addHammerButton.Visible = false
-        addKeyButton.Visible = false
+        itemButtonFrame.Visible = false -- Toggle the whole frame
     end
 end)
 
