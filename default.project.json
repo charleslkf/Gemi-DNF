@@ -110,6 +110,9 @@
         },
         "RescueController": {
             "$path": "src/client/RescueController.client.lua"
+        },
+        "DownedStateController": {
+            "$path": "src/client/DownedStateController.client.lua"
         }
       }
     }

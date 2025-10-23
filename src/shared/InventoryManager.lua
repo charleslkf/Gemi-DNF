@@ -171,7 +171,8 @@ if RunService:IsServer() then
                     for _, killer in ipairs(killers) do
                         local killerChar = killer.Character
                         if killerChar and killerChar:FindFirstChild("HumanoidRootPart") then
-                            local distance = (killerChar.HumanoidRootPart.Position - smokePosition).Magnitude
+                            local killerPos = killerChar.HumanoidRootPart.Position
+                            local distance = (killerPos - smokePosition).Magnitude
                             local isInsideSmoke = distance <= Config.SMOKE_BOMB_RADIUS
 
                             if isInsideSmoke and not affectedKillers[killer] then
