@@ -25,6 +25,7 @@ local INVENTORY_UI_NAME = "InventoryGui"
 -----------------------------------------------------------------------------
 if RunService:IsServer() then
     local CagingManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("CagingManager"))
+    local Config = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("Config"))
     local remotes = ReplicatedStorage:WaitForChild("Remotes")
     local inventoryChangedEvent = remotes:WaitForChild("InventoryChanged")
     local useItemRequest = remotes:WaitForChild("UseItemRequest")
@@ -36,11 +37,176 @@ if RunService:IsServer() then
     -- Defines the server-side behavior for using an item
     local itemUseLogic = {
         ["Hammer"] = function(player)
-            -- For now, the hammer can only be used to rescue oneself.
-            -- A future implementation could check for nearby caged players.
-            print(string.format("Server: %s used Hammer to rescue themselves.", player.Name))
-            CagingManager.rescuePlayer(player)
-            InventoryManager.removeItem(player, "Hammer")
+            -- Case 1: Self-rescue from a cage
+            if CagingManager.isCaged(player) then
+                print(string.format("Server: %s used Hammer to rescue themselves.", player.Name))
+                CagingManager.rescuePlayer(player)
+                InventoryManager.removeItem(player, "Hammer")
+                return -- Action complete
+            end
+
+            -- Case 2: Rescue a nearby caged teammate
+            local character = player.Character
+            if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+
+            local rootPart = character.HumanoidRootPart
+            local playerPos = rootPart.Position
+            local rescuedTarget = nil
+
+            -- Find a nearby caged survivor
+            for _, otherPlayer in ipairs(Players:GetPlayers()) do
+                if otherPlayer ~= player and otherPlayer.Team and otherPlayer.Team.Name == "Survivors" then
+                    if CagingManager.isCaged(otherPlayer) then
+                        local otherChar = otherPlayer.Character
+                        if otherChar and otherChar:FindFirstChild("HumanoidRootPart") then
+                             local otherPos = otherChar.HumanoidRootPart.Position
+                            if (playerPos - otherPos).Magnitude <= Config.HANGER_INTERACT_DISTANCE then
+                                rescuedTarget = otherPlayer
+                                break -- Rescue the first target found
+                            end
+                        end
+                    end
+                end
+            end
+
+            if rescuedTarget then
+                print(string.format("Server: %s used Hammer to rescue %s.", player.Name, rescuedTarget.Name))
+                CagingManager.rescuePlayer(rescuedTarget)
+                InventoryManager.removeItem(player, "Hammer") -- Consume on successful use
+            else
+                print(string.format("Server: %s used Hammer, but no caged survivor was in range.", player.Name))
+                -- NOTE: We do not consume the item if it had no effect.
+            end
+        end,
+        ["Med-kit"] = function(player)
+            local character = player.Character
+            if not character then return end
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if not humanoid then return end
+
+            humanoid.Health = math.min(humanoid.Health + 50, humanoid.MaxHealth)
+            print(string.format("Server: %s used Med-kit, health is now %.1f", player.Name, humanoid.Health))
+            InventoryManager.removeItem(player, "Med-kit")
+        end,
+        ["Active Cola"] = function(player)
+            local character = player.Character
+            if not character then
+                InventoryManager.removeItem(player, "Active Cola")
+                return
+            end
+
+            -- If player is downed, consume item with no effect
+            if character:GetAttribute("Downed") == true then
+                print(string.format("Server: %s used Active Cola while downed. No effect.", player.Name))
+                InventoryManager.removeItem(player, "Active Cola")
+                return
+            end
+
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if not humanoid then
+                InventoryManager.removeItem(player, "Active Cola")
+                return
+            end
+
+            local originalSpeed = humanoid.WalkSpeed
+            humanoid.WalkSpeed = originalSpeed + 8
+            print(string.format("Server: %s used Active Cola. Speed increased.", player.Name))
+            InventoryManager.removeItem(player, "Active Cola")
+
+            -- Respawn in a new thread to avoid blocking
+            task.spawn(function()
+                task.wait(10)
+                -- Check if humanoid still exists and speed hasn't been changed by another effect
+                if humanoid and humanoid.WalkSpeed == originalSpeed + 8 then
+                    humanoid.WalkSpeed = originalSpeed
+                    print(string.format("Server: %s's Active Cola effect wore off.", player.Name))
+                end
+            end)
+        end,
+        ["Smoke Bomb"] = function(player)
+            local character = player.Character
+            if not character or not character:FindFirstChild("HumanoidRootPart") then
+                return -- Can't use without a character
+            end
+
+            InventoryManager.removeItem(player, "Smoke Bomb")
+            local rootPart = character.HumanoidRootPart
+            local smokePosition = rootPart.Position
+
+            -- Create the smoke effect
+            local smokePart = Instance.new("Part")
+            smokePart.Size = Vector3.new(1, 1, 1)
+            smokePart.Position = smokePosition
+            smokePart.Anchored = true
+            smokePart.CanCollide = false
+            smokePart.Transparency = 1
+            smokePart.Name = "SmokeEffect"
+            smokePart.Parent = Workspace
+
+            local smokeEmitter = Instance.new("ParticleEmitter")
+            smokeEmitter.Texture = "rbxassetid://2619231367" -- A decent smoke texture
+            smokeEmitter.Color = ColorSequence.new(Color3.fromRGB(80, 80, 80), Color3.fromRGB(50, 50, 50))
+            smokeEmitter.Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0.5),
+                NumberSequenceKeypoint.new(0.2, 0.2),
+                NumberSequenceKeypoint.new(0.8, 0.8),
+                NumberSequenceKeypoint.new(1, 1),
+            })
+            smokeEmitter.Size = NumberSequence.new(10, 25)
+            smokeEmitter.Lifetime = NumberRange.new(5, 8)
+            smokeEmitter.Rate = 50
+            smokeEmitter.Speed = NumberRange.new(0.5, 2)
+            smokeEmitter.SpreadAngle = Vector2.new(360, 360)
+            smokeEmitter.Parent = smokePart
+
+            -- Start the blindness checking logic in a new thread
+            task.spawn(function()
+                local Teams = game:GetService("Teams")
+                local killersTeam = Teams:WaitForChild("Killers")
+                local applyBlindnessEvent = remotes:WaitForChild("ApplyBlindnessEffect_CLIENT")
+
+                local affectedKillers = {} -- { [Player]: isBlind }
+                local duration = 10 -- Smoke lasts for 10 seconds
+                local elapsed = 0
+
+                while elapsed < duration do
+                    local killers = killersTeam:GetPlayers()
+
+                    for _, killer in ipairs(killers) do
+                        local killerChar = killer.Character
+                        if killerChar and killerChar:FindFirstChild("HumanoidRootPart") then
+                            local distance = (killerChar.HumanoidRootPart.Position - smokePosition).Magnitude
+                            local isInsideSmoke = distance <= Config.SMOKE_BOMB_RADIUS
+
+                            if isInsideSmoke and not affectedKillers[killer] then
+                                -- Killer entered the smoke
+                                affectedKillers[killer] = true
+                                applyBlindnessEvent:FireClient(killer, true)
+                                print("Server: Applied blindness to", killer.Name)
+                            elseif not isInsideSmoke and affectedKillers[killer] then
+                                -- Killer left the smoke
+                                affectedKillers[killer] = false
+                                applyBlindnessEvent:FireClient(killer, false)
+                                print("Server: Removed blindness from", killer.Name)
+                            end
+                        end
+                    end
+
+                    task.wait(0.25) -- Check 4 times per second
+                    elapsed = elapsed + 0.25
+                end
+
+                -- Clean up: Un-blind anyone still in the smoke
+                for killer, isBlind in pairs(affectedKillers) do
+                    if isBlind then
+                        applyBlindnessEvent:FireClient(killer, false)
+                        print("Server: Cleaned up blindness for", killer.Name)
+                    end
+                end
+
+                -- Destroy the smoke effect part
+                smokePart:Destroy()
+            end)
         end,
     }
 
