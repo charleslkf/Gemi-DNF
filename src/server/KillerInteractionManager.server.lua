@@ -44,6 +44,7 @@ if not PlayerRescuedInternal then
     PlayerRescuedInternal.Name = "PlayerRescuedInternal"
     PlayerRescuedInternal.Parent = Bindables
 end
+local HealthChangedInternal_SERVER = Bindables:WaitForChild("HealthChangedInternal_SERVER")
 
 -- Constants
 local ATTACK_COOLDOWN = 5 -- seconds
@@ -473,5 +474,34 @@ local function onPlayerRescuedInternal(rescuedEntity)
 end
 
 PlayerRescuedInternal.Event:Connect(onPlayerRescuedInternal)
+
+-- When a player's health changes, check if they should be taken out of the downed state.
+local function onHealthChanged(entity, currentHealth, maxHealth)
+    -- The entity can be a Player object or a bot's Model
+    local character
+    if entity:IsA("Player") then
+        character = entity.Character
+    else
+        character = entity
+    end
+
+    if not character or not character:FindFirstChild("Humanoid") then return end
+
+    -- Check if the character is currently downed
+    if character:GetAttribute("Downed") == true then
+        -- If health is now above the threshold, stand them up
+        if currentHealth > CAGE_HEALTH_THRESHOLD then
+            print(string.format("[InteractionManager] %s's health is above threshold. Removing Downed state.", character.Name))
+            character:SetAttribute("Downed", nil) -- Remove the attribute
+            character.Humanoid.WalkSpeed = 16 -- Restore default walk speed
+
+            -- Notify clients that the state has changed
+            DownedStateChanged:FireAllClients(character)
+        end
+    end
+end
+
+HealthChangedInternal_SERVER.Event:Connect(onHealthChanged)
+
 
 print("KillerInteractionManager (Remote Event version) is running.")
