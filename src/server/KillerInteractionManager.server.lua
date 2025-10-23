@@ -57,6 +57,16 @@ local carrying = {} -- { [killerPlayer]: survivorCharacter }
 local killersTeam = Teams:WaitForChild("Killers")
 local survivorsTeam = Teams:WaitForChild("Survivors")
 
+-- Helper function to make a character massless to prevent physics glitches
+local function setMass(character, massless)
+    if not character then return end
+    for _, part in ipairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.Massless = massless
+        end
+    end
+end
+
 -- Main Handler for Attack Requests
 -- Main Handler for Attack Requests. The target can be a Player object or a Model.
 local function onAttackRequest(killerPlayer, targetCharacter)
@@ -198,6 +208,9 @@ local function onGrabRequest(killerPlayer, targetCharacter)
     targetCharacter.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
     targetCharacter.Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
 
+    -- Make the survivor massless to prevent them from affecting the killer's movement.
+    setMass(targetCharacter, true)
+
     -- Create the weld to attach the survivor to the killer
     local weld = Instance.new("WeldConstraint")
     weld.Name = "GrabWeld"
@@ -240,7 +253,8 @@ local function onDropRequest(killerPlayer)
     -- Notify the client that its state has changed
     CarryingStateChanged:FireClient(killerPlayer, false)
 
-    -- Restore survivor's collisions
+    -- Restore survivor's collisions and mass
+    setMass(carriedCharacter, false)
     for _, part in ipairs(carriedCharacter:GetDescendants()) do
         if part:IsA("BasePart") then
             part.CanCollide = true
@@ -286,6 +300,9 @@ local function onHangRequest(killerPlayer, hanger)
 
     carrying[killerPlayer] = nil
     CarryingStateChanged:FireClient(killerPlayer, false)
+
+    -- Restore the survivor's mass before hanging them
+    setMass(survivorCharacter, false)
 
     -- Attach to hanger
     local hangWeld = Instance.new("WeldConstraint")
@@ -438,7 +455,8 @@ local function onPlayerRescuedInternal(rescuedEntity)
         rescuedCharacter.Humanoid.Health = 51
         rescuedCharacter:SetAttribute("Downed", false)
 
-        -- Restore collisions, motor abilities, and speed
+        -- Restore collisions, motor abilities, mass, and speed
+        setMass(rescuedCharacter, false)
         for _, part in ipairs(rescuedCharacter:GetDescendants()) do
             if part:IsA("BasePart") then
                 part.CanCollide = true
