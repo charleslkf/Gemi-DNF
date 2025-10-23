@@ -58,10 +58,10 @@ local killersTeam = Teams:WaitForChild("Killers")
 local survivorsTeam = Teams:WaitForChild("Survivors")
 
 -- Helper function to make a character massless to prevent physics glitches
-local function setMass(character, massless)
+local function setMass(character, massless, partToExclude)
     if not character then return end
     for _, part in ipairs(character:GetDescendants()) do
-        if part:IsA("BasePart") then
+        if part:IsA("BasePart") and part ~= partToExclude then
             part.Massless = massless
         end
     end
@@ -208,8 +208,9 @@ local function onGrabRequest(killerPlayer, targetCharacter)
     targetCharacter.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
     targetCharacter.Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
 
-    -- Make the survivor massless to prevent them from affecting the killer's movement.
-    setMass(targetCharacter, true)
+    -- Make the survivor's limbs massless to prevent them from dragging or interfering with the killer's movement.
+    -- Crucially, the HumanoidRootPart is NOT made massless, which prevents physics glitches.
+    setMass(targetCharacter, true, targetCharacter.HumanoidRootPart)
 
     -- Create the weld to attach the survivor to the killer
     local weld = Instance.new("WeldConstraint")
@@ -254,7 +255,7 @@ local function onDropRequest(killerPlayer)
     CarryingStateChanged:FireClient(killerPlayer, false)
 
     -- Restore survivor's collisions and mass
-    setMass(carriedCharacter, false)
+    setMass(carriedCharacter, false) -- No part excluded, so all parts are restored
     for _, part in ipairs(carriedCharacter:GetDescendants()) do
         if part:IsA("BasePart") then
             part.CanCollide = true
@@ -302,7 +303,7 @@ local function onHangRequest(killerPlayer, hanger)
     CarryingStateChanged:FireClient(killerPlayer, false)
 
     -- Restore the survivor's mass before hanging them
-    setMass(survivorCharacter, false)
+    setMass(survivorCharacter, false) -- No part excluded, so all parts are restored
 
     -- Attach to hanger
     local hangWeld = Instance.new("WeldConstraint")
@@ -456,7 +457,7 @@ local function onPlayerRescuedInternal(rescuedEntity)
         rescuedCharacter:SetAttribute("Downed", false)
 
         -- Restore collisions, motor abilities, mass, and speed
-        setMass(rescuedCharacter, false)
+        setMass(rescuedCharacter, false) -- No part excluded, so all parts are restored
         for _, part in ipairs(rescuedCharacter:GetDescendants()) do
             if part:IsA("BasePart") then
                 part.CanCollide = true
