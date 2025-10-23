@@ -99,6 +99,25 @@ if RunService:IsServer() then
         end
     end
 
+    ---
+    -- Applies healing to an entity.
+    -- @param entity The Player or Model to heal.
+    -- @param amount The amount of health to restore.
+    function HealthManager.applyHealing(entity, amount)
+        if not healthData[entity] then
+            warn(string.format("Attempted to apply healing to %s, but they have no health data.", entity.Name))
+            return
+        end
+
+        local data = healthData[entity]
+        data.current = math.min(data.max, data.current + amount)
+
+        print(string.format("Server: Applied %d healing to %s. New health: %d", amount, entity.Name, data.current))
+
+        -- Tell all clients to update the health bar for this entity
+        healthChangedEvent:FireAllClients(entity, data.current, data.max)
+    end
+
     -- Cleanup function for when a real player leaves
     Players.PlayerRemoving:Connect(function(player)
         HealthManager.cleanupEntity(player)

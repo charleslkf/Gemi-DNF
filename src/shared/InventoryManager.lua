@@ -26,6 +26,7 @@ local INVENTORY_UI_NAME = "InventoryGui"
 if RunService:IsServer() then
     local CagingManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("CagingManager"))
     local Config = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("Config"))
+    local HealthManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("HealthManager"))
     local remotes = ReplicatedStorage:WaitForChild("Remotes")
     local inventoryChangedEvent = remotes:WaitForChild("InventoryChanged")
     local useItemRequest = remotes:WaitForChild("UseItemRequest")
@@ -79,13 +80,8 @@ if RunService:IsServer() then
             end
         end,
         ["Med-kit"] = function(player)
-            local character = player.Character
-            if not character then return end
-            local humanoid = character:FindFirstChildOfClass("Humanoid")
-            if not humanoid then return end
-
-            humanoid.Health = math.min(humanoid.Health + 50, humanoid.MaxHealth)
-            print(string.format("Server: %s used Med-kit, health is now %.1f", player.Name, humanoid.Health))
+            -- Use the centralized HealthManager to ensure UI events are fired
+            HealthManager.applyHealing(player, 50)
             InventoryManager.removeItem(player, "Med-kit")
         end,
         ["Active Cola"] = function(player)

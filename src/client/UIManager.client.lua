@@ -206,6 +206,7 @@ end
 -- Create the Blindness Effect UI
 local blindnessGui = Instance.new("ScreenGui")
 blindnessGui.Name = "BlindnessEffect"
+blindnessGui.ResetOnSpawn = false -- CRITICAL: Prevents the UI from being destroyed on spawn
 blindnessGui.Enabled = false -- Disabled by default
 blindnessGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 blindnessGui.Parent = playerGui
