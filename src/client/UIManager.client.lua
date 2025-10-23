@@ -202,3 +202,26 @@ function _G.UI.setInteractionPrompt(text)
         interactionPrompt.Text = text
     end
 end
+
+-- Create the Blindness Effect UI
+local blindnessGui = Instance.new("ScreenGui")
+blindnessGui.Name = "BlindnessEffect"
+blindnessGui.ResetOnSpawn = false -- CRITICAL: Prevents the UI from being destroyed on spawn
+blindnessGui.Enabled = false -- Disabled by default
+blindnessGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+blindnessGui.Parent = playerGui
+
+local blindnessFrame = Instance.new("Frame")
+blindnessFrame.Name = "BlindnessFrame"
+blindnessFrame.Size = UDim2.new(1, 0, 1, 0) -- Full screen
+blindnessFrame.BackgroundColor3 = Color3.new(0, 0, 0) -- Black
+blindnessFrame.BorderSizePixel = 0
+blindnessFrame.Parent = blindnessGui
+
+-- Listen for the server to apply/remove the blindness effect
+local applyBlindnessEvent = Remotes:WaitForChild("ApplyBlindnessEffect_CLIENT")
+applyBlindnessEvent.OnClientEvent:Connect(function(shouldBeBlind)
+    if typeof(shouldBeBlind) == "boolean" then
+        blindnessGui.Enabled = shouldBeBlind
+    end
+end)

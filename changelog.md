@@ -2,6 +2,18 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 6.3.0
+- **Major Feature: Survivor Items & Debug Tools**
+  - **Item Implementation:** Implemented the full server-side logic and client-side effects for four new survivor items:
+    - **Med-kit:** Restores 50 HP. Correctly updates the client's health bar by using the centralized `HealthManager`.
+    - **Active Cola:** Provides a temporary speed boost. The item is consumed with no effect if the survivor is in the "Downed" state.
+    - **Hammer:** Now has dual functionality. It can be used to rescue a teammate from a hanger at a distance, and also allows a survivor to rescue themselves from a hanger.
+    - **Smoke Bomb:** Creates a visual smoke cloud that applies a temporary blindness effect to any Killer who enters its radius.
+  - **Debug Buttons:** Added a new, refactored set of debug buttons to the client UI for Survivors, allowing testers to easily grant themselves any of the new items.
+- **Critical Bug Fix: "Downed" State Logic**
+  - Fixed a critical bug where a survivor would remain in the "Downed" state (slowed and grab-able) even after being healed to full health.
+  - The fix involved creating a new, dedicated client-side controller (`DownedStateController.client.lua`) to correctly manage the visual state of being downed and a new server-to-server event system to ensure all server modules are aware of health changes.
+
 ## Version 6.2.2
 - **Major Feature: Complete "Killer Hanger" Gameplay Loop**
   - Implemented the full gameplay loop for the killer's primary mechanic:

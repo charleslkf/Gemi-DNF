@@ -50,6 +50,7 @@
       },
       "Remotes": {
         "$className": "Folder",
+        "ApplyBlindnessEffect_CLIENT": { "$path": "src/remotes/ApplyBlindnessEffect_CLIENT", "$className": "RemoteEvent" },
         "AttackRequest": { "$path": "src/remotes/AttackRequest", "$className": "RemoteEvent" },
         "CarryingStateChanged": { "$path": "src/remotes/CarryingStateChanged", "$className": "RemoteEvent" },
         "DownedStateChanged": { "$path": "src/remotes/DownedStateChanged", "$className": "RemoteEvent" },
@@ -109,6 +110,9 @@
         },
         "RescueController": {
             "$path": "src/client/RescueController.client.lua"
+        },
+        "DownedStateController": {
+            "$path": "src/client/DownedStateController.client.lua"
         }
       }
     }

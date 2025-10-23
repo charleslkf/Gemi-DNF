@@ -31,6 +31,23 @@ if RunService:IsServer() then
     local remotes = ReplicatedStorage:WaitForChild("Remotes")
     local healthChangedEvent = remotes:WaitForChild("HealthChanged")
 
+    -- Server-to-server communication (Idempotent Initialization)
+    local ServerScriptService = game:GetService("ServerScriptService")
+    local bindables = ServerScriptService:FindFirstChild("Bindables")
+    if not bindables then
+        bindables = Instance.new("Folder")
+        bindables.Name = "Bindables"
+        bindables.Parent = ServerScriptService
+    end
+
+    local healthChangedInternalEvent = bindables:FindFirstChild("HealthChangedInternal_SERVER")
+    if not healthChangedInternalEvent then
+        healthChangedInternalEvent = Instance.new("BindableEvent")
+        healthChangedInternalEvent.Name = "HealthChangedInternal_SERVER"
+        healthChangedInternalEvent.Parent = bindables
+    end
+
+
     ---
     -- Removes health data for a given entity.
     -- @param entity The Player or Model to clean up.
@@ -90,6 +107,8 @@ if RunService:IsServer() then
 
         -- Tell all clients to update the health bar for this entity
         healthChangedEvent:FireAllClients(entity, data.current, data.max)
+        -- Fire internal event for other server modules
+        healthChangedInternalEvent:Fire(entity, data.current, data.max)
 
         -- Check for elimination
         if data.current <= 0 then
@@ -97,6 +116,27 @@ if RunService:IsServer() then
             -- Clear health data after elimination logic has run
             HealthManager.cleanupEntity(entity)
         end
+    end
+
+    ---
+    -- Applies healing to an entity.
+    -- @param entity The Player or Model to heal.
+    -- @param amount The amount of health to restore.
+    function HealthManager.applyHealing(entity, amount)
+        if not healthData[entity] then
+            warn(string.format("Attempted to apply healing to %s, but they have no health data.", entity.Name))
+            return
+        end
+
+        local data = healthData[entity]
+        data.current = math.min(data.max, data.current + amount)
+
+        print(string.format("Server: Applied %d healing to %s. New health: %d", amount, entity.Name, data.current))
+
+        -- Tell all clients to update the health bar for this entity
+        healthChangedEvent:FireAllClients(entity, data.current, data.max)
+        -- Fire internal event for other server modules
+        healthChangedInternalEvent:Fire(entity, data.current, data.max)
     end
 
     -- Cleanup function for when a real player leaves

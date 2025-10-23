@@ -19,6 +19,7 @@ local Config = {
     CARRYING_SPEED_PENALTY = 0.95,
     HANG_KEY = Enum.KeyCode.E,
     HANGER_INTERACT_DISTANCE = 12,
+    SMOKE_BOMB_RADIUS = 15,
 }
 
 return Config
