@@ -13,6 +13,10 @@ local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local DownedStateChanged = Remotes:WaitForChild("DownedStateChanged")
+local CrawlAnimation = ReplicatedStorage:WaitForChild("CrawlAnimation")
+
+-- State to keep track of a character's currently playing crawl animation track
+local activeCrawlTracks = {} -- { [character]: AnimationTrack }
 
 -- Function to apply or remove the downed state visuals
 local function updateDownedState(character)
@@ -21,15 +25,37 @@ local function updateDownedState(character)
     local humanoid = character.Humanoid
     local isDowned = character:GetAttribute("Downed") == true
 
+    -- Stop any existing animation track for this character first
+    if activeCrawlTracks[character] then
+        activeCrawlTracks[character]:Stop()
+        activeCrawlTracks[character] = nil
+    end
+
     if isDowned then
-        -- Apply downed state
+        -- If walkspeed is 0, the player is being carried, so no animation should play.
+        if humanoid.WalkSpeed == 0 then
+            print("[DownedStateController] Survivor is downed but being carried. No animation.")
+            return
+        end
+
+        -- Apply downed state visuals
         humanoid.WalkSpeed = 5
-        -- In a real game, you would play a crawling animation here
-        print(string.format("[DownedStateController] %s is now in a downed state.", character.Name))
+
+        -- Play the crawling animation if it's not already playing
+        if not activeCrawlTracks[character] then
+            local animator = humanoid:FindFirstChildOfClass("Animator")
+            if animator then
+                local crawlTrack = animator:LoadAnimation(CrawlAnimation)
+                crawlTrack.Priority = Enum.AnimationPriority.Action2
+                crawlTrack.Looped = true
+                crawlTrack:Play()
+                activeCrawlTracks[character] = crawlTrack -- Store the track
+                print(string.format("[DownedStateController] Playing crawl animation for %s.", character.Name))
+            end
+        end
     else
-        -- Remove downed state
+        -- Remove downed state (this case is already handled by the stop logic at the top)
         humanoid.WalkSpeed = 16 -- Restore default speed
-        -- In a real game, you would stop the crawling animation here
         print(string.format("[DownedStateController] %s is no longer in a downed state.", character.Name))
     end
 end
