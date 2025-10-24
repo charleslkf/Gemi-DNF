@@ -32,21 +32,29 @@ local function updateDownedState(character)
     end
 
     if isDowned then
-        -- Apply downed state
+        -- If walkspeed is 0, the player is being carried, so no animation should play.
+        if humanoid.WalkSpeed == 0 then
+            print("[DownedStateController] Survivor is downed but being carried. No animation.")
+            return
+        end
+
+        -- Apply downed state visuals
         humanoid.WalkSpeed = 5
 
-        -- Play the crawling animation
-        local animator = humanoid:FindFirstChildOfClass("Animator")
-        if animator then
-            local crawlTrack = animator:LoadAnimation(CrawlAnimation)
-            crawlTrack.Priority = Enum.AnimationPriority.Action2
-            crawlTrack.Looped = true
-            crawlTrack:Play()
-            activeCrawlTracks[character] = crawlTrack -- Store the track
-            print(string.format("[DownedStateController] Playing crawl animation for %s.", character.Name))
+        -- Play the crawling animation if it's not already playing
+        if not activeCrawlTracks[character] then
+            local animator = humanoid:FindFirstChildOfClass("Animator")
+            if animator then
+                local crawlTrack = animator:LoadAnimation(CrawlAnimation)
+                crawlTrack.Priority = Enum.AnimationPriority.Action2
+                crawlTrack.Looped = true
+                crawlTrack:Play()
+                activeCrawlTracks[character] = crawlTrack -- Store the track
+                print(string.format("[DownedStateController] Playing crawl animation for %s.", character.Name))
+            end
         end
     else
-        -- Remove downed state
+        -- Remove downed state (this case is already handled by the stop logic at the top)
         humanoid.WalkSpeed = 16 -- Restore default speed
         print(string.format("[DownedStateController] %s is no longer in a downed state.", character.Name))
     end
