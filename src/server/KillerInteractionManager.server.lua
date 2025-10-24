@@ -208,6 +208,7 @@ local function onGrabRequest(killerPlayer, targetCharacter)
     targetCharacter.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
     targetCharacter.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
     targetCharacter.Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+    targetCharacter.Humanoid.PlatformStand = true -- FINAL FIX: This removes all physics drag.
 
     -- Make the survivor's limbs massless to prevent them from dragging or interfering with the killer's movement.
     -- Crucially, the HumanoidRootPart is NOT made massless, which prevents physics glitches.
@@ -266,6 +267,7 @@ local function onDropRequest(killerPlayer)
     -- Return survivor to the "Downed" state (low speed) and re-enable their physics
     carriedCharacter.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
     carriedCharacter.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+    carriedCharacter.Humanoid.PlatformStand = false -- Restore normal physics
     carriedCharacter.Humanoid.WalkSpeed = 5
     carriedCharacter.Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 end
@@ -315,6 +317,7 @@ local function onHangRequest(killerPlayer, hanger)
 
     -- Survivor is fully incapacitated on the hanger
     survivorCharacter.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true) -- Re-enable sitting
+    survivorCharacter.Humanoid.PlatformStand = false -- Restore normal physics
     survivorCharacter.Humanoid.WalkSpeed = 0
     survivorCharacter.Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 
@@ -466,6 +469,7 @@ local function onPlayerRescuedInternal(rescuedEntity)
         end
         rescuedCharacter.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
         rescuedCharacter.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+        rescuedCharacter.Humanoid.PlatformStand = false -- Restore normal physics
         rescuedCharacter.Humanoid.WalkSpeed = 16 -- Default speed
 
         -- Notify clients of the state change
