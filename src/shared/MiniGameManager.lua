@@ -346,32 +346,44 @@ function MiniGameManager.init()
             return
         end
 
-        local gameType = nearbyMachine:GetAttribute("GameType")
-        local gameToPlay = gameFunctions[gameType]
-
-        if not gameToPlay then
-            warn("MiniGameManager: Machine has invalid GameType:", gameType)
-            return
-        end
-
-        isGameActive = true
-
-        local success = gameToPlay()
-
-        if success then
-            -- On success, mark machine as completed and change color
-            nearbyMachine:SetAttribute("IsCompleted", true)
-            if nearbyMachine.PrimaryPart then
-                nearbyMachine.PrimaryPart.Color = Color3.fromRGB(0, 255, 0)
-            end
-            -- Notify the server that a machine was fixed
-            MachineFixed:FireServer()
-            -- The interaction prompt will be removed on the next RenderStepped cycle
-        end
-
-        -- Allow another game to be started
-        isGameActive = false
+        -- Use the new centralized function
+        MiniGameManager.triggerMiniGame(nearbyMachine)
     end)
+end
+
+---
+-- Returns the machine model that is currently considered "nearby" by the manager.
+-- @return Model | nil
+function MiniGameManager.getNearbyMachine()
+    return nearbyMachine
+end
+
+---
+-- Externally triggers the start of the mini-game for the specified machine.
+-- @param machine The machine model to start the game on.
+function MiniGameManager.triggerMiniGame(machine)
+    if isGameActive or not machine then return end
+
+    local gameType = machine:GetAttribute("GameType")
+    local gameToPlay = gameFunctions[gameType]
+
+    if not gameToPlay then
+        warn("MiniGameManager: Machine has invalid GameType:", gameType)
+        return
+    end
+
+    isGameActive = true
+    local success = gameToPlay()
+
+    if success then
+        machine:SetAttribute("IsCompleted", true)
+        if machine.PrimaryPart then
+            machine.PrimaryPart.Color = Color3.fromRGB(0, 255, 0)
+        end
+        MachineFixed:FireServer()
+    end
+
+    isGameActive = false
 end
 
 return MiniGameManager

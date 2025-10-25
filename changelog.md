@@ -2,6 +2,14 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 6.3.5
+- **Feature: Context-Aware Mobile "Interact" Button**
+  - Implemented a new, on-screen "Interact" button that appears for Survivors using a mobile device.
+  - The button is context-aware and will only appear when near a valid target. It prioritizes rescuing caged teammates over repairing machines.
+- **Critical Bug Fix: Mobile Controls Crash**
+  - Fixed a critical crash that made the mobile controls completely non-functional.
+  - The fix involved refactoring the `MobileControls.client.lua` script to be self-reliant in its proximity checks, removing a fragile dependency on the `MiniGameManager` that was causing the `attempt to call a nil value` error.
+
 ## Version 6.3.0
 - **Major Feature: Survivor Items & Debug Tools**
   - **Item Implementation:** Implemented the full server-side logic and client-side effects for four new survivor items:
@@ -95,7 +103,7 @@ This document tracks the major features and bug fixes implemented in the Gemi-DN
 ## Version 2.0.1
 - **Feature: Automated Bot Testing System**
   - Created a `SimulatedPlayerManager` to handle the spawning, pathfinding-based movement, and despawning of simulated players.
-  - Added scripts to automatically generate the necessary test assets (`BotTemplate` and `PlayableArea`) so no manual setup is required.
+  - Added scripts to automatically generate the necessary test assets (`BotTemplate` and `BotTemplate`) so no manual setup is required.
 
 ## Pre-2.0.0
 - **Critical Bug Fix: Duplicate Health Bar**

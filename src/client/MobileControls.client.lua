@@ -87,9 +87,17 @@ RunService.RenderStepped:Connect(function()
 
         -- Priority 2: Check for machines (only if no rescue target was found)
         if not foundTarget then
-            local machine = MiniGameManager.getClosestMachine(playerPos)
-            if machine then
-                foundTarget = machine -- Target is the Machine model
+            local machinesFolder = Workspace:FindFirstChild(CONFIG.MACHINE_FOLDER_NAME)
+            if machinesFolder then
+                 for _, machine in ipairs(machinesFolder:GetChildren()) do
+                    if machine:IsA("Model") and machine.PrimaryPart then
+                        local distance = (playerPos - machine.PrimaryPart.Position).Magnitude
+                        if distance <= CONFIG.INTERACTION_DISTANCE and not machine:GetAttribute("IsCompleted") then
+                            foundTarget = machine -- Target is the Machine model
+                            break -- Found a target, no need to check further
+                        end
+                    end
+                end
             end
         end
 
@@ -121,8 +129,8 @@ interactButton.Activated:Connect(function()
     -- Check if the target is a Model (meaning a machine)
     elseif currentInteractionTarget:IsA("Model") then
         print("[MobileControls] Interacting with machine:", currentInteractionTarget.Name)
-        -- Fire the same event/function that the 'E' key press does in MiniGameManager
-        MiniGameManager.startMiniGame(currentInteractionTarget)
+        -- Use the newly exposed function from MiniGameManager
+        MiniGameManager.triggerMiniGame(currentInteractionTarget)
     end
 end)
 
