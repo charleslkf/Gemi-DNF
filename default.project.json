@@ -113,6 +113,9 @@
         },
         "DownedStateController": {
             "$path": "src/client/DownedStateController.client.lua"
+        },
+        "MobileControls": {
+            "$path": "src/client/MobileControls.client.lua"
         }
       }
     }
