@@ -41,8 +41,8 @@ interactButton.Name = "InteractButton"
 interactButton.Image = "rbxassetid://5422697380" -- Action icon
 interactButton.BackgroundTransparency = 1
 interactButton.Size = UDim2.new(0, 120, 0, 120)
-interactButton.AnchorPoint = Vector2.new(0, 1) -- Bottom-left
-interactButton.Position = UDim2.new(0, 30, 1, -150)
+interactButton.AnchorPoint = Vector2.new(0, 0.5) -- Middle-left
+interactButton.Position = UDim2.new(0, 30, 0.5, 0)
 interactButton.Visible = false
 
 -- State to track the current interaction target
@@ -50,6 +50,11 @@ local currentInteractionTarget = nil
 
 -- Proximity checking loop
 RunService.RenderStepped:Connect(function()
+    if not CONFIG or not CONFIG.MACHINE_FOLDER_NAME then
+        -- The config module hasn't loaded yet, so do nothing.
+        return
+    end
+
     local character = player.Character
     if not character or not character.PrimaryPart then
         interactButton.Visible = false
@@ -87,17 +92,12 @@ RunService.RenderStepped:Connect(function()
 
         -- Priority 2: Check for machines (only if no rescue target was found)
         if not foundTarget then
-            -- ROBUSTNESS: Hardcoding values here to bypass a persistent config loading issue.
-            -- The config module appears to be nil when this script runs, causing a crash.
-            local machineFolderName = "MiniGameMachines"
-            local interactionDistance = 12
-
-            local machinesFolder = Workspace:FindFirstChild(machineFolderName)
+            local machinesFolder = Workspace:FindFirstChild(CONFIG.MACHINE_FOLDER_NAME)
             if machinesFolder then
                  for _, machine in ipairs(machinesFolder:GetChildren()) do
                     if machine:IsA("Model") and machine.PrimaryPart then
                         local distance = (playerPos - machine.PrimaryPart.Position).Magnitude
-                        if distance <= interactionDistance and not machine:GetAttribute("IsCompleted") then
+                        if distance <= CONFIG.INTERACTION_DISTANCE and not machine:GetAttribute("IsCompleted") then
                             foundTarget = machine -- Target is the Machine model
                             break -- Found a target, no need to check further
                         end
