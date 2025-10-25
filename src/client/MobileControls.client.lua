@@ -87,12 +87,17 @@ RunService.RenderStepped:Connect(function()
 
         -- Priority 2: Check for machines (only if no rescue target was found)
         if not foundTarget then
-            local machinesFolder = Workspace:FindFirstChild(CONFIG.MACHINE_FOLDER_NAME)
+            -- ROBUSTNESS: Hardcoding values here to bypass a persistent config loading issue.
+            -- The config module appears to be nil when this script runs, causing a crash.
+            local machineFolderName = "MiniGameMachines"
+            local interactionDistance = 12
+
+            local machinesFolder = Workspace:FindFirstChild(machineFolderName)
             if machinesFolder then
                  for _, machine in ipairs(machinesFolder:GetChildren()) do
                     if machine:IsA("Model") and machine.PrimaryPart then
                         local distance = (playerPos - machine.PrimaryPart.Position).Magnitude
-                        if distance <= CONFIG.INTERACTION_DISTANCE and not machine:GetAttribute("IsCompleted") then
+                        if distance <= interactionDistance and not machine:GetAttribute("IsCompleted") then
                             foundTarget = machine -- Target is the Machine model
                             break -- Found a target, no need to check further
                         end

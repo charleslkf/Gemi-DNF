@@ -18,17 +18,12 @@ local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local MachineFixed = Remotes:WaitForChild("MachineFixed")
 
 -- Modules
+local MyModules = ReplicatedStorage:WaitForChild("MyModules")
+local CONFIG = require(MyModules:WaitForChild("Config"))
 
 -- Player Globals
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
-
--- Configuration
-local CONFIG = {
-    INTERACTION_DISTANCE = 12,
-    MACHINE_FOLDER_NAME = "MiniGameMachines",
-    INTERRUPT_MOVE_DISTANCE = 10,
-}
 
 -- The Module
 local MiniGameManager = {}

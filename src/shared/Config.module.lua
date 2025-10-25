@@ -20,6 +20,9 @@ local Config = {
     HANG_KEY = Enum.KeyCode.E,
     HANGER_INTERACT_DISTANCE = 12,
     SMOKE_BOMB_RADIUS = 15,
+    INTERACTION_DISTANCE = 12,
+    MACHINE_FOLDER_NAME = "MiniGameMachines",
+    INTERRUPT_MOVE_DISTANCE = 10,
 }
 
 return Config
