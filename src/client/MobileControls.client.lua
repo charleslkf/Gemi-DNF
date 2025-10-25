@@ -38,7 +38,7 @@ screenGui.ResetOnSpawn = false
 
 local interactButton = Instance.new("ImageButton", screenGui)
 interactButton.Name = "InteractButton"
-interactButton.Image = "rbxassetid://5422697380" -- Action icon
+interactButton.Image = "rbxassetid://284439169" -- A known-good default Roblox icon
 interactButton.BackgroundTransparency = 1
 interactButton.Size = UDim2.new(0, 120, 0, 120)
 interactButton.AnchorPoint = Vector2.new(0, 0.5) -- Middle-left
@@ -77,6 +77,7 @@ RunService.RenderStepped:Connect(function()
                     if hangWeld and hangWeld.Part1 then
                         local survivorPart = hangWeld.Part1
                         local distance = (playerPos - survivorPart.Position).Magnitude
+                        print("[MobileControls-DEBUG] Checking caged player at distance:", distance) -- DEBUG
                         if distance <= CONFIG.HANGER_INTERACT_DISTANCE then
                             local survivorChar = survivorPart.Parent
                             local survivorPlayer = Players:GetPlayerFromCharacter(survivorChar)
@@ -97,6 +98,7 @@ RunService.RenderStepped:Connect(function()
                  for _, machine in ipairs(machinesFolder:GetChildren()) do
                     if machine:IsA("Model") and machine.PrimaryPart then
                         local distance = (playerPos - machine.PrimaryPart.Position).Magnitude
+						print("[MobileControls-DEBUG] Checking machine '" .. machine.Name .. "' at distance:", distance) -- DEBUG
                         if distance <= CONFIG.INTERACTION_DISTANCE and not machine:GetAttribute("IsCompleted") then
                             foundTarget = machine -- Target is the Machine model
                             break -- Found a target, no need to check further
@@ -108,9 +110,12 @@ RunService.RenderStepped:Connect(function()
 
         -- Update visibility and target
         if foundTarget then
+			print("[MobileControls-DEBUG] Target found:", foundTarget.Name, "Setting button to VISIBLE.")
             interactButton.Visible = true
             currentInteractionTarget = foundTarget
         else
+			-- This will be spammy, but it is necessary for debugging.
+			-- print("[MobileControls-DEBUG] No target found. Button remains HIDDEN.")
             interactButton.Visible = false
             currentInteractionTarget = nil
         end
