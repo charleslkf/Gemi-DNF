@@ -116,6 +116,9 @@
         },
         "MobileControls": {
             "$path": "src/client/MobileControls.client.lua"
+        },
+        "KillerMobileControls": {
+            "$path": "src/client/KillerMobileControls.client.lua"
         }
       }
     }
