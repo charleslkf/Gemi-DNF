@@ -35,6 +35,7 @@ local CONFIG = require(MyModules:WaitForChild("Config"))
 local screenGui = Instance.new("ScreenGui", playerGui)
 screenGui.Name = "MobileControlsGui"
 screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global -- Ensure it respects ZIndex globally
 
 local interactButton = Instance.new("ImageButton", screenGui)
 interactButton.Name = "InteractButton"
@@ -44,6 +45,7 @@ interactButton.Size = UDim2.new(0, 120, 0, 120)
 interactButton.AnchorPoint = Vector2.new(0, 0.5) -- Middle-left
 interactButton.Position = UDim2.new(0, 30, 0.5, 0)
 interactButton.Visible = false
+interactButton.ZIndex = 10 -- Set a high ZIndex to ensure it's on top
 
 -- State to track the current interaction target
 local currentInteractionTarget = nil
@@ -77,7 +79,6 @@ RunService.RenderStepped:Connect(function()
                     if hangWeld and hangWeld.Part1 then
                         local survivorPart = hangWeld.Part1
                         local distance = (playerPos - survivorPart.Position).Magnitude
-                        print("[MobileControls-DEBUG] Checking caged player at distance:", distance) -- DEBUG
                         if distance <= CONFIG.HANGER_INTERACT_DISTANCE then
                             local survivorChar = survivorPart.Parent
                             local survivorPlayer = Players:GetPlayerFromCharacter(survivorChar)
@@ -98,7 +99,6 @@ RunService.RenderStepped:Connect(function()
                  for _, machine in ipairs(machinesFolder:GetChildren()) do
                     if machine:IsA("Model") and machine.PrimaryPart then
                         local distance = (playerPos - machine.PrimaryPart.Position).Magnitude
-						print("[MobileControls-DEBUG] Checking machine '" .. machine.Name .. "' at distance:", distance) -- DEBUG
                         if distance <= CONFIG.INTERACTION_DISTANCE and not machine:GetAttribute("IsCompleted") then
                             foundTarget = machine -- Target is the Machine model
                             break -- Found a target, no need to check further
@@ -110,12 +110,9 @@ RunService.RenderStepped:Connect(function()
 
         -- Update visibility and target
         if foundTarget then
-			print("[MobileControls-DEBUG] Target found:", foundTarget.Name, "Setting button to VISIBLE.")
             interactButton.Visible = true
             currentInteractionTarget = foundTarget
         else
-			-- This will be spammy, but it is necessary for debugging.
-			-- print("[MobileControls-DEBUG] No target found. Button remains HIDDEN.")
             interactButton.Visible = false
             currentInteractionTarget = nil
         end
