@@ -72,7 +72,7 @@ RunService.RenderStepped:Connect(function()
         local playerPos = character.PrimaryPart.Position
         local foundTarget = nil
 
-        -- Priority 1: Check for caged teammates
+        -- Priority 1: Check for caged teammates (Players or Bots)
         local hangers = Workspace:FindFirstChild("Hangers")
         if hangers then
             for _, hanger in ipairs(hangers:GetChildren()) do
@@ -85,8 +85,12 @@ RunService.RenderStepped:Connect(function()
                         if distance <= CONFIG.HANGER_INTERACT_DISTANCE then
                             local survivorChar = survivorPart.Parent
                             local survivorPlayer = Players:GetPlayerFromCharacter(survivorChar)
-                            if survivorPlayer and CagingManager.isCaged(survivorPlayer) then
-                                foundTarget = survivorPlayer -- Target is the Player object
+
+                            -- ROBUSTNESS FIX: Handle both Players and Bots
+                            local targetEntity = survivorPlayer or survivorChar
+
+                            if CagingManager.isCaged(targetEntity) then
+                                foundTarget = targetEntity -- Target can be a Player object or a character Model
                                 break
                             end
                         end
@@ -111,10 +115,16 @@ RunService.RenderStepped:Connect(function()
             end
         end
 
-        -- Update visibility and target
+        -- Update visibility, text, and target
         if foundTarget then
             interactButton.Visible = true
             currentInteractionTarget = foundTarget
+            -- Update button text based on target type
+            if foundTarget:IsA("Player") or foundTarget.Name:match("^Bot") then
+                interactButton.Text = "RESCUE"
+            elseif foundTarget:IsA("Model") then
+                 interactButton.Text = "REPAIR"
+            end
         else
             interactButton.Visible = false
             currentInteractionTarget = nil
@@ -131,9 +141,9 @@ end)
 interactButton.Activated:Connect(function()
     if not currentInteractionTarget then return end
 
-    -- Check if the target is a Player (meaning a caged teammate)
-    if currentInteractionTarget:IsA("Player") then
-        print("[MobileControls] Interacting with caged player:", currentInteractionTarget.Name)
+    -- Check if the target is a Player or a Bot Model (for rescue)
+    if currentInteractionTarget:IsA("Player") or currentInteractionTarget.Name:match("^Bot") then
+        print("[MobileControls] Interacting with caged entity:", currentInteractionTarget.Name)
         PlayerRescueRequest_SERVER:FireServer(currentInteractionTarget)
 
     -- Check if the target is a Model (meaning a machine)
@@ -144,4 +154,4 @@ interactButton.Activated:Connect(function()
     end
 end)
 
-print("MobileControls.client.lua loaded and running on a touch device.")
+print("MobileControls.client.lua (v2 - Bot Rescue Fix) loaded and running on a touch device.")
