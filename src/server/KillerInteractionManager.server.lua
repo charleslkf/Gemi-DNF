@@ -132,7 +132,7 @@ local function onAttackRequest(killerPlayer, targetCharacter)
                 if distance < minDistance then
                     local direction = toTarget.Unit
                     local dotProduct = direction:Dot(killerLookVector)
-                    if dotProduct > 0.7 then -- Generous forward-facing cone
+                    if dotProduct > 0.5 then -- Wider, more forgiving cone for mobile
                         minDistance = distance
                         nearestTarget = potentialTarget
                     end
