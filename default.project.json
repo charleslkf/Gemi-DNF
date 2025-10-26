@@ -58,7 +58,7 @@
         "EliminationEvent": { "$path": "src/remotes/EliminationEvent", "$className": "RemoteEvent" },
         "EscapeSequenceStarted": { "$path": "src/remotes/EscapeSequenceStarted", "$className": "RemoteEvent" },
         "GameStateChanged": { "$path": "src/remotes/GameStateChanged", "$className": "RemoteEvent" },
-        "GetStoreData": { "$path": "src/remotes/GetStoreData", "$className": "RemoteEvent" },
+        "GetStoreData": { "$path": "src/remotes/GetStoreData", "$className": "RemoteFunction" },
         "HealthChanged": { "$path": "src/remotes/HealthChanged", "$className": "RemoteEvent" },
         "InventoryChanged": { "$path": "src/remotes/InventoryChanged", "$className": "RemoteEvent" },
         "MachineFixed": { "$path": "src/remotes/MachineFixed", "$className": "RemoteEvent" },
