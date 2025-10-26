@@ -120,7 +120,7 @@ RunService.RenderStepped:Connect(function()
             interactButton.Visible = true
             currentInteractionTarget = foundTarget
             -- Update button text based on target type
-            if foundTarget:IsA("Player") or foundTarget.Name:match("^Bot") then
+            if foundTarget:IsA("Player") or (foundTarget:IsA("Model") and foundTarget.Name:match("^Bot")) then
                 interactButton.Text = "RESCUE"
             elseif foundTarget:IsA("Model") then
                  interactButton.Text = "REPAIR"
@@ -142,7 +142,7 @@ interactButton.Activated:Connect(function()
     if not currentInteractionTarget then return end
 
     -- Check if the target is a Player or a Bot Model (for rescue)
-    if currentInteractionTarget:IsA("Player") or currentInteractionTarget.Name:match("^Bot") then
+    if currentInteractionTarget:IsA("Player") or (currentInteractionTarget:IsA("Model") and currentInteractionTarget.Name:match("^Bot")) then
         print("[MobileControls] Interacting with caged entity:", currentInteractionTarget.Name)
         PlayerRescueRequest_SERVER:FireServer(currentInteractionTarget)
 
@@ -154,4 +154,4 @@ interactButton.Activated:Connect(function()
     end
 end)
 
-print("MobileControls.client.lua (v2 - Bot Rescue Fix) loaded and running on a touch device.")
+print("MobileControls.client.lua (v3 - Final Crash Fix) loaded and running on a touch device.")
