@@ -69,63 +69,113 @@ local function setMass(character, massless, partToExclude)
 end
 
 -- Main Handler for Attack Requests
--- Main Handler for Attack Requests. The target can be a Player object or a Model.
 local function onAttackRequest(killerPlayer, targetCharacter)
-    -- Lazily require all modules on first execution
+    -- Lazily require modules
     if not HealthManager then
         HealthManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("HealthManager"))
         CagingManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("CagingManager"))
         KillerAbilityManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("KillerAbilityManager"))
     end
 
-    -- 1. VALIDATION AND SECURITY CHECKS
-
-    -- Verify the killer and target exist and have characters
-    if not killerPlayer or not killerPlayer.Character or not targetCharacter or not targetCharacter:FindFirstChild("Humanoid") then
-        return
-    end
-
-    -- Determine if the target is a real player or a bot
-    local targetPlayer = Players:GetPlayerFromCharacter(targetCharacter)
-    if targetPlayer then
-        -- Target is a real player, validate their team
-        if targetPlayer.Team == killersTeam then
-            return -- Killers can't attack other killers
+    -- ROBUSTNESS FIX: Wait briefly for the character to ensure it has loaded.
+    if not killerPlayer.Character then
+        killerPlayer.CharacterAdded:Wait(0.5) -- Wait up to half a second
+        if not killerPlayer.Character then
+            warn(string.format("[InteractionManager] Attack failed: Character for %s did not appear in time.", killerPlayer.Name))
+            return
         end
-    elseif not targetCharacter.Name:match("^Bot") then
-        -- Target is not a player and not a bot, so it's invalid
-        return
     end
 
-    -- Verify the killer is not on cooldown
+    -- Cooldown Check (moved to the top to handle all cases)
     local lastAttack = lastAttackTimes[killerPlayer]
     if lastAttack and (tick() - lastAttack < ATTACK_COOLDOWN) then
         print(string.format("[InteractionManager] Attack blocked: %s is on cooldown.", killerPlayer.Name))
         return
     end
 
-    -- Verify distance again on the server to prevent exploits
+    -- 1. TARGETING LOGIC
+    if not targetCharacter then
+        -- MOBILE ATTACK: Target is nil, so we find one in a cone in front of the killer.
+        lastAttackTimes[killerPlayer] = tick() -- Apply cooldown immediately for mobile attacks to prevent spam
+
+        local killerCharacter = killerPlayer.Character
+        if not killerCharacter or not killerCharacter.PrimaryPart then return end
+
+        local killerRoot = killerCharacter.PrimaryPart
+        local killerPos = killerRoot.Position
+        local killerLookVector = killerRoot.CFrame.LookVector
+
+        local nearestTarget = nil
+        local minDistance = MAX_ATTACK_DISTANCE
+
+        -- Build a list of potential targets
+        local potentialTargets = {}
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p.Team == survivorsTeam and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                table.insert(potentialTargets, p.Character)
+            end
+        end
+        pcall(function()
+            local SimulatedPlayerManager = require(ReplicatedStorage.MyModules.SimulatedPlayerManager)
+            for _, botModel in ipairs(SimulatedPlayerManager.getSpawnedBots()) do
+                table.insert(potentialTargets, botModel)
+            end
+        end)
+
+        -- Find the closest valid target in the cone
+        for _, potentialTarget in ipairs(potentialTargets) do
+            local targetRoot = potentialTarget:FindFirstChild("HumanoidRootPart")
+            if targetRoot then
+                local toTarget = targetRoot.Position - killerPos
+                local distance = toTarget.Magnitude
+
+                if distance < minDistance then
+                    local direction = toTarget.Unit
+                    local dotProduct = direction:Dot(killerLookVector)
+                    if dotProduct > 0.5 then -- Wider, more forgiving cone for mobile
+                        minDistance = distance
+                        nearestTarget = potentialTarget
+                    end
+                end
+            end
+        end
+
+        if nearestTarget then
+            targetCharacter = nearestTarget
+        else
+            print(string.format("[InteractionManager] Mobile attack from %s found no target.", killerPlayer.Name))
+            return -- Exit, cooldown was already applied
+        end
+    end
+
+    -- 2. VALIDATION AND SECURITY CHECKS
+    if not killerPlayer or not killerPlayer.Character or not targetCharacter or not targetCharacter:FindFirstChild("Humanoid") then
+        return
+    end
+
+    local targetPlayer = Players:GetPlayerFromCharacter(targetCharacter)
+    if targetPlayer then
+        if targetPlayer.Team == killersTeam then return end
+    elseif not targetCharacter.Name:match("^Bot") then
+        return
+    end
+
     local distance = (killerPlayer.Character.PrimaryPart.Position - targetCharacter.PrimaryPart.Position).Magnitude
     if distance > MAX_ATTACK_DISTANCE then
         print(string.format("[InteractionManager] Attack blocked: %s is too far from %s (%.1f studs).", killerPlayer.Name, targetCharacter.Name, distance))
         return
     end
 
-    -- The "target entity" can be either a Player object or a bot's Model.
-    -- Other modules will need to be updated to handle this polymorphism.
     local targetEntity = targetPlayer or targetCharacter
-
-    -- Verify the target is not already caged
     if CagingManager.isCaged(targetEntity) then
         print(string.format("[InteractionManager] Attack blocked: %s is already caged.", targetCharacter.Name))
         return
     end
 
-    -- 2. APPLY GAME LOGIC
-
+    -- 3. APPLY GAME LOGIC
     print(string.format("[InteractionManager] Attack validated: %s hit %s.", killerPlayer.Name, targetCharacter.Name))
 
-    -- Set the cooldown *before* applying damage
+    -- Set cooldown for non-mobile (targeted) attacks
     lastAttackTimes[killerPlayer] = tick()
 
     -- Check if the killer's ultimate is active
@@ -356,7 +406,7 @@ local function onPlayerRescueRequest(rescuerPlayer, hangedSurvivorEntity)
     local hangWeld = hangedSurvivorCharacter.HumanoidRootPart:FindFirstChild("HangWeld", true) -- Recursive search
     if not hangWeld then
          -- It's possible the weld is on the hanger's AttachPoint instead, depending on timing.
-         local hangersFolder = game:GetService("Workspace"):FindFirstChild("Hangers")
+         local hangersFolder = Workspace:FindFirstChild("Hangers")
          if hangersFolder then
              for _, hanger in ipairs(hangersFolder:GetChildren()) do
                  local attachPoint = hanger:FindFirstChild("AttachPoint")

@@ -13,6 +13,7 @@ local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local DownedStateChanged = Remotes:WaitForChild("DownedStateChanged")
+local PlayerRescued_CLIENT = Remotes:WaitForChild("PlayerRescued_CLIENT")
 local CrawlAnimation = ReplicatedStorage:WaitForChild("CrawlAnimation")
 
 -- State to keep track of a character's currently playing crawl animation track
@@ -64,6 +65,24 @@ end
 DownedStateChanged.OnClientEvent:Connect(function(changedCharacter)
     print("[DownedStateController] Received DownedStateChanged event.")
     updateDownedState(changedCharacter)
+end)
+
+-- A rescue is a definitive end to the downed state, so we must listen for it.
+-- This is the primary fix for the animation bug.
+PlayerRescued_CLIENT.OnClientEvent:Connect(function(rescuedCharacter)
+    if not rescuedCharacter then return end
+    print(string.format("[DownedStateController] Received rescue event for %s. Stopping animation.", rescuedCharacter.Name))
+
+    -- Immediately stop the crawling animation
+    if activeCrawlTracks[rescuedCharacter] then
+        activeCrawlTracks[rescuedCharacter]:Stop()
+        activeCrawlTracks[rescuedCharacter] = nil
+    end
+
+    -- Ensure walkspeed is restored, as the server-side change might not replicate instantly.
+    if rescuedCharacter.Humanoid then
+        rescuedCharacter.Humanoid.WalkSpeed = 16
+    end
 end)
 
 -- Also, monitor the local player's character for attribute changes directly.

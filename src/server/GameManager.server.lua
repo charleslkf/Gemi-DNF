@@ -52,6 +52,7 @@ lobbySpawn.Name = "LobbySpawn"
 lobbySpawn.Position = CONFIG.LOBBY_SPAWN_POSITION
 lobbySpawn.Anchored = true
 lobbySpawn.Neutral = true
+lobbySpawn.Size = Vector3.new(36, 1, 36) -- Default SpawnLocation is 12x1x12
 
 local mapsFolder = ServerStorage:FindFirstChild("Maps")
 if not mapsFolder then
