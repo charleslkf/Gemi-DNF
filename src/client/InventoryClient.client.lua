@@ -26,7 +26,29 @@ local currentInventory = {}
 -- Event Listeners
 inventoryChangedEvent.OnClientEvent:Connect(function(items)
     currentInventory = items
-    InventoryManager.createOrUpdateInventoryUI(items)
+    local itemButton1, itemButton2 = InventoryManager.createOrUpdateInventoryUI(items)
+
+    -- Mobile-specific "tap-to-use" logic
+    if UserInputService.TouchEnabled then
+        if itemButton1 then
+            itemButton1.Activated:Connect(function()
+                local itemToUse = currentInventory[1]
+                if itemToUse then
+                    print("Client: Requesting to use item via tap: " .. itemToUse)
+                    useItemRequest:FireServer(itemToUse)
+                end
+            end)
+        end
+        if itemButton2 then
+            itemButton2.Activated:Connect(function()
+                local itemToUse = currentInventory[2]
+                if itemToUse then
+                    print("Client: Requesting to use item via tap: " .. itemToUse)
+                    useItemRequest:FireServer(itemToUse)
+                end
+            end)
+        end
+    end
 end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
