@@ -15,7 +15,6 @@ local Workspace = game:GetService("Workspace")
 
 -- Only run this script on touch-enabled (mobile) devices
 if not UserInputService.TouchEnabled then
-    print("MobileControls: Not a touch device, script will not run.")
     return
 end
 
@@ -27,7 +26,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local PlayerRescueRequest_SERVER = Remotes:WaitForChild("PlayerRescueRequest_SERVER")
 local MyModules = ReplicatedStorage:WaitForChild("MyModules")
-local CagingManager = require(MyModules:WaitForChild("CagingManager"))
+-- CagingManager is no longer needed on the client for this script
 local MiniGameManager = require(MyModules:WaitForChild("MiniGameManager"))
 local CONFIG = require(MyModules:WaitForChild("Config"))
 
@@ -35,7 +34,7 @@ local CONFIG = require(MyModules:WaitForChild("Config"))
 local screenGui = Instance.new("ScreenGui", playerGui)
 screenGui.Name = "MobileControlsGui"
 screenGui.ResetOnSpawn = false
-screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global -- Ensure it respects ZIndex globally
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 
 local interactButton = Instance.new("TextButton", screenGui)
 interactButton.Name = "InteractButton"
@@ -43,23 +42,18 @@ interactButton.Text = "INTERACT"
 interactButton.Font = Enum.Font.SourceSansBold
 interactButton.TextSize = 20
 interactButton.TextColor3 = Color3.new(1, 1, 1)
-interactButton.BackgroundColor3 = Color3.fromRGB(0, 120, 255) -- A solid, visible blue
-interactButton.Size = UDim2.new(0, 150, 0, 80) -- Making it a rectangle
-interactButton.AnchorPoint = Vector2.new(0, 0.5) -- Middle-left
+interactButton.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+interactButton.Size = UDim2.new(0, 150, 0, 80)
+interactButton.AnchorPoint = Vector2.new(0, 0.5)
 interactButton.Position = UDim2.new(0, 30, 0.5, 0)
 interactButton.Visible = false
-interactButton.ZIndex = 10 -- Set a high ZIndex to ensure it's on top
+interactButton.ZIndex = 10
 
 -- State to track the current interaction target
 local currentInteractionTarget = nil
 
 -- Proximity checking loop
 RunService.RenderStepped:Connect(function()
-    if not CONFIG or not CONFIG.MACHINE_FOLDER_NAME then
-        -- The config module hasn't loaded yet, so do nothing.
-        return
-    end
-
     local character = player.Character
     if not character or not character.PrimaryPart then
         interactButton.Visible = false
@@ -79,20 +73,16 @@ RunService.RenderStepped:Connect(function()
                 local attachPoint = hanger:FindFirstChild("AttachPoint")
                 if attachPoint then
                     local hangWeld = attachPoint:FindFirstChild("HangWeld")
-                    if hangWeld and hangWeld.Part1 then
-                        local survivorPart = hangWeld.Part1
-                        local distance = (playerPos - survivorPart.Position).Magnitude
+                    if hangWeld and hangWeld.Part1 and hangWeld.Part1.Parent then
+                        local distance = (playerPos - hangWeld.Part1.Position).Magnitude
                         if distance <= CONFIG.HANGER_INTERACT_DISTANCE then
-                            local survivorChar = survivorPart.Parent
-                            local survivorPlayer = Players:GetPlayerFromCharacter(survivorChar)
-
-                            -- ROBUSTNESS FIX: Handle both Players and Bots
-                            local targetEntity = survivorPlayer or survivorChar
-
-                            if CagingManager.isCaged(targetEntity) then
-                                foundTarget = targetEntity -- Target can be a Player object or a character Model
-                                break
-                            end
+                            -- CRASH FIX: The target is the character model itself.
+                            -- We no longer call the server-only CagingManager.isCaged function.
+                            local survivorChar = hangWeld.Part1.Parent
+                            local isPlayer = Players:GetPlayerFromCharacter(survivorChar)
+                            -- The entity passed to the server can be a Player or a Model
+                            foundTarget = isPlayer or survivorChar
+                            break
                         end
                     end
                 end
@@ -100,15 +90,15 @@ RunService.RenderStepped:Connect(function()
         end
 
         -- Priority 2: Check for machines (only if no rescue target was found)
-        if not foundTarget then
+        if not foundTarget and CONFIG and CONFIG.MACHINE_FOLDER_NAME then
             local machinesFolder = Workspace:FindFirstChild(CONFIG.MACHINE_FOLDER_NAME)
             if machinesFolder then
                  for _, machine in ipairs(machinesFolder:GetChildren()) do
                     if machine:IsA("Model") and machine.PrimaryPart then
                         local distance = (playerPos - machine.PrimaryPart.Position).Magnitude
                         if distance <= CONFIG.INTERACTION_DISTANCE and not machine:GetAttribute("IsCompleted") then
-                            foundTarget = machine -- Target is the Machine model
-                            break -- Found a target, no need to check further
+                            foundTarget = machine
+                            break
                         end
                     end
                 end
@@ -120,7 +110,7 @@ RunService.RenderStepped:Connect(function()
             interactButton.Visible = true
             currentInteractionTarget = foundTarget
             -- Update button text based on target type
-            if foundTarget:IsA("Player") or (foundTarget:IsA("Model") and foundTarget.Name:match("^Bot")) then
+            if foundTarget:IsA("Player") or (foundTarget:IsA("Model") and foundTarget:FindFirstChild("Humanoid")) then
                 interactButton.Text = "RESCUE"
             elseif foundTarget:IsA("Model") then
                  interactButton.Text = "REPAIR"
@@ -129,7 +119,6 @@ RunService.RenderStepped:Connect(function()
             interactButton.Visible = false
             currentInteractionTarget = nil
         end
-
     else
         -- Hide for killers or downed survivors
         interactButton.Visible = false
@@ -141,17 +130,16 @@ end)
 interactButton.Activated:Connect(function()
     if not currentInteractionTarget then return end
 
-    -- Check if the target is a Player or a Bot Model (for rescue)
-    if currentInteractionTarget:IsA("Player") or (currentInteractionTarget:IsA("Model") and currentInteractionTarget.Name:match("^Bot")) then
-        print("[MobileControls] Interacting with caged entity:", currentInteractionTarget.Name)
+    -- Check if the target is a Player or a Character Model (for rescue)
+    if currentInteractionTarget:IsA("Player") or (currentInteractionTarget:IsA("Model") and currentInteractionTarget:FindFirstChild("Humanoid")) then
+        print("[MobileControls] Requesting rescue for:", currentInteractionTarget.Name)
         PlayerRescueRequest_SERVER:FireServer(currentInteractionTarget)
 
-    -- Check if the target is a Model (meaning a machine)
+    -- Check if the target is a Machine Model
     elseif currentInteractionTarget:IsA("Model") then
         print("[MobileControls] Interacting with machine:", currentInteractionTarget.Name)
-        -- Use the newly exposed function from MiniGameManager
         MiniGameManager.triggerMiniGame(currentInteractionTarget)
     end
 end)
 
-print("MobileControls.client.lua (v3 - Final Crash Fix) loaded and running on a touch device.")
+print("MobileControls.client.lua (v4 - Client-Side Rescue Fix) loaded and running on a touch device.")
