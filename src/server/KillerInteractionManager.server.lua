@@ -69,8 +69,11 @@ local function setMass(character, massless, partToExclude)
 end
 
 -- Main Handler for Attack Requests
--- Main Handler for Attack Requests. The target can be a Player object or a Model.
 local function onAttackRequest(killerPlayer, targetCharacter)
+    print(string.format("[DIAGNOSTIC] onAttackRequest received. Killer: %s, Target: %s", killerPlayer and killerPlayer.Name or "nil", targetCharacter and targetCharacter.Name or "nil"))
+    if not killerPlayer then print("[DIAGNOSTIC] killerPlayer is nil") return end
+    if not killerPlayer.Character then print("[DIAGNOSTIC] killerPlayer.Character is nil") return end
+
     -- Lazily require all modules on first execution
     if not HealthManager then
         HealthManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("HealthManager"))
