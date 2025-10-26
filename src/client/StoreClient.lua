@@ -65,7 +65,7 @@ local function splitString(str, sep)
 end
 
 -- This function is now responsible for the entire UI lifecycle
-local function showStoreUI()
+function StoreClient.showStoreUI()
     if isUiVisible then return end
 
     -- Get the dynamic store data from the server

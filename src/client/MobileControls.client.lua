@@ -26,9 +26,10 @@ local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local PlayerRescueRequest_SERVER = Remotes:WaitForChild("PlayerRescueRequest_SERVER")
 local MyModules = ReplicatedStorage:WaitForChild("MyModules")
--- CagingManager is no longer needed on the client for this script
 local MiniGameManager = require(MyModules:WaitForChild("MiniGameManager"))
 local CONFIG = require(MyModules:WaitForChild("Config"))
+-- Require the StoreClient to be able to open the shop UI
+local StoreClient = require(script.Parent:WaitForChild("StoreClient"))
 
 -- Create UI
 local screenGui = Instance.new("ScreenGui", playerGui)
@@ -105,13 +106,26 @@ RunService.RenderStepped:Connect(function()
             end
         end
 
+        -- Priority 3: Check for the StoreKeeper (only if no other target was found)
+        if not foundTarget then
+            local storeNpc = Workspace:FindFirstChild("StoreKeeper")
+            if storeNpc and storeNpc:FindFirstChild("HumanoidRootPart") then
+                local distance = (playerPos - storeNpc.HumanoidRootPart.Position).Magnitude
+                if distance <= CONFIG.INTERACTION_DISTANCE then
+                    foundTarget = storeNpc
+                end
+            end
+        end
+
         -- Update visibility, text, and target
         if foundTarget then
             interactButton.Visible = true
             currentInteractionTarget = foundTarget
             -- Update button text based on target type
-            if foundTarget:IsA("Player") or (foundTarget:IsA("Model") and foundTarget:FindFirstChild("Humanoid")) then
+            if foundTarget:IsA("Player") or (foundTarget:IsA("Model") and foundTarget.Name ~= "StoreKeeper" and foundTarget:FindFirstChild("Humanoid")) then
                 interactButton.Text = "RESCUE"
+            elseif foundTarget.Name == "StoreKeeper" then
+                interactButton.Text = "SHOP"
             elseif foundTarget:IsA("Model") then
                  interactButton.Text = "REPAIR"
             end
@@ -130,15 +144,16 @@ end)
 interactButton.Activated:Connect(function()
     if not currentInteractionTarget then return end
 
-    -- Check if the target is a Player or a Character Model (for rescue)
-    if currentInteractionTarget:IsA("Player") or (currentInteractionTarget:IsA("Model") and currentInteractionTarget:FindFirstChild("Humanoid")) then
+    -- Check the button's current text to decide the action
+    if interactButton.Text == "RESCUE" then
         print("[MobileControls] Requesting rescue for:", currentInteractionTarget.Name)
         PlayerRescueRequest_SERVER:FireServer(currentInteractionTarget)
-
-    -- Check if the target is a Machine Model
-    elseif currentInteractionTarget:IsA("Model") then
+    elseif interactButton.Text == "REPAIR" then
         print("[MobileControls] Interacting with machine:", currentInteractionTarget.Name)
         MiniGameManager.triggerMiniGame(currentInteractionTarget)
+    elseif interactButton.Text == "SHOP" then
+        print("[MobileControls] Opening shop UI.")
+        StoreClient.showStoreUI()
     end
 end)
 
