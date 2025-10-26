@@ -1,15 +1,20 @@
 -- KillerMobileControls.client.lua
--- This script creates and manages the mobile-specific controls for the Killer.
+-- This script creates and manages a single, contextual action button for the Killer on mobile.
 
 -- Services
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Teams = game:GetService("Teams")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+-- Modules
+local CONFIG = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("Config"))
+local SimulatedPlayerManager = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("SimulatedPlayerManager"))
 
 -- Only run this script for mobile users
 if not UserInputService.TouchEnabled then
-    print("KillerMobileControls: Not a touch device, script will not run.")
     return
 end
 
@@ -20,64 +25,120 @@ local playerGui = player:WaitForChild("PlayerGui")
 -- Remotes
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local AttackRequest = Remotes:WaitForChild("AttackRequest")
+local RequestGrab = Remotes:WaitForChild("RequestGrab")
+local RequestHang = Remotes:WaitForChild("RequestHang")
+local CarryingStateChanged = Remotes:WaitForChild("CarryingStateChanged")
 
--- Variables
-local screenGui = nil -- Keep track of the UI
+-- State
+local screenGui = nil
+local actionButton = nil
 local killersTeam = Teams:WaitForChild("Killers")
+local isCarrying = false
+local currentAction = "Attack" -- "Attack", "Grab", or "Hang"
+local currentTarget = nil
 
--- This function creates the UI. It's called only when we confirm the player is a killer.
+-- HELPER FUNCTIONS
+local function findNearestDownedCharacter(position, maxDistance)
+    local nearestCharacter = nil
+    local minDistance = maxDistance
+    -- Check Players
+    for _, otherPlayer in ipairs(Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character and otherPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local targetCharacter = otherPlayer.Character
+            if targetCharacter:GetAttribute("Downed") == true then
+                local distance = (position - targetCharacter.HumanoidRootPart.Position).Magnitude
+                if distance < minDistance then
+                    minDistance = distance
+                    nearestCharacter = targetCharacter
+                end
+            end
+        end
+    end
+    -- Check Bots
+    pcall(function()
+        local activeBots = SimulatedPlayerManager.getSpawnedBots()
+        for _, botModel in ipairs(activeBots) do
+            if botModel and botModel.Parent and botModel:FindFirstChild("HumanoidRootPart") then
+                if botModel:GetAttribute("Downed") == true then
+                    local distance = (position - botModel.HumanoidRootPart.Position).Magnitude
+                    if distance < minDistance then
+                        minDistance = distance
+                        nearestCharacter = botModel
+                    end
+                end
+            end
+        end
+    end)
+    return nearestCharacter
+end
+
+local function findNearestHanger(position, maxDistance)
+    local hangersFolder = Workspace:FindFirstChild("Hangers")
+    local closestHanger = nil
+    local minDistance = maxDistance
+    if hangersFolder then
+        for _, hanger in ipairs(hangersFolder:GetChildren()) do
+            if hanger:FindFirstChild("AttachPoint") then
+                local distance = (position - hanger.AttachPoint.Position).Magnitude
+                if distance < minDistance then
+                    minDistance = distance
+                    closestHanger = hanger
+                end
+            end
+        end
+    end
+    return closestHanger
+end
+
+-- UI CREATION AND DESTRUCTION
 local function createKillerUI()
-    if screenGui then return end -- Don't create if it already exists
+    if screenGui then return end
 
-    print("KillerMobileControls: Player is on the Killers team. Creating UI.")
-
-    -- Create the ScreenGui
     screenGui = Instance.new("ScreenGui")
     screenGui.Name = "KillerMobileControlsGui"
     screenGui.ResetOnSpawn = false
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
     screenGui.Parent = playerGui
 
-    -- Create the Attack Button
-    local attackButton = Instance.new("TextButton")
-    attackButton.Name = "AttackButton"
-    attackButton.Text = "X"
-    attackButton.TextColor3 = Color3.new(1, 1, 1)
-    attackButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Red
-    attackButton.BackgroundTransparency = 0.3
-    attackButton.BorderSizePixel = 0
-    attackButton.Size = UDim2.new(0, 80, 0, 80)
-    -- Corrected Position: Middle-Right
-    attackButton.AnchorPoint = Vector2.new(1, 0.5)
-    attackButton.Position = UDim2.new(1, -30, 0.5, 0)
-    attackButton.Font = Enum.Font.SourceSansBold
-    attackButton.TextSize = 40
-    attackButton.ZIndex = 10
-    attackButton.Parent = screenGui
+    actionButton = Instance.new("TextButton")
+    actionButton.Name = "ActionButton"
+    actionButton.TextColor3 = Color3.new(1, 1, 1)
+    actionButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    actionButton.BackgroundTransparency = 0.3
+    actionButton.BorderSizePixel = 0
+    actionButton.Size = UDim2.new(0, 100, 0, 100)
+    actionButton.AnchorPoint = Vector2.new(1, 0.5)
+    actionButton.Position = UDim2.new(1, -30, 0.5, 0)
+    actionButton.Font = Enum.Font.SourceSansBold
+    actionButton.TextSize = 32
+    actionButton.ZIndex = 10
+    actionButton.Parent = screenGui
 
-    -- Create a UICorner to make the button circular
     local uiCorner = Instance.new("UICorner")
     uiCorner.CornerRadius = UDim.new(0.5, 0)
-    uiCorner.Parent = attackButton
+    uiCorner.Parent = actionButton
 
-    -- Handle the button click
-    attackButton.MouseButton1Click:Connect(function()
-        print("[KillerMobileControls] Attack button clicked. Firing AttackRequest.")
-        -- Fire the event without any arguments, letting the server handle hit detection.
-        AttackRequest:FireServer(nil) -- Explicitly send nil
+    actionButton.MouseButton1Click:Connect(function()
+        print(string.format("[KillerMobileControls] Button clicked. Action: %s", currentAction))
+        if currentAction == "Attack" then
+            AttackRequest:FireServer(nil)
+        elseif currentAction == "Grab" and currentTarget then
+            RequestGrab:FireServer(currentTarget)
+        elseif currentAction == "Hang" and currentTarget then
+            RequestHang:FireServer(currentTarget)
+        end
     end)
 end
 
--- This function destroys the UI if it exists.
 local function destroyKillerUI()
     if screenGui then
-        print("KillerMobileControls: Player is not on the Killers team. Destroying UI.")
         screenGui:Destroy()
         screenGui = nil
+        actionButton = nil
     end
 end
 
--- This function handles team changes.
+-- MAIN TEAM CHECK AND UI MANAGEMENT
 local function onTeamChanged()
     if player.Team == killersTeam then
         createKillerUI()
@@ -86,10 +147,55 @@ local function onTeamChanged()
     end
 end
 
--- Initial check when the script first runs
-onTeamChanged()
+-- LISTENERS
+CarryingStateChanged.OnClientEvent:Connect(function(newState)
+    isCarrying = newState
+    print("[KillerMobileControls] Carrying state updated to:", newState)
+end)
 
--- Listen for any subsequent team changes
 player:GetPropertyChangedSignal("Team"):Connect(onTeamChanged)
 
-print("KillerMobileControls.client.lua loaded and initialized.")
+-- MAIN UPDATE LOOP
+RunService.RenderStepped:Connect(function()
+    -- Only run logic if the UI is active
+    if not actionButton or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+        return
+    end
+
+    local killerPos = player.Character.HumanoidRootPart.Position
+    local newAction = "Attack"
+    local newTarget = nil
+
+    if isCarrying then
+        -- Context 2: Carrying a survivor, check for hangers
+        local nearestHanger = findNearestHanger(killerPos, CONFIG.HANGER_INTERACT_DISTANCE)
+        if nearestHanger then
+            newAction = "Hang"
+            newTarget = nearestHanger
+        else
+            -- If carrying but not near a hanger, default to no action (or drop action if implemented)
+            -- For now, we will just show "Attack" but it will do nothing in this state
+            newAction = "Attack"
+            newTarget = nil
+        end
+    else
+        -- Context 1: Not carrying, check for downed survivors
+        local nearestDowned = findNearestDownedCharacter(killerPos, CONFIG.GRAB_DISTANCE)
+        if nearestDowned then
+            newAction = "Grab"
+            newTarget = nearestDowned
+        end
+    end
+
+    -- Update state and button text only if they have changed
+    if newAction ~= currentAction then
+        currentAction = newAction
+        actionButton.Text = string.upper(currentAction)
+    end
+    currentTarget = newTarget
+end)
+
+-- Initial check
+onTeamChanged()
+
+print("KillerMobileControls.client.lua v3 (Contextual) loaded and initialized.")

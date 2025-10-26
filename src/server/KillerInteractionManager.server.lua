@@ -208,6 +208,8 @@ end)
 
 -- Connect the handler to the remote event
 AttackRequest.OnServerEvent:Connect(onAttackRequest)
+RequestGrab.OnServerEvent:Connect(function(player, target) onGrabRequest(player, target) end)
+RequestHang.OnServerEvent:Connect(function(player, target) onHangRequest(player, target) end)
 
 -- Handler for Grab Requests
 local function onGrabRequest(killerPlayer, targetCharacter)
