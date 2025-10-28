@@ -249,10 +249,22 @@ function StoreClient.init()
         local storeNpc = Workspace:FindFirstChild(CONFIG.NPC_NAME)
         local closestNpcFound = nil
 
-        if storeNpc and storeNpc.PrimaryPart then
-            if (characterPos - storeNpc.PrimaryPart.Position).Magnitude < CONFIG.INTERACTION_DISTANCE then
-                closestNpcFound = storeNpc
+        if storeNpc then
+            if storeNpc.PrimaryPart then
+                local distance = (characterPos - storeNpc.PrimaryPart.Position).Magnitude
+                if distance < CONFIG.INTERACTION_DISTANCE then
+                    closestNpcFound = storeNpc
+                    print("[StoreClient-DEBUG] Player is " .. distance .. " studs from StoreKeeper. Target acquired.")
+                else
+                    -- This will print a lot, but it's useful for debugging
+                    -- print("[StoreClient-DEBUG] Player is " .. distance .. " studs from StoreKeeper. Too far.")
+                end
+            else
+                print("[StoreClient-DEBUG] Found StoreKeeper model, but it has no PrimaryPart.")
             end
+        else
+            -- This will print every frame an NPC is not present.
+            -- print("[StoreClient-DEBUG] Could not find a model named '" .. CONFIG.NPC_NAME .. "' in Workspace.")
         end
 
         if closestNpcFound ~= nearbyNPC then
