@@ -76,21 +76,32 @@ local function _spawnNPCRandomly(mapModel)
 
     local spawnPoint = availableSpawns[math.random(#availableSpawns)]
 
-    print("StoreKeeperManager: Spawning NPC.")
-    activeNPC = Instance.new("Model")
-    activeNPC.Name = NPC_CONFIG.Name
+    print("StoreKeeperManager: Spawning NPC from template.")
+    local ServerStorage = game:GetService("ServerStorage")
+    local assetsFolder = ServerStorage:FindFirstChild("Assets")
+    if not assetsFolder then
+        warn("StoreKeeperManager: CRITICAL - 'Assets' folder not found in ServerStorage.")
+        return
+    end
 
-    local hrp = Instance.new("Part")
-    hrp.Name = "HumanoidRootPart"
-    hrp.Size = Vector3.new(2, 2, 1)
-    hrp.Anchored = true
+    local npcTemplate = assetsFolder:FindFirstChild("StoreKeeperTemplate")
+    if not npcTemplate then
+        warn("StoreKeeperManager: CRITICAL - 'StoreKeeperTemplate' not found in ServerStorage/Assets.")
+        return
+    end
 
-    local humanoid = Instance.new("Humanoid", activeNPC)
-    humanoid.DisplayName = "Store Keeper"
+    activeNPC = npcTemplate:Clone()
+    activeNPC.Name = NPC_CONFIG.Name -- Rename the clone to the configured name
 
-    hrp.Parent = activeNPC
-    activeNPC.PrimaryPart = hrp
+    -- Ensure it has a primary part before positioning
+    if not activeNPC.PrimaryPart then
+        warn("StoreKeeperManager: CRITICAL - 'StoreKeeperTemplate' is missing its PrimaryPart.")
+        activeNPC:Destroy()
+        activeNPC = nil
+        return
+    end
 
+    -- Correctly position the cloned model
     local yOffset = activeNPC.PrimaryPart.Size.Y / 2
     activeNPC:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position + Vector3.new(0, yOffset, 0)))
 
