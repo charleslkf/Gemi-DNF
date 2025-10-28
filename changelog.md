@@ -2,6 +2,15 @@
 
 This document tracks the major features and bug fixes implemented in the Gemi-DNF project during our session.
 
+## Version 6.5.0
+- **Major Feature: Mobile Gameplay Loop Completion**
+  - **Shop Interaction:** The survivor's mobile "Interact" button is now fully contextual. It will display "SHOP" when near the Storekeeper and correctly open the store UI when tapped.
+  - **Tap-to-Use Items:** Mobile survivors can now use their inventory items by tapping directly on the item's icon in their hotbar. This was implemented following a robust architectural pattern that separates UI creation from input handling.
+- **Bug Fixes & Quality of Life**
+  - **Store UI Crash:** Fixed a critical client-side crash that occurred when opening the store. The `GetStoreData` remote was corrected from a `RemoteEvent` to a `RemoteFunction`.
+  - **Killer Attack Cone:** The killer's mobile attack is now more reliable and forgiving. The server-side "cone of attack" was widened to better register hits.
+  - **Rescue Animation:** Fixed a bug where a rescued survivor would remain stuck in their crawling animation. The client now correctly listens for the rescue event and stops the animation.
+
 ## Version 6.3.5
 - **Feature: Context-Aware Mobile "Interact" Button**
   - Implemented a new, on-screen "Interact" button that appears for Survivors using a mobile device.
