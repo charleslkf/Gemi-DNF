@@ -321,11 +321,14 @@ if RunService:IsClient() then
             listLayout.Padding = UDim.new(0, 10)
 
             for i = 1, INVENTORY_CAPACITY do
-                local slot = Instance.new("Frame", container)
+                -- Use an ImageButton to make the slots tappable on mobile
+                local slot = Instance.new("ImageButton", container)
                 slot.Name = "Slot" .. i
                 slot.Size = UDim2.new(0, 100, 0, 100)
                 slot.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
                 slot.BorderSizePixel = 2
+                -- Add a subtle effect to show it's a button
+                slot.AutoButtonColor = true
 
                 local itemLabel = Instance.new("TextLabel", slot)
                 itemLabel.Name = "ItemName"
@@ -338,6 +341,7 @@ if RunService:IsClient() then
         end
 
         local container = screenGui:WaitForChild("Container")
+        local itemButtons = {}
         for i = 1, INVENTORY_CAPACITY do
             local slot = container:FindFirstChild("Slot" .. i)
             if slot then
@@ -347,8 +351,12 @@ if RunService:IsClient() then
                 else
                     itemLabel.Text = "[Empty]"
                 end
+                table.insert(itemButtons, slot) -- Add the button to our array
             end
         end
+
+        -- Return the buttons so the client script can attach listeners
+        return itemButtons[1], itemButtons[2]
     end
 end
 
