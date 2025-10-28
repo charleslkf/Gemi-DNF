@@ -30,17 +30,7 @@ local MapGenerator = require(ReplicatedStorage:WaitForChild("MyModules"):WaitFor
 -- MapGenerator.Generate() -- Disabled as it overwrites proper assets with placeholders
 
 -- Configuration
-local CONFIG = {
-    INTERMISSION_DURATION = 15,
-    ROUND_DURATION = 180,
-    POST_ROUND_DURATION = 5,
-    KILLER_SPAWN_DELAY = 5,
-    MIN_PLAYERS = 5,
-    LOBBY_SPAWN_POSITION = Vector3.new(0, 50, 0),
-    MACHINES_TO_SPAWN = 3,
-    VICTORY_GATE_TIMER = 30,
-    MACHINE_BONUS_TIME = 5,
-}
+local CONFIG = require(ReplicatedStorage:WaitForChild("MyModules"):WaitForChild("Config"))
 
 -- Teams
 local killersTeam = Teams:FindFirstChild("Killers") or Instance.new("Team", Teams); killersTeam.Name = "Killers"; killersTeam.TeamColor = BrickColor.new("Really red")
@@ -52,7 +42,6 @@ lobbySpawn.Name = "LobbySpawn"
 lobbySpawn.Position = CONFIG.LOBBY_SPAWN_POSITION
 lobbySpawn.Anchored = true
 lobbySpawn.Neutral = true
-lobbySpawn.Size = Vector3.new(36, 1, 36) -- Default SpawnLocation is 12x1x12
 
 local mapsFolder = ServerStorage:FindFirstChild("Maps")
 if not mapsFolder then
@@ -438,6 +427,17 @@ function enterPlaying()
         local killerPlayer = realPlayers[killerIndex]
         killerPlayer.Team = killersTeam
         table.insert(currentKillers, killerPlayer)
+
+        -- Apply the killer's speed from the config
+        task.spawn(function()
+            local character = killerPlayer.Character or killerPlayer.CharacterAdded:Wait()
+            local humanoid = character:WaitForChild("Humanoid")
+            if humanoid then
+                humanoid.WalkSpeed = CONFIG.KILLER_WALKSPEED
+                print(string.format("[GameManager] Set Killer %s WalkSpeed to %d", killerPlayer.Name, CONFIG.KILLER_WALKSPEED))
+            end
+        end)
+
         local leaderstats = killerPlayer:FindFirstChild("leaderstats")
         if leaderstats then
             local killsStat = leaderstats:FindFirstChild("Kills")
