@@ -105,6 +105,12 @@ local function _spawnNPCRandomly(mapModel)
     local yOffset = activeNPC.PrimaryPart.Size.Y / 2
     activeNPC:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position + Vector3.new(0, yOffset, 0)))
 
+    -- Ensure the interaction prompt is always visible from a distance
+    local humanoid = activeNPC:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.DisplayDistance = 500
+    end
+
     -- Select and store the random items for this spawn
     local allItemNames = {}
     for name, _ in pairs(ITEM_PRICES) do
