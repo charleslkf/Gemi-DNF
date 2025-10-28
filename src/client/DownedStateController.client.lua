@@ -42,6 +42,12 @@ local function updateDownedState(character)
         -- Apply downed state visuals
         humanoid.WalkSpeed = 5
 
+        -- Disable the default animation script to prevent conflicts
+        local animateScript = character:FindFirstChild("Animate")
+        if animateScript then
+            animateScript.Disabled = true
+        end
+
         -- Play the crawling animation if it's not already playing
         if not activeCrawlTracks[character] then
             local animator = humanoid:FindFirstChildOfClass("Animator")
@@ -71,17 +77,31 @@ end)
 -- This is the primary fix for the animation bug.
 PlayerRescued_CLIENT.OnClientEvent:Connect(function(rescuedCharacter)
     if not rescuedCharacter then return end
-    print(string.format("[DownedStateController] Received rescue event for %s. Stopping animation.", rescuedCharacter.Name))
 
-    -- Immediately stop the crawling animation
-    if activeCrawlTracks[rescuedCharacter] then
-        activeCrawlTracks[rescuedCharacter]:Stop()
-        activeCrawlTracks[rescuedCharacter] = nil
-    end
+    -- This cleanup logic should only run for the player who was actually rescued.
+    if rescuedCharacter == player.Character then
+        print("[DownedStateController] PlayerRescued_CLIENT received for LocalPlayer. Cleaning up state.")
 
-    -- Ensure walkspeed is restored, as the server-side change might not replicate instantly.
-    if rescuedCharacter.Humanoid then
-        rescuedCharacter.Humanoid.WalkSpeed = 16
+        -- 1. Stop the crawl animation
+        if activeCrawlTracks[rescuedCharacter] then
+            activeCrawlTracks[rescuedCharacter]:Stop()
+            activeCrawlTracks[rescuedCharacter] = nil
+        end
+
+        -- 2. Re-enable the default Animate script
+        local animateScript = rescuedCharacter:FindFirstChild("Animate")
+        if animateScript then
+            animateScript.Disabled = false
+        end
+
+        -- 3. (Safeguard) Restore walk speed
+        local humanoid = rescuedCharacter:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = 16
+        end
+
+        -- 4. Remove the "Downed" attribute to ensure client state is consistent
+        rescuedCharacter:SetAttribute("Downed", nil)
     end
 end)
 
