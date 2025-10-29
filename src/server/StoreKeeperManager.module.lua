@@ -102,8 +102,10 @@ local function _spawnNPCRandomly(mapModel)
     end
 
     -- Correctly position the cloned model
+    local spawnCF = spawnPoint.CFrame -- Get the full CFrame (Position + Rotation)
     local yOffset = activeNPC.PrimaryPart.Size.Y / 2
-    activeNPC:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position + Vector3.new(0, yOffset, 0)))
+    -- Apply Position AND Rotation from the spawn point, plus height offset
+    activeNPC:SetPrimaryPartCFrame(spawnCF * CFrame.new(0, yOffset, 0))
 
     -- Ensure the interaction prompt is always visible from a distance
     local humanoid = activeNPC:FindFirstChildOfClass("Humanoid")
