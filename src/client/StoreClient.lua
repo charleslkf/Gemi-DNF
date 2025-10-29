@@ -273,7 +273,7 @@ function StoreClient.init()
             return
         end
 
-        showStoreUI()
+        StoreClient.showStoreUI()
     end)
 end
 

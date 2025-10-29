@@ -23,6 +23,7 @@ local Config = {
     INTERACTION_DISTANCE = 12,
     MACHINE_FOLDER_NAME = "MiniGameMachines",
     INTERRUPT_MOVE_DISTANCE = 10,
+    KILLER_WALKSPEED = 18, -- Default is 16
 }
 
 return Config
