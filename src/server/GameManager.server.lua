@@ -339,8 +339,9 @@ function spawnMachines(mapModel)
                 machine.PrimaryPart.CanCollide = true
             end
 
+            local spawnCF = spawnPoint.CFrame
             local yOffset = machine.PrimaryPart.Size.Y / 2
-            machine:SetPrimaryPartCFrame(CFrame.new(spawnPoint.Position + Vector3.new(0, yOffset, 0)))
+            machine:SetPrimaryPartCFrame(spawnCF * CFrame.new(0, yOffset, 0))
             machine.Parent = machineFolder
         end
         print(string.format("[GameManager] Spawned %d machines at designated locations.", numToSpawn))
