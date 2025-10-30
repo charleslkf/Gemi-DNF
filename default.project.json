@@ -76,7 +76,8 @@
         "TestAddItemRequest": { "$path": "src/remotes/TestAddItemRequest", "$className": "RemoteEvent" },
         "TestCageRequest": { "$path": "src/remotes/TestCageRequest", "$className": "RemoteEvent" },
         "TestDamageRequest": { "$path": "src/remotes/TestDamageRequest", "$className": "RemoteEvent" },
-        "UseItemRequest": { "$path": "src/remotes/UseItemRequest", "$className": "RemoteEvent" }
+        "UseItemRequest": { "$path": "src/remotes/UseItemRequest", "$className": "RemoteEvent" },
+        "WorldEnd_CLIENT": { "$path": "src/remotes/WorldEnd_CLIENT", "$className": "RemoteEvent" }
       }
     },
     "StarterPlayer": {

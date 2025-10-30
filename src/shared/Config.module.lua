@@ -24,6 +24,7 @@ local Config = {
     MACHINE_FOLDER_NAME = "MiniGameMachines",
     INTERRUPT_MOVE_DISTANCE = 10,
     KILLER_WALKSPEED = 18, -- Default is 16
+    WORLD_END_DELAY = 10, -- Duration the win/loss message is shown before returning to lobby
 }
 
 return Config

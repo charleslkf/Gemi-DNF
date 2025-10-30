@@ -225,3 +225,34 @@ applyBlindnessEvent.OnClientEvent:Connect(function(shouldBeBlind)
         blindnessGui.Enabled = shouldBeBlind
     end
 end)
+
+-- Create the World End UI
+local worldEndGui = Instance.new("ScreenGui")
+worldEndGui.Name = "WorldEndGui"
+worldEndGui.ResetOnSpawn = false
+worldEndGui.Enabled = false -- Disabled by default
+worldEndGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+worldEndGui.Parent = playerGui
+
+local worldEndLabel = Instance.new("TextLabel")
+worldEndLabel.Name = "WorldEndLabel"
+worldEndLabel.Size = UDim2.new(1, 0, 1, 0) -- Full screen
+worldEndLabel.Font = Enum.Font.SourceSansBold
+worldEndLabel.TextSize = 80
+worldEndLabel.TextColor3 = Color3.new(1, 1, 0) -- Yellow
+worldEndLabel.BackgroundColor3 = Color3.new(0, 0, 0)
+worldEndLabel.BackgroundTransparency = 0.5 -- Semi-transparent black background
+worldEndLabel.Text = "Survivors Win!"
+worldEndLabel.Parent = worldEndGui
+
+-- Listen for the World End event from the server
+local worldEndEvent = Remotes:WaitForChild("WorldEnd_CLIENT")
+worldEndEvent.OnClientEvent:Connect(function(winningTeam)
+    if winningTeam == "Survivors" or winningTeam == "Killers" then
+        worldEndLabel.Text = winningTeam .. " Win!"
+
+        -- Disable the main game HUD and enable the end screen
+        screenGui.Enabled = false
+        worldEndGui.Enabled = true
+    end
+end)

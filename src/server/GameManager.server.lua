@@ -60,7 +60,7 @@ local manualStart = false
 local currentMap = nil
 
 -- Forward declarations
-local enterWaiting, enterIntermission, enterPlaying, enterPostRound, enterEscape, checkWinConditions
+local enterWaiting, enterIntermission, enterPlaying, enterPostRound, enterEscape, enterWorldEnd, checkWinConditions
 local teleportToLobby, spawnPlayerInMap
 local loadRandomLevel, cleanupCurrentLevel, spawnMachines, cleanupMachines, cleanupVictoryGates, activateVictoryGates
 
@@ -200,6 +200,11 @@ function activateVictoryGates()
                     -- Mark the player as escaped
                     player.Team = nil
                     print(string.format("[GameManager] Survivor %s has escaped!", player.Name))
+
+                    -- If it's the final level, this is a world win
+                    if currentLevel == 10 then
+                        enterWorldEnd("Survivors")
+                    end
 
                     -- Make character invisible, non-collidable, and immobile
                     local hrp = character:FindFirstChild("HumanoidRootPart")
@@ -378,6 +383,7 @@ end
 function enterWaiting()
     print("[GameManager] State -> Waiting")
     SimulatedPlayerManager.despawnSimulatedPlayers()
+    currentLevel = 0 -- Reset world progress
     cleanupCurrentLevel()
     cleanupMachines()
     cleanupVictoryGates()
@@ -494,6 +500,16 @@ function enterEscape()
     escapeEvent:FireAllClients(gateNames)
 end
 
+function enterWorldEnd(winner)
+    if gameState == "WorldEnd" then return end -- Prevent double-triggering
+    print(string.format("[GameManager] State -> WorldEnd. Winner: %s", winner))
+    gameState = "WorldEnd"
+    stateTimer = CONFIG.WORLD_END_DELAY
+    GameStateManager:SetStateName("WorldEnd")
+    local remotes = ReplicatedStorage:WaitForChild("Remotes")
+    remotes.WorldEnd_CLIENT:FireAllClients(winner)
+end
+
 function checkWinConditions()
     -- Check for machine repair victory first
     if GameStateManager:AreAllMachinesRepaired() then
@@ -549,16 +565,40 @@ task.spawn(function()
             stateTimer = stateTimer - 1
             GameStateManager:SetTimer(stateTimer)
             local winStatus = checkWinConditions()
-            if winStatus == "SurvivorsWin_Escape" then
+            if winStatus == true then -- All survivors eliminated
+                enterWorldEnd("Killers")
+            elseif stateTimer <= 0 then -- Main timer ran out
+                enterWorldEnd("Killers")
+            elseif winStatus == "SurvivorsWin_Escape" then -- All machines fixed
                 gameState = "Escape"; GameStateManager:SetStateName("Escape"); enterEscape()
-            elseif winStatus or stateTimer <= 0 then
-                gameState = "PostRound"; GameStateManager:SetStateName("PostRound"); enterPostRound()
             end
         elseif gameState == "Escape" then
             stateTimer = stateTimer - 1
             GameStateManager:SetTimer(stateTimer)
             if stateTimer <= 0 then
-                gameState = "PostRound"; GameStateManager:SetStateName("PostRound"); enterPostRound()
+                if currentLevel == 10 then
+                    local survivorEscaped = false
+                    for _, entity in ipairs(currentSurvivors) do
+                        if entity:IsA("Player") and entity.Team == nil then
+                            survivorEscaped = true
+                            break
+                        end
+                    end
+                    if survivorEscaped then
+                        enterWorldEnd("Survivors")
+                    else
+                        enterWorldEnd("Killers")
+                    end
+                else
+                    gameState = "PostRound"; GameStateManager:SetStateName("PostRound"); enterPostRound()
+                end
+            end
+        elseif gameState == "WorldEnd" then
+            stateTimer = stateTimer - 1
+            if stateTimer <= 0 then
+                gameState = "Waiting"
+                GameStateManager:SetStateName("Waiting")
+                enterWaiting()
             end
         elseif gameState == "PostRound" then
             stateTimer = stateTimer - 1
